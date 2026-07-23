@@ -32,6 +32,20 @@
 
 ---
 
+## Agent skills
+
+（由 `setup-matt-pocock-skills` 建立；engineering skills 會讀下列設定檔）
+
+### Issue tracker
+
+實作切片票走 **local markdown**（`.scratch/<feature>/issues/NN-*.md`）；spec 仍在 `docs/spec/`、進度單一事實來源仍是 `docs/DEVLOG.md`。詳見 `docs/agents/issue-tracker.md`。
+
+### Domain docs
+
+單一 context；無根目錄 `CONTEXT.md`——通用語言在 `docs/plan/domain-regrill-2026-07-23.md` §9、ADR 在 `docs/adr/`。詳見 `docs/agents/domain.md`。
+
+---
+
 ## 備註
 
 - md→html 產生器為零依賴 Python 3（尚未安裝 Node，屬工具鏈不影響 app）。日後若統一到 Node 工具鏈，可平移改寫。
