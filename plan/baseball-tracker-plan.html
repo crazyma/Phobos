@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>棒球球員追蹤網站 — 專案規劃</title>
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --fg: #1f2320;
+    --muted: #6b7268;
+    --accent: #8a3324;
+    --line: #e3ddd3;
+    --card: #ffffff;
+    --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --fg: #e7e4dd;
+      --muted: #9a9d97;
+      --accent: #d8836a;
+      --line: #2c2f33;
+      --card: #1b1e22;
+      --code-bg: #20232a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+    --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+
+  header.page-head {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  header.page-head h1 {
+    font-size: 1.7rem;
+    margin: 0 0 .5rem;
+    letter-spacing: -0.01em;
+  }
+
+  header.page-head p {
+    margin: 0;
+    color: var(--muted);
+    font-size: .95rem;
+  }
+
+  blockquote {
+    margin: 0 0 1.5rem;
+    padding: .75rem 1rem;
+    background: var(--code-bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: .92rem;
+  }
+  blockquote p { margin: 0; }
+
+  h2 {
+    font-size: 1.25rem;
+    margin: 2.75rem 0 1rem;
+    padding-top: .25rem;
+    color: var(--fg);
+  }
+  h2::before {
+    content: attr(data-num);
+    color: var(--accent);
+    margin-right: .5rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  h3 {
+    font-size: 1.02rem;
+    margin: 1.75rem 0 .75rem;
+    color: var(--fg);
+  }
+
+  p { margin: 0 0 1rem; }
+
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: .35rem; }
+
+  strong { color: var(--fg); }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    padding: .1rem .35rem;
+    border-radius: 4px;
+    font-size: .88em;
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 0 0 1.25rem;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: .85rem;
+    line-height: 1.6;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 1.5rem;
+    font-size: .92rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: .6rem .8rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    background: var(--code-bg);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: .82rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .arch-diagram {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .82rem;
+    white-space: pre;
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.1rem 1.2rem;
+    overflow-x: auto;
+    color: var(--muted);
+    margin: 0 0 1.25rem;
+  }
+
+  .todo { list-style: none; padding-left: 0; }
+  .todo li {
+    position: relative;
+    padding-left: 1.6rem;
+  }
+  .todo li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: .3rem;
+    width: 1rem;
+    height: 1rem;
+    border: 1.5px solid var(--muted);
+    border-radius: 4px;
+  }
+
+  section { margin-bottom: .5rem; }
+
+  footer.page-foot {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: .82rem;
+  }
+
+  @media (max-width: 600px) {
+    .wrap { padding: 2rem 1.1rem 4rem; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr {
+      margin-bottom: .75rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    td {
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      gap: .5rem;
+    }
+    td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 6.5rem;
+      flex-shrink: 0;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <h1>棒球球員追蹤網站 — 專案規劃</h1>
+    <p>背景：開發者為 Android engineer，轉寫後端服務，主力語言選擇 Node.js（TypeScript），並搭配 Python 處理資料 ETL。</p>
+  </header>
+
+  <section>
+    <h2 data-num="1">產品範疇</h2>
+    <p>網站包含兩大功能面向：</p>
+    <ol>
+      <li><strong>追蹤球員的比賽及數據</strong> — 動態資料，需要定期從外部來源同步</li>
+      <li><strong>解釋現在棒球的規則及數據</strong> — 靜態內容為主，變動頻率低</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 data-num="2">技術選型</h2>
+    <table>
+      <thead><tr><th>角色</th><th>語言 / 工具</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td data-label="角色">Web 後端服務</td><td data-label="工具">Node.js（TypeScript）+ <code>Next.js</code></td><td data-label="原因">主力學習目標；一套框架同時處理動態 JSON API 與靜態規則頁渲染</td></tr>
+        <tr><td data-label="角色">資料 ETL / 爬蟲</td><td data-label="工具">Python</td><td data-label="原因">主要資料源 <code>pybaseball</code> 為 Python 套件</td></tr>
+        <tr><td data-label="角色">資料庫</td><td data-label="工具">PostgreSQL</td><td data-label="原因">作為 Node.js / Python 之間的整合邊界</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2 data-num="3">架構決策：用資料庫解耦，而非即時 API 呼叫</h2>
+    <div class="arch-diagram">[Python] 定期 ETL（一天兩次，非常駐服務）
+    ↓ 寫入
+[Postgres] 賽程、球季數據、球員異動
+    ↑ 讀取
+[Node.js / Next.js] Web 服務 — JSON API + 頁面渲染（含規則說明靜態頁）</div>
+    <p><strong>理由：</strong></p>
+    <ul>
+      <li>比賽數據、球季統計、球員異動都不是秒級變動的資訊，用排程批次同步即可，不需要即時互相呼叫</li>
+      <li>避免 Web 服務因為 Python 服務掛掉而跟著壞掉，兩邊可以獨立部署、獨立除錯</li>
+      <li>之後若 Python 端的資料來源或實作換掉，只要維持寫入 DB 的 schema 不變，Web 服務端完全不受影響</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2 data-num="4">兩大功能對應的實作方式</h2>
+    <h3>(1) 比賽 / 數據追蹤（動態內容）</h3>
+    <ul>
+      <li>Python 排程腳本從外部資料源抓資料 → 正規化 → 寫入 Postgres（upsert）</li>
+      <li>Node.js 服務透過 Next.js <strong>Route Handlers</strong>（<code>app/api/players/[id]/route.ts</code> 等）讀取 curated layer、回傳 JSON</li>
+      <li>球員數據頁面本身可用 <strong>Server Component</strong> 直接讀 DB 渲染，不必繞一層自己的 API；保留 Route Handler 是為了讓未來若有其他 client（例如日後想做的行動端 App）能共用同一組對外 API</li>
+      <li>資料查詢頻率低、讀多寫少，不需要額外的 cache 層，直接查 Postgres 即可</li>
+    </ul>
+    <h3>(2) 規則 / 數據解釋（靜態內容）</h3>
+    <ul>
+      <li>內容以 <strong>Markdown / MDX</strong> 撰寫，透過 <code>@next/mdx</code> 在 <strong>build time</strong> 產生靜態頁（SSG）</li>
+      <li>完全不需要在 request time 查 DB，也不需要 Python 介入，對 SEO 與載入速度都最有利</li>
+      <li>內容更新時重新 build/deploy 即可；若之後需要更即時的內容更新（不想每次都重新部署），可改用 ISR（Incremental Static Regeneration）</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2 data-num="5">資料來源</h2>
+
+    <h3>5.1 pybaseball（主要來源）</h3>
+    <ul>
+      <li>涵蓋來源：Statcast / Baseball Savant、FanGraphs、Baseball-Reference、Retrosheet、Lahman Database</li>
+      <li>資料回傳格式：pandas DataFrame</li>
+      <li>涵蓋本專案需求：球季數據（<code>batting_stats()</code> / <code>pitching_stats()</code>）、球隊賽程與戰績（<code>schedule_and_record()</code>）</li>
+    </ul>
+    <p><strong>使用時需注意：</strong></p>
+    <table>
+      <thead><tr><th>事項</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td data-label="事項">Cache 預設關閉</td><td data-label="說明">需手動呼叫 <code>pybaseball.cache.enable()</code>，否則每次都重新打上游</td></tr>
+        <tr><td data-label="事項">Statcast 資料會事後修正</td><td data-label="說明">官方文件標註「even for prior seasons」，需 upsert 而非單純 append，並定期重抓近期資料</td></tr>
+        <tr><td data-label="事項">無內建 rate limit</td><td data-label="說明">官方文件未提供速率限制建議，自行加保守的 delay，避免被上游 ban</td></tr>
+        <tr><td data-label="事項">Baseball-Reference 限制</td><td data-label="說明">一次請求只能查一個球季，需按球季分批</td></tr>
+      </tbody>
+    </table>
+
+    <h3>5.2 MLB Stats API（statsapi.mlb.com）</h3>
+    <ul>
+      <li><strong>用途：球員異動（升降/交易）與傷兵名單 / roster 狀態</strong> — 這塊 pybaseball 完全沒有涵蓋</li>
+      <li>本質是 JSON REST API（mlb.com 網站背後也是吃這個），比直接爬 mlb.com 網頁的 HTML 穩定許多</li>
+      <li>可透過社群套件 <code>MLB-StatsAPI</code>（<code>pip install MLB-StatsAPI</code>）存取，或直接呼叫 <code>https://statsapi.mlb.com/api/v1/...</code></li>
+      <li>實作前建議先花時間實測 transactions / roster 端點的確切參數與回傳格式（無正式官方文件）</li>
+    </ul>
+
+    <h3>5.3 自建爬蟲（保留、非必要立刻做）</h3>
+    <ul>
+      <li>原先設想用來補 mlb.com / FanGraphs / Savant 缺漏資料</li>
+      <li>因球員異動與傷兵名單已改用 MLB Stats API 解決，自建爬蟲的必要性大幅降低</li>
+      <li>若之後真的發現 pybaseball 缺少特定欄位，再評估是否需要，且應優先尋找是否有結構化 API 可用，避免 HTML 爬蟲</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2 data-num="6">目前版本的範疇決策</h2>
+    <ul>
+      <li><strong>先只做球季層級（season-level）數據</strong>，Statcast 逐球（pitch-level）資料之後再加 — 理由：pitch-level 資料量大（單季 70 萬+ 顆球）且修正頻繁，先做穩定、資料量可控的部分</li>
+      <li><strong>更新頻率：一天兩次</strong>
+        <ul>
+          <li>早上一次：前一天比賽結算穩定後，同步賽果、更新球季累計數據</li>
+          <li>傍晚一次：當日開打前，同步當日賽程、球員異動與傷兵名單（這類消息常常臨開賽前才公布）</li>
+        </ul>
+      </li>
+      <li>兩支獨立 cron job / systemd timer 即可，不需要 APScheduler 等常駐排程服務</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2 data-num="7">資料庫設計</h2>
+    <h3>7.1 分層：Raw layer vs Curated layer</h3>
+    <div class="arch-diagram">[Raw layer]    儲存從 pybaseball / MLB Stats API 拿到的原始資料（接近原始欄位）
+     ↓ 轉換 / 正規化
+[Curated layer] 自訂、穩定的 schema，Node.js 服務只讀這層</div>
+    <p>理由：上游資料格式（pybaseball 背後網站、Statcast 欄位）可能隨時變動，若 Node.js 服務直接依賴原始欄位命名，上游一有變動網站就會壞掉。有 raw layer 的話，之後只要重寫轉換邏輯、reprocess 既有資料即可，不必重新抓一次。</p>
+
+    <h3>7.2 Curated schema 草案</h3>
+    <table>
+      <thead><tr><th>資料表</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td data-label="資料表"><code>teams</code></td><td data-label="說明">球隊基本資料</td></tr>
+        <tr><td data-label="資料表"><code>players</code></td><td data-label="說明">球員基本資料</td></tr>
+        <tr><td data-label="資料表"><code>games</code></td><td data-label="說明">賽程與比賽結果（來自 <code>schedule_and_record</code>）</td></tr>
+        <tr><td data-label="資料表"><code>season_batting_stats</code></td><td data-label="說明">球員球季打擊數據</td></tr>
+        <tr><td data-label="資料表"><code>season_pitching_stats</code></td><td data-label="說明">球員球季投手數據</td></tr>
+        <tr><td data-label="資料表"><code>transactions</code></td><td data-label="說明">球員異動（callup / send_down / trade / waiver / released…），含 <code>player_id</code>、<code>team_id</code>、<code>date</code>、<code>type</code>、<code>description</code></td></tr>
+        <tr><td data-label="資料表"><code>roster_status</code></td><td data-label="說明">球員名單狀態歷史（active / il_10 / il_60 / minors…），<strong>存歷史紀錄而非只存目前狀態</strong>，方便呈現異動時間軸</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2 data-num="8">ETL / 爬蟲設計原則</h2>
+    <ol>
+      <li><strong>各資料來源獨立成模組 / 腳本</strong>（pybaseball ETL、MLB Stats API 同步），避免一個來源出問題拖累整條 pipeline</li>
+      <li><strong>Upsert 而非單純 append</strong>，因為 Statcast（未來加入時）與球季數據都有事後修正的可能</li>
+      <li>若未來真的需要自建 HTML 爬蟲，保持最小範圍，並優先確認是否有結構化 API 可替代</li>
+      <li>爬蟲 / API 呼叫都要有基本的錯誤處理與 log，單一來源失敗時跳過並記錄，不讓整個排程中斷</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 data-num="9">Node.js 技術選型</h2>
+    <table>
+      <thead><tr><th>用途</th><th>建議</th><th>原因</th></tr></thead>
+      <tbody>
+        <tr><td data-label="用途">全端框架</td><td data-label="建議"><code>Next.js</code>（App Router）</td><td data-label="原因">同時處理動態 JSON API（Route Handlers）與靜態規則頁（SSG/ISR），是目前 Node 生態中最常見、最成熟的全端方案</td></tr>
+        <tr><td data-label="用途">語言</td><td data-label="建議">TypeScript</td><td data-label="原因">型別安全，搭配 ORM 的 schema 型別推導，減少執行期才發現的欄位錯誤</td></tr>
+        <tr><td data-label="用途">ORM / Query builder</td><td data-label="建議"><code>Drizzle ORM</code></td><td data-label="原因">TypeScript-first，寫法貼近 SQL、型別從 schema 直接推導，適合本專案偏唯讀查詢、且需要清楚 migration 版控的情境</td></tr>
+        <tr><td data-label="用途">API 輸入驗證</td><td data-label="建議"><code>Zod</code></td><td data-label="原因">驗證 Route Handler 的參數與環境變數，型別可直接從 schema 推導出來</td></tr>
+        <tr><td data-label="用途">Markdown / MDX 渲染</td><td data-label="建議"><code>@next/mdx</code></td><td data-label="原因">規則說明頁內容以 Markdown/MDX 撰寫，build time 產生靜態 HTML</td></tr>
+        <tr><td data-label="用途">部署</td><td data-label="建議">Vercel 或自架 Node server（<code>next start</code>）</td><td data-label="原因">Next.js 原生支援，SSG 頁面可搭配 CDN，起步階段免運維</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2 data-num="10">下一步 / Open Items</h2>
+    <ul class="todo">
+      <li>定案 curated layer schema 的完整欄位與型別</li>
+      <li>實測 MLB Stats API 的 transactions / roster 端點回傳格式</li>
+      <li>Next.js 端先用假資料把 Route Handler 與頁面串起來，與 Python ETL 平行開發</li>
+      <li>規劃哪些頁面用 SSG（規則頁）、哪些用動態渲染 / Server Component（球員數據頁）</li>
+      <li>若後續需要自建爬蟲補資料，先確認 pybaseball 是否真的缺少該欄位再動手</li>
+    </ul>
+  </section>
+
+  <footer class="page-foot">
+    棒球球員追蹤網站 · 專案規劃文件 · 與 <code>baseball-tracker-plan.md</code> 內容同步
+  </footer>
+
+</div>
+</body>
+</html>
