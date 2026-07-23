@@ -163,6 +163,7 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-23</h3>
     <ul class="todo">
+    <li class="done"><strong>票 01（bootstrap 資料層骨架）實作完成</strong>（<code>.scratch/curated-schema-and-seed/issues/01</code>）：pnpm+TS+Drizzle+drizzle-kit+vitest 骨架、<code>docker-compose.yml</code>（Postgres 16）、<code>lib/db</code>（client+空 schema barrel）、<code>scripts/db/migrate.ts</code>、連線 smoke test 通過、<code>db:migrate</code> 對全新 DB 乾淨 no-op、README 啟動步驟。本機無 Docker→smoke test 走 homebrew pg（連線字串與 docker 共用）；pnpm 11 build 核准移至 <code>pnpm-workspace.yaml</code>。下一 frontier＝票 02（curated schema）</li>
     <li class="done"><strong>/grill-with-docs：僅以 <code>requirements.md</code> 為輸入重新做領域分析</strong>（刻意不參考既有 spec/adr），四輪訪談拍板 14 項決策：
     <ul>
     <li>模型骨架：名單狀態拆<strong>歸屬×健康</strong>兩軸、<strong>事件為真相來源（狀態＝投影）</strong>；季數據＝球季×層級×球隊＋層級合計列；逐場＝球員×比賽×<strong>角色</strong>（野手投球/二刀流可並存）</li>
