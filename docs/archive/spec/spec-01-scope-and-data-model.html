@@ -156,10 +156,11 @@
 
   <header class="page-head">
     <h1>Spec 01 — 台灣球員範疇 + 資料模型</h1>
-    <p>本文件把兩個最底層、影響最大的東西釘死：<strong>(A) 「台灣球員」範疇的定義</strong>、<strong>(B) curated layer 的欄位級資料模型</strong>。頁面、API、ETL 都掛在這兩塊上，之後的 spec 以此為地基。<br>前置決策（已定）：名單用<strong>手動白名單表</strong>；成績涵蓋<strong>能抓到資料的所有層級</strong>（大聯盟到新人聯盟，best-effort）；球季數據<strong>從 2020 起</strong>，未來 phase 可 backfill 更早。</p>
+    <p><strong>⚠️ 已封存（2026-07-23）</strong>：本 spec 已作廢——新 spec 將依 <code>requirements.md</code>（含 2026-07-23 拍板；模型見 <code>plan/domain-regrill-2026-07-23.md</code>）從零重建。本文僅供查閱既有實作細節（端點、欄位、時區方案…），內容不再維護。</p>
     <div class="badges"><span class="badge"><strong>名單</strong> 手動白名單表</span><span class="badge"><strong>層級</strong> 全層級（能抓到就收）</span><span class="badge"><strong>起始</strong> 2020（可 backfill）</span><span class="badge"><strong>主鍵</strong> mlb_player_id</span></div>
   </header>
 
+    <blockquote><p>本文件把兩個最底層、影響最大的東西釘死：<strong>(A) 「台灣球員」範疇的定義</strong>、<strong>(B) curated layer 的欄位級資料模型</strong>。頁面、API、ETL 都掛在這兩塊上，之後的 spec 以此為地基。</p><p>前置決策（已定）：名單用<strong>手動白名單表</strong>；成績涵蓋<strong>能抓到資料的所有層級</strong>（大聯盟到新人聯盟，best-effort）；球季數據<strong>從 2020 起</strong>，未來 phase 可 backfill 更早。</p></blockquote>
   <section>
     <h2 id="sec-1" data-num="A">台灣球員範疇</h2>
     <h3 id="sec-1-1">A.1 名單模型：<code>players</code> 表即 source of truth</h3>
@@ -508,7 +509,7 @@
   </section>
 
   <footer class="page-foot">
-    自動由 <code>docs/spec/spec-01-scope-and-data-model.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+    自動由 <code>docs/archive/spec/spec-01-scope-and-data-model.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
   </div>

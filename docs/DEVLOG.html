@@ -151,7 +151,7 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">✅ 已完成</a><ul class="sub"><li><a href="#sec-1-1">2026-07-22</a></li><li><a href="#sec-1-2">2026-07-21</a></li></ul></li><li><a href="#sec-2">▶️ 進行中 / 下一步</a></li><li><a href="#sec-3">❓ 待決問題（來自 Spec 01 Open Items）</a></li><li><a href="#sec-4">🔮 未來 Phase（先記著，這版不做）</a></li><li><a href="#sec-5">🗂️ 雜項 / 待整理</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">✅ 已完成</a><ul class="sub"><li><a href="#sec-1-1">2026-07-23</a></li><li><a href="#sec-1-2">2026-07-22</a></li><li><a href="#sec-1-3">2026-07-21</a></li></ul></li><li><a href="#sec-2">▶️ 進行中 / 下一步</a></li><li><a href="#sec-3">❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）</a></li><li><a href="#sec-4">🔮 未來 Phase（先記著，這版不做）</a></li><li><a href="#sec-5">🗂️ 雜項 / 待整理</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
@@ -161,7 +161,28 @@
 
   <section>
     <h2 id="sec-1">✅ 已完成</h2>
-    <h3 id="sec-1-1">2026-07-22</h3>
+    <h3 id="sec-1-1">2026-07-23</h3>
+    <ul class="todo">
+    <li class="done"><strong>/grill-with-docs：僅以 <code>requirements.md</code> 為輸入重新做領域分析</strong>（刻意不參考既有 spec/adr），四輪訪談拍板 14 項決策：
+    <ul>
+    <li>模型骨架：名單狀態拆<strong>歸屬×健康</strong>兩軸、<strong>事件為真相來源（狀態＝投影）</strong>；季數據＝球季×層級×球隊＋層級合計列；逐場＝球員×比賽×<strong>角色</strong>（野手投球/二刀流可並存）</li>
+    <li>語意收斂：先發預告（投手確定/野手一律「可能出賽」，F1-2 已修正）、首頁 24h＝最新已結算<strong>美國比賽日</strong>、生涯新高照稱（接受 2020 起算誤差）、近況一句話＝優先序＋狀態 fallback（永不為空）</li>
+    <li>邊界：白名單退場＝<strong>精簡存檔頁</strong>；名詞級距只做 MLB/3A/2A（低階給警語）；換進階指標<strong>名詞頁先行</strong>；範例回連自動挑、挑不到隱藏；回填＝季累計整季重拉＋逐場回看 7~14 天</li>
+    <li>空狀態定案：本季/上季回顧卡＋名詞知識入口輪播（<strong>§9.2 待定清空</strong>）</li>
+    <li>產出：requirements §9.1 新增 2026-07-23 區塊＋F1-0/F1-2/§9.2 修正；模型全文 <code>plan/domain-regrill-2026-07-23.md</code></li>
+    </ul></li>
+    <li class="done"><strong>封存舊文件</strong>：定調 spec 與既有內容脫鉤、依 requirements 從零重建——<code>spec/</code> 整組移至 <code>archive/spec/</code>、<code>plan/baseball-tracker-plan-rust.*</code> 移至 <code>archive/plan/</code>（各檔加已封存 banner），更新 requirements／plan／adr／CLAUDE.md 交叉引用</li>
+    <li class="done"><strong>重建 spec（/to-spec）</strong>：以 requirements＋plan（domain-regrill）＋adr 為輸入，全新寫出 5 份——
+    <ul>
+    <li><code>spec-00-overview</code>（切分/依賴/需求追溯表/測試策略：主接縫=Postgres curated schema、次接縫=<code>lib/services</code>、純函式=投影+一句話引擎；全域常數 N=10、lookback=10 天）</li>
+    <li><code>spec-01-domain-and-data-model</code>（生命週期、事件溯源狀態機、欄位級 curated schema：兩張 game line 表、季數據含球隊維度、只存不可推導比率）</li>
+    <li><code>spec-02-ia-and-api</code>（路由/五頁規格/Zod API 合約/OG/SEO/ISR 1800s/台灣時間）</li>
+    <li><code>spec-03-etl-pipeline</code>（早晚批職責、來源→表、sportId 對照、一句話規則引擎表、roster 對帳不自動改投影、CLI 手動工具）</li>
+    <li><code>spec-04-glossary-content</code>（26 則起手清單、frontmatter schema、三組級距編制、registry build-fail 強制名詞頁先行、範例回連規則）</li>
+    <li>regrill §10 檢查清單全數涵蓋核對完畢；requirements/adr/plan 交叉引用改指新 spec</li>
+    </ul></li>
+    </ul>
+    <h3 id="sec-1-2">2026-07-22</h3>
     <ul class="todo">
     <li class="done"><code>scripts/build_docs.py</code> 加上<strong>側邊欄目錄（TOC）</strong>：自動從 <code>##</code>/<code>###</code> 標題產生 sticky 左側導覽，可快速前往章節
     <ul>
@@ -187,7 +208,7 @@
     <li class="done">開 <strong>spec-02（頁面/路由 IA + 對外 API 合約）初稿</strong>：路由/sitemap、5 頁規格（顯示/資料源/渲染）、<code>/api/*</code> endpoint + 代表性 Zod 回傳形狀、時區/OG/ISR 橫向處理；6 項 open items（URL slug、revalidation 觸發、動態 OG、逐場 N…）</li>
     <li class="done">開 <strong>spec-03（ETL / 資料同步管線）初稿</strong>：管線總覽、來源→表對照、pybaseball/StatsAPI 各模組、一天兩次排程（早/晚班）、upsert 原則、<strong>近況一句話生成規則</strong>、時區存 UTC、錯誤處理；6 項 open items（排程時刻、roster 推導、生涯基準…）</li>
     </ul>
-    <h3 id="sec-1-2">2026-07-21</h3>
+    <h3 id="sec-1-3">2026-07-21</h3>
     <ul class="todo">
     <li class="done">比對兩份規劃文件（<code>plan/棒球網站技術選型討論.md</code> vs <code>plan/baseball-tracker-plan.md</code>），整理相同 / 不同之處</li>
     <li class="done">收斂三項分歧決策：
@@ -219,23 +240,23 @@
   </section>
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
+    <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
     <ul class="todo">
-    <li class=""><strong>Spec 02：頁面 / 路由 IA + 對外 API 合約</strong>（endpoint、參數、回傳 JSON 形狀 = Zod schema 的雛形）</li>
-    <li class="">定案 curated schema 的完整欄位型別（把 Spec 01 補成完整 Drizzle schema）</li>
-    <li class=""><code>players</code> 白名單種子腳本 + 首版 Drizzle migration</li>
-    <li class="">Next.js 端用假資料把 <code>lib/services</code> → Route Handler → 頁面串起來（與 Python ETL 平行開發）</li>
-    <li class="">規劃哪些頁走 SSG（規則頁）、哪些動態渲染 / Server Component（球員數據頁）</li>
+    <li class="done">~~重建 spec~~（2026-07-23 完成，見已完成區）</li>
+    <li class="">把 spec-01 §C 落成 Drizzle schema + 首版 migration；<code>players</code> 白名單種子腳本</li>
+    <li class="">Next.js 端用假資料把 <code>lib/services</code> → Route Handler → 頁面串起來（與 Python ETL 平行開發；渲染策略已定於 spec-02 §1）</li>
     <li class="">導入 shadcn/ui + Tailwind，建立基礎「笨元件」</li>
+    <li class="">spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）</li>
     </ul>
   </section>
   <section>
-    <h2 id="sec-3">❓ 待決問題（來自 Spec 01 Open Items）</h2>
+    <h2 id="sec-3">❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）</h2>
     <ul class="todo">
-    <li class="">進階數據要顯示到多細？（只 slash line + HR/RBI，還是含 wRC+ / FIP…）— 影響落庫欄位</li>
-    <li class=""><strong>時區</strong>：<code>games.date</code> 與 ETL 排程時間怎麼統一（美東賽事 vs 台灣時間）— 傾向存 UTC + 顯示端轉換</li>
-    <li class="">小聯盟成績資料源細節：StatsAPI <code>sportId=11/12</code> 端點回傳欄位與 pybaseball 欄位對齊表</li>
-    <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 <code>transaction_type</code> 列舉是否齊全</li>
-    <li class=""><code>players</code> 白名單維護方式：先手動改 DB / 種子腳本，還是要簡單後台？（v1 先腳本）</li>
+    <li class="done">~~進階數據要顯示到多細~~ → 已定：打/投各 7 項、只落不可推導欄（spec-01 C.7）</li>
+    <li class="done">~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋<code>game_date_us</code> 錨定比賽日（spec-01 C.5、spec-02 §6）</li>
+    <li class="done">~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）</li>
+    <li class="">小聯盟成績資料源細節：StatsAPI <code>sportId=11/12</code> 端點回傳欄位與 pybaseball 欄位對齊表（→ spec-03 §9）</li>
+    <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）</li>
     </ul>
   </section>
   <section>
@@ -251,7 +272,7 @@
   <section>
     <h2 id="sec-5">🗂️ 雜項 / 待整理</h2>
     <ul class="todo">
-    <li class=""><code>plan/baseball-tracker-plan-rust.md</code> / <code>.html</code> 已被 Node.js 方案取代，確認是否清理或封存</li>
+    <li class="done"><code>plan/baseball-tracker-plan-rust.md</code> / <code>.html</code> 已被 Node.js 方案取代 → 已封存至 <code>archive/plan/</code>（2026-07-23）</li>
     </ul>
   </section>
 

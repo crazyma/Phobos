@@ -16,6 +16,7 @@
 | `docs/adr/` | **技術決策記錄（ADR）** — 「選了什麼、為什麼」的定案，例如 `decisions.md`。 |
 | `docs/spec/` | **規格** — 照著就能實作的欄位級/合約級文件，例如 `spec-01-scope-and-data-model.md`。 |
 | `docs/DEVLOG.md` | **開發日誌** — 待辦、已完成（含日期）、待決問題、未來 phase。 |
+| `docs/archive/` | **封存區** — 已作廢/被取代的文件（如 2026-07-23 封存的舊 spec、rust 方案），保留原目錄結構（`archive/spec/`、`archive/plan/`），僅供查閱、不再維護。 |
 
 資訊流向：`plan`（發想）→ `requirements`（產品面要什麼）→ `adr`（技術怎麼選）→ `spec`（照著怎麼建）。判斷新文件該放哪：還在權衡 → `plan/`；產品面需求 → `requirements`；已拍板的決策理由 → `adr/`；能照著建的細節 → `spec/`。
 

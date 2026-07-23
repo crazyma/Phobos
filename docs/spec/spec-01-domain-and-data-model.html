@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 01 — 領域與資料模型</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+      --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+    --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.75; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  header.page-head { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+  header.page-head h1 { font-size: 1.7rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+  header.page-head p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+  .badge {
+    font-size: .78rem; padding: .2rem .6rem; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--muted); background: var(--card);
+  }
+  .badge strong { color: var(--accent); }
+  blockquote {
+    margin: 0 0 1.5rem; padding: .75rem 1rem; background: var(--code-bg);
+    border-left: 3px solid var(--accent); border-radius: 4px; color: var(--muted); font-size: .92rem;
+  }
+  blockquote p { margin: 0 0 .5rem; }
+  blockquote p:last-child { margin: 0; }
+  h2 { font-size: 1.25rem; margin: 2.75rem 0 1rem; padding-top: .25rem; color: var(--fg); }
+  h2::before { content: attr(data-num); color: var(--accent); margin-right: .5rem; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 1.02rem; margin: 1.75rem 0 .75rem; color: var(--fg); }
+  p { margin: 0 0 1rem; }
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: .35rem; }
+  strong { color: var(--fg); }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; font-size: .86em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1.25rem;
+  }
+  pre code { background: none; padding: 0; font-size: .82rem; line-height: 1.6; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; font-size: .9rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--code-bg); font-weight: 600; color: var(--muted);
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .arch-diagram {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem;
+    white-space: pre; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 1.1rem 1.2rem; overflow-x: auto; color: var(--muted); margin: 0 0 1.25rem;
+  }
+  .todo { list-style: none; padding-left: 0; }
+  .todo li { position: relative; padding-left: 1.6rem; }
+  .todo li::before {
+    content: ""; position: absolute; left: 0; top: .3rem; width: 1rem; height: 1rem;
+    border: 1.5px solid var(--muted); border-radius: 4px;
+  }
+  .todo li.done::before {
+    content: "\2713"; border-color: var(--accent); color: var(--accent);
+    font-size: .8rem; line-height: 1rem; text-align: center; font-weight: 700;
+  }
+  section { margin-bottom: .5rem; }
+  footer.page-foot {
+    margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .82rem;
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 2rem 1.1rem 4rem; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr { margin-bottom: .75rem; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
+    td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
+  }
+
+  /* ── 側邊欄目錄 ──────────────────────────────────────────────────── */
+  html { scroll-behavior: smooth; }
+  h2, h3 { scroll-margin-top: 1.5rem; }
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .layout > .wrap { flex: 1 1 auto; min-width: 0; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: flex-start;
+    flex: 0 0 250px; width: 250px; max-height: 100vh; overflow-y: auto;
+    padding: 2.75rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+  }
+  .toc summary {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: .75rem; pointer-events: none;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::after {
+    content: "\25be"; float: right; transition: transform .15s ease; pointer-events: none;
+  }
+  .toc-box:not([open]) summary::after { transform: rotate(-90deg); }
+  .toc nav ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc nav li { margin: 0; }
+  .toc nav a {
+    display: block; text-decoration: none; color: var(--muted);
+    font-size: .86rem; line-height: 1.4; padding: .32rem .55rem;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+    transition: color .12s, background .12s;
+  }
+  .toc nav a:hover { color: var(--fg); background: var(--code-bg); }
+  .toc nav a.active {
+    color: var(--accent); background: var(--code-bg); border-left-color: var(--accent); font-weight: 600;
+  }
+  .toc .toc-num { color: var(--accent); margin-right: .45rem; font-variant-numeric: tabular-nums; }
+  .toc ul.sub { padding-left: .7rem; margin: .1rem 0 .35rem; }
+  .toc ul.sub a { font-size: .8rem; padding: .24rem .55rem; color: var(--muted); }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    .toc {
+      position: static; width: auto; flex: none; max-height: none; overflow: visible;
+      border-right: none; border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.25rem; margin: 0;
+    }
+    .toc summary { pointer-events: auto; margin-bottom: 0; }
+    .toc-box[open] summary { margin-bottom: .6rem; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">A</span>範疇與生命週期</a><ul class="sub"><li><a href="#sec-1-1">A.1 白名單</a></li><li><a href="#sec-1-2">A.2 生命週期（tracked / archived）</a></li><li><a href="#sec-1-3">A.3 資料粒度層次</a></li></ul></li><li><a href="#sec-2"><span class="toc-num">B</span>事件溯源與狀態投影</a><ul class="sub"><li><a href="#sec-2-1">B.1 原則</a></li><li><a href="#sec-2-2">B.2 狀態＝歸屬 × 健康（兩軸）</a></li><li><a href="#sec-2-3">B.3 投影規則（狀態機）</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">C</span>Curated schema（欄位級）</a><ul class="sub"><li><a href="#sec-3-1">C.1 <code>players</code></a></li><li><a href="#sec-3-2">C.2 <code>teams</code></a></li><li><a href="#sec-3-3">C.3 <code>transaction_events</code></a></li><li><a href="#sec-3-4">C.4 <code>player_current_status</code>（投影，僅 ETL 寫入）</a></li><li><a href="#sec-3-5">C.5 <code>games</code></a></li><li><a href="#sec-3-6">C.6 逐場成績（球員 × 比賽 × <strong>角色</strong>＝兩張表）</a></li><li><a href="#sec-3-7">C.7 球季數據（球季 × 層級 × <strong>球隊</strong>）</a></li><li><a href="#sec-3-8">C.8 <code>player_recent_form</code>（近況一句話，ETL 每批重算）</a></li><li><a href="#sec-3-9">C.9 <code>sync_runs</code></a></li><li><a href="#sec-3-10">C.10 Raw layer</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">D</span>未來 domain 邊界（只預留、不建）</a></li><li><a href="#sec-5"><span class="toc-num">E</span>測試決策</a></li><li><a href="#sec-6"><span class="toc-num">F</span>Open Items</a></li></ul></nav></details></aside>
+  <div class="wrap">
+
+  <header class="page-head">
+    <h1>Spec 01 — 領域與資料模型</h1>
+    <p>把最底層的東西釘死：<strong>(A) 「台灣球員」範疇與生命週期</strong>、<strong>(B) 事件溯源與狀態投影</strong>、<strong>(C) curated layer 欄位級 schema</strong>。頁面（spec-02）、ETL（spec-03）都掛在這上面。領域模型推導過程見 <code>plan/domain-regrill-2026-07-23.md</code>。</p>
+    <div class="badges"><span class="badge"><strong>名單</strong> 手動白名單（含生命週期）</span><span class="badge"><strong>真相來源</strong> 事件溯源</span><span class="badge"><strong>主鍵</strong> mlb_player_id</span><span class="badge"><strong>起始</strong> 2020</span></div>
+  </header>
+
+  <section>
+    <h2 id="sec-1" data-num="A">範疇與生命週期</h2>
+    <h3 id="sec-1-1">A.1 白名單</h3>
+    <ul>
+    <li><code>players</code> 表＝<strong>手動維護的白名單</strong>，是「誰算台灣球員」的唯一事實來源（十餘人，用 seed 腳本維護；不做後台）。</li>
+    <li>正規主鍵一律 <strong><code>mlb_player_id</code></strong>（MLB Stats API 的 person id，涵蓋小聯盟球員）。</li>
+    </ul>
+    <h3 id="sec-1-2">A.2 生命週期（tracked / archived）</h3>
+    <table>
+    <thead><tr><th>狀態</th><th>意義</th><th>行為</th></tr></thead>
+    <tbody>
+    <tr><td data-label="狀態"><code>tracked</code></td><td data-label="意義">現役美職體系內（MLB～新人聯盟）</td><td data-label="行為">全功能：同步、首頁、名冊、預告</td></tr>
+    <tr><td data-label="狀態"><code>archived</code></td><td data-label="意義">已離開美職體系（退役/轉戰他聯）</td><td data-label="行為"><strong>精簡存檔頁</strong>：基本資料＋生涯總成績；不再同步、不進首頁與預設名冊；SEO 連結不斷</td></tr>
+    </tbody>
+    </table>
+    <p>切換為人工操作（改 seed / DB），切換後下一批 ETL 即停止抓取該球員。</p>
+    <h3 id="sec-1-3">A.3 資料粒度層次</h3>
+    <div class="arch-diagram">season（球季 × 層級 × 球隊）      ← 球員頁球季數據
+    game（逐場 box line，球員 × 比賽 × 角色）← 逐場、快訊、近況一句話素材
+    event（異動事件流）               ← 時間軸、狀態投影</div>
+    <p>成績涵蓋<strong>能抓到資料的所有層級</strong>（MLB／3A／2A／1A／新人聯盟，best-effort）；球季數據自 <strong>2020</strong> 起。</p>
+  </section>
+  <section>
+    <h2 id="sec-2" data-num="B">事件溯源與狀態投影</h2>
+    <h3 id="sec-2-1">B.1 原則</h3>
+    <ul>
+    <li><strong><code>transaction_events</code> 是異動的唯一真相來源</strong>；「目前狀態」是由事件流重放（replay）得到的<strong>投影</strong>，由 ETL 每批重算寫入 <code>player_current_status</code>。</li>
+    <li>時間軸與目前狀態因此<strong>不可能矛盾</strong>。上游漏事件時，<strong>人工補錄一筆 <code>source=&#x27;manual&#x27;</code> 事件</strong>再重放；<strong>禁止</strong>直接改投影表。</li>
+    </ul>
+    <h3 id="sec-2-2">B.2 狀態＝歸屬 × 健康（兩軸）</h3>
+    <ul>
+    <li><strong>歸屬（affiliation）</strong>：<code>rostered</code>（在某隊某層級）｜<code>dfa</code>｜<code>free_agent</code>｜<code>released</code>｜<code>departed</code>（已離開美職，對應 A.2 archived）。</li>
+    <li><strong>健康（health）</strong>：<code>active</code>｜<code>il</code>（各層級都可能進 IL；<code>il_detail</code> 存 10/15/60 天等細節）。</li>
+    <li>呈現時組合成一句（spec-02），例：「3A・傷兵名單（IL-60）」。</li>
+    </ul>
+    <h3 id="sec-2-3">B.3 投影規則（狀態機）</h3>
+    <p>事件依 <code>(effective_date, announced_at, id)</code> 排序重放：</p>
+    <table>
+    <thead><tr><th>事件 type</th><th>歸屬變化</th><th>健康變化</th></tr></thead>
+    <tbody>
+    <tr><td data-label="事件 type"><code>sign</code> / <code>trade</code> / <code>call_up</code> / <code>send_down</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）</td><td data-label="健康變化">不變</td></tr>
+    <tr><td data-label="事件 type"><code>dfa</code></td><td data-label="歸屬變化">→ <code>dfa</code>（保留原隊參考）</td><td data-label="健康變化">不變</td></tr>
+    <tr><td data-label="事件 type"><code>release</code></td><td data-label="歸屬變化">→ <code>released</code></td><td data-label="健康變化">重設 <code>active</code></td></tr>
+    <tr><td data-label="事件 type"><code>il_on</code></td><td data-label="歸屬變化">不變</td><td data-label="健康變化">→ <code>il</code>（記 <code>il_detail</code>）</td></tr>
+    <tr><td data-label="事件 type"><code>il_off</code></td><td data-label="歸屬變化">不變</td><td data-label="健康變化">→ <code>active</code></td></tr>
+    <tr><td data-label="事件 type"><code>depart</code>（手動事件）</td><td data-label="歸屬變化">→ <code>departed</code></td><td data-label="健康變化">重設 <code>active</code></td></tr>
+    <tr><td data-label="事件 type"><code>other</code></td><td data-label="歸屬變化">不變（僅時間軸顯示）</td><td data-label="健康變化">不變</td></tr>
+    </tbody>
+    </table>
+  </section>
+  <section>
+    <h2 id="sec-3" data-num="C">Curated schema（欄位級）</h2>
+    <p>慣例：時間戳一律 <code>timestamptz</code>（UTC）；比率欄<strong>只存無法由計數重算的</strong>，可推導者（AVG/OBP/SLG/OPS/ISO/BB%/K%/WHIP/ERA/HR9/BABIP）由 <code>lib/services</code> 讀取時計算。</p>
+    <h3 id="sec-3-1">C.1 <code>players</code></h3>
+    <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="欄位"><code>mlb_player_id</code></td><td data-label="型別">int <strong>PK</strong></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>name_en</code> / <code>name_zh</code></td><td data-label="型別">text</td><td data-label="說明">中英文名</td></tr>
+    <tr><td data-label="欄位"><code>primary_position</code></td><td data-label="型別">text</td><td data-label="說明"><code>P</code>/<code>C</code>/<code>SS</code>/<code>OF</code>…</td></tr>
+    <tr><td data-label="欄位"><code>bats</code> / <code>throws</code></td><td data-label="型別">enum <code>L,R,S</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>birthdate</code></td><td data-label="型別">date</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>lifecycle</code></td><td data-label="型別">enum <code>tracked,archived</code></td><td data-label="說明">A.2</td></tr>
+    <tr><td data-label="欄位"><code>created_at</code> / <code>updated_at</code></td><td data-label="型別">timestamptz</td><td data-label="說明"></td></tr>
+    </tbody>
+    </table>
+    <h3 id="sec-3-2">C.2 <code>teams</code></h3>
+    <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="欄位"><code>mlb_team_id</code></td><td data-label="型別">int <strong>PK</strong></td><td data-label="說明">StatsAPI team id（含小聯盟隊）</td></tr>
+    <tr><td data-label="欄位"><code>name_en</code> / <code>name_zh</code></td><td data-label="型別">text（zh 可空）</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>abbrev</code></td><td data-label="型別">text</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>level</code></td><td data-label="型別">enum <code>mlb,aaa,aa,a_plus,a,rookie</code></td><td data-label="說明">sportId 對照見 spec-03 §4</td></tr>
+    <tr><td data-label="欄位"><code>parent_org_team_id</code></td><td data-label="型別">int，可空</td><td data-label="說明">所屬母球團（MLB 隊）；區分「球團」與「所屬球隊」</td></tr>
+    </tbody>
+    </table>
+    <h3 id="sec-3-3">C.3 <code>transaction_events</code></h3>
+    <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="欄位"><code>id</code></td><td data-label="型別">bigserial <strong>PK</strong></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>source_tx_id</code></td><td data-label="型別">text，可空 unique</td><td data-label="說明">上游 transaction id</td></tr>
+    <tr><td data-label="欄位"><code>player_id</code></td><td data-label="型別">int FK</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>type</code></td><td data-label="型別">enum <code>sign,call_up,send_down,trade,dfa,release,il_on,il_off,depart,other</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>effective_date</code></td><td data-label="型別">date</td><td data-label="說明">排序主鍵之一</td></tr>
+    <tr><td data-label="欄位"><code>announced_at</code></td><td data-label="型別">timestamptz，可空</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>from_team_id</code> / <code>to_team_id</code></td><td data-label="型別">int FK，可空</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>il_detail</code></td><td data-label="型別">text，可空</td><td data-label="說明"><code>il_10</code>/<code>il_15</code>/<code>il_60</code>…</td></tr>
+    <tr><td data-label="欄位"><code>description</code></td><td data-label="型別">text</td><td data-label="說明">顯示於時間軸</td></tr>
+    <tr><td data-label="欄位"><code>source</code></td><td data-label="型別">enum <code>statsapi,manual</code></td><td data-label="說明"></td></tr>
+    </tbody>
+    </table>
+    <p>Upsert key：<code>source_tx_id</code>；無上游 id 時 <code>(player_id, type, effective_date, to_team_id)</code>。</p>
+    <h3 id="sec-3-4">C.4 <code>player_current_status</code>（投影，僅 ETL 寫入）</h3>
+    <p><code>player_id</code> PK；<code>affiliation</code>（B.2 enum）；<code>team_id</code>/<code>level</code> 可空；<code>health</code>；<code>il_detail</code> 可空；<code>as_of_event_id</code> FK；<code>projected_at</code>。</p>
+    <h3 id="sec-3-5">C.5 <code>games</code></h3>
+    <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="欄位"><code>game_pk</code></td><td data-label="型別">int <strong>PK</strong></td><td data-label="說明">StatsAPI gamePk（天然處理雙重賽）</td></tr>
+    <tr><td data-label="欄位"><code>level</code></td><td data-label="型別">enum 同 teams.level</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>game_date_us</code></td><td data-label="型別">date</td><td data-label="說明"><strong>美國比賽日</strong>（首頁窗口錨定，spec-02/03）</td></tr>
+    <tr><td data-label="欄位"><code>start_time_utc</code></td><td data-label="型別">timestamptz</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>home_team_id</code> / <code>away_team_id</code></td><td data-label="型別">int FK</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>venue_name</code></td><td data-label="型別">text</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>status</code></td><td data-label="型別">enum <code>scheduled,live,final,postponed,suspended,cancelled</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>home_score</code> / <code>away_score</code></td><td data-label="型別">int，可空</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>game_number</code> / <code>games_in_series</code> / <code>series_game_number</code></td><td data-label="型別">int</td><td data-label="說明">雙重賽場次與系列賽資訊</td></tr>
+    <tr><td data-label="欄位"><code>probable_home_pitcher_id</code> / <code>probable_away_pitcher_id</code></td><td data-label="型別">int，可空</td><td data-label="說明">出賽預告（僅投手有「確定先發」）</td></tr>
+    </tbody>
+    </table>
+    <h3 id="sec-3-6">C.6 逐場成績（球員 × 比賽 × <strong>角色</strong>＝兩張表）</h3>
+    <p>角色由<strong>當場行為</strong>決定（野手投球、二刀流＝同場兩表各一列）。</p>
+    <p><code>game_batting_lines</code>：PK <code>(player_id, game_pk)</code>；<code>team_id</code>、<code>level</code>、<code>pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb</code>。</p>
+    <p><code>game_pitching_lines</code>：PK <code>(player_id, game_pk)</code>；<code>team_id</code>、<code>level</code>、<code>started</code> bool、<code>ip_outs</code>（局數×3，整數存）、<code>h, r, er, bb, so, hr</code>。</p>
+    <h3 id="sec-3-7">C.7 球季數據（球季 × 層級 × <strong>球隊</strong>）</h3>
+    <p>PK 皆 <code>(player_id, season, level, team_id)</code>——同季同層級跨隊分列；<strong>層級合計列由 services 從計數欄重算</strong>（比率可加總重算；進階指標不可加總，合計列僅在該層級單隊時顯示進階值）。<strong>不做跨層級合計</strong>。</p>
+    <p><code>season_batting_stats</code>：計數 <code>g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf</code>；進階（可空，best-effort）<code>woba, wrc_plus, war</code>；<code>source_updated_at</code>。</p>
+    <p><code>season_pitching_stats</code>：計數 <code>g, gs, ip_outs, bf, h, r, er, hr, bb, so, w, l, sv, hld</code>；進階（可空）<code>fip, lob_pct, war</code>；<code>source_updated_at</code>。</p>
+    <blockquote><p>進階清單為<strong>可調整清單</strong>（目前打/投各 7 項，其中 ISO/BB%/K%/BABIP/HR9 由計數推導、不落欄）。增減指標時遵守「<strong>名詞頁先行</strong>」（spec-04 §D）。</p></blockquote>
+    <h3 id="sec-3-8">C.8 <code>player_recent_form</code>（近況一句話，ETL 每批重算）</h3>
+    <p><code>player_id</code> PK；<code>sentence_zh</code> text（≤20 字，<strong>永不為空</strong>）；<code>pattern</code> enum <code>career_high,season_high,streak,single_game,recent_agg,status_fallback</code>；<code>computed_at</code>。生成規則見 spec-03 §5。</p>
+    <h3 id="sec-3-9">C.9 <code>sync_runs</code></h3>
+    <p><code>id</code> PK；<code>kind</code> enum <code>morning,evening,manual</code>；<code>started_at</code> / <code>finished_at</code>；<code>status</code> enum <code>success,partial,failed</code>；<code>detail</code> jsonb（各來源成敗）。頁面「資料最後更新時間」取最近一筆非 <code>failed</code> 的 <code>finished_at</code>。</p>
+    <h3 id="sec-3-10">C.10 Raw layer</h3>
+    <p><code>raw_payloads</code>：<code>id</code> PK；<code>source</code>（<code>statsapi</code>/<code>fangraphs</code>…）；<code>endpoint</code>；<code>params</code> jsonb；<code>fetched_at</code>；<code>payload</code> jsonb。上游變動時重寫轉換邏輯 reprocess，不必重抓（ADR §8.1）。</p>
+  </section>
+  <section>
+    <h2 id="sec-4" data-num="D">未來 domain 邊界（只預留、不建）</h2>
+    <p><code>news</code>（功能 3）、<code>articles</code>+<code>authors</code>（功能 4）屆時為獨立 domain 新表，不動本 spec 既有表。</p>
+  </section>
+  <section>
+    <h2 id="sec-5" data-num="E">測試決策</h2>
+    <ul>
+    <li>純函式：<strong>狀態投影</strong>——給定事件列斷言（affiliation, health），案例覆蓋 B.3 全表＋亂序補錄事件重放。</li>
+    <li>衍生計算：services 的比率推導（含 <code>ip_outs</code>→IP 顯示、合計列重算）以已知數字對照官方值。</li>
+    <li>Schema 即合約：Drizzle schema 與本 spec 對齊即為 ETL/Web 兩側 fixture 測試的共同基準（spec-00 §3）。</li>
+    </ul>
+  </section>
+  <section>
+    <h2 id="sec-6" data-num="F">Open Items</h2>
+    <ul class="todo">
+    <li class="">StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）</li>
+    <li class=""><code>name_zh</code> 補齊方式（手動 seed；無中文名球員顯示英文）</li>
+    </ul>
+  </section>
+
+  <footer class="page-foot">
+    自動由 <code>docs/spec/spec-01-domain-and-data-model.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+  </footer>
+
+  </div>
+</div>
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc nav a'));
+  if (!links.length) return;
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) { byId[id] = a; targets.push(el); }
+  });
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var active = null;
+      for (var i = 0; i < targets.length; i++) {
+        if (visible[targets[i].id]) { active = targets[i].id; break; }
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (active && byId[active]) byId[active].classList.add('active');
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  }
+  // 手機版預設收合目錄
+  var box = document.querySelector('.toc-box');
+  if (box && window.matchMedia('(max-width: 960px)').matches) box.removeAttribute('open');
+})();
+</script>
+</body>
+</html>

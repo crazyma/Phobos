@@ -156,7 +156,7 @@
 
   <header class="page-head">
     <h1>產品需求文件（PRD）— 台灣球員大聯盟網站</h1>
-    <p>從<strong>產品／服務面</strong>描述這個服務要解決什麼、為誰做、提供哪些具體功能。技術「用什麼、為什麼」見 <code>adr/decisions.md</code>；欄位級規格見 <code>spec/</code>。本文件是那兩者的上游。</p>
+    <p>從<strong>產品／服務面</strong>描述這個服務要解決什麼、為誰做、提供哪些具體功能。技術「用什麼、為什麼」見 <code>adr/decisions.md</code>；欄位級規格見 <code>spec/</code>（2026-07-23 重建版，入口 <code>spec/spec-00-overview.md</code>；舊版封存於 <code>archive/spec/</code>）。本文件是那兩者的上游。</p>
     <div class="badges"><span class="badge"><strong>類型</strong> 產品需求</span><span class="badge"><strong>對象</strong> 台灣棒球迷</span><span class="badge"><strong>版本</strong> v1 範疇</span><span class="badge"><strong>語言</strong> 繁體中文</span></div>
   </header>
 
@@ -223,7 +223,7 @@
     <li><strong>球員名冊</strong>不佔首頁主體，改放在 <strong>top bar / side bar 的導覽入口</strong>；名詞介紹（F2）同樣從全域導覽進入。</li>
     <li>動態中的單場數據沿用 §7.2「今日快訊＝單場精簡」。</li>
     <li>「24 小時」為顯示概念，實際資料隨一天兩次同步更新（見 F1-3）。</li>
-    <li><strong>空狀態 / 休賽期</strong>：淡季或當日無台灣球員出賽時，首頁改顯示一個<strong>空狀態畫面</strong>（內容待定，見 §9.2），不留白。</li>
+    <li><strong>空狀態 / 休賽期</strong>：淡季或當日無台灣球員出賽時，首頁改顯示<strong>本季／上季回顧卡 + 名詞知識入口輪播</strong>（見 §9.1 2026-07-23），不留白。</li>
     </ul>
     <blockquote><p>使用者故事：作為關注型球迷，我一打開網站就想看到「這一天發生了什麼、我關注的球員接下來何時出賽」，不用自己一個個點。</p></blockquote>
     <p>#### F1-1 球員總覽頁</p>
@@ -242,7 +242,7 @@
     <li><strong>動態時間軸</strong>：升上大聯盟 / 下放小聯盟 / 交易 / 進出傷兵名單 / 被 DFA、釋出等異動，<strong>依時間排序成時間軸</strong>。</li>
     <li><strong>出賽預告 + 下一個系列賽</strong>：
     <ul>
-    <li><strong>出賽預告</strong>：下一場是否出賽——<strong>確定先發</strong>要<strong>明顯標示</strong>（投手先發預告通常較早可知）；中繼／後援投手、野手可能比賽後段才上場，即使非先發也標示「可能上場」。開賽時間以<strong>台灣時間</strong>呈現。</li>
+    <li><strong>出賽預告</strong>：下一場是否出賽——<strong>「確定先發」僅適用投手</strong>（probable pitcher，通常賽前數日可知，需明顯標示）；<strong>野手與中繼／後援一律標「可能出賽」</strong>——先發打線賽前 3~4 小時才公布，一天兩批的同步節奏（F1-3）無法及時取得，故不承諾打線。開賽時間以<strong>台灣時間</strong>呈現。</li>
     <li><strong>下一個系列賽</strong>：至少呈現下一個系列賽的<strong>對手與地點</strong>（例：本系列在舊金山、下一系列到紐約），並附最近幾場結果。</li>
     <li>轉播／觀看服務資訊：日後以爬蟲補，<strong>優先度較後</strong>。</li>
     </ul></li>
@@ -402,10 +402,27 @@
     <li>✅ <strong>進階數據定位</strong>：重要但<strong>非 v1 首要</strong>，完整化可延續到下一 phase；名詞解釋則維持核心（呼應重視的入站情境）。</li>
     <li>✅ <strong>深色模式</strong>：v1 不特別列需求，留待<strong>設計階段</strong>再評估。</li>
     </ul>
+    <p>（2026-07-23 grilling 重新分析後新增——僅以本 PRD 為輸入；模型全文見 <code>plan/domain-regrill-2026-07-23.md</code>。<strong>spec 已依本 PRD 現況重建完成（2026-07-23，入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code></strong>）</p>
+    <ul>
+    <li>✅ <strong>出賽預告收斂</strong>：「確定先發」<strong>僅適用投手</strong>（probable pitcher）；野手／牛棚一律「可能出賽」，不承諾打線（已修正 §5 F1-2 第 5 區）。</li>
+    <li>✅ <strong>名單狀態模型</strong>：拆<strong>歸屬</strong>（層級／球隊，含 DFA、FA、釋出）×<strong>健康</strong>（active／IL）兩軸，呈現時組合成一句；<strong>動態事件為真相來源，目前狀態由事件流推導</strong>（漏事件以人工補錄事件修正，不直接改狀態）。</li>
+    <li>✅ <strong>季數據粒度</strong>：球季 × 層級 × 球隊為最細粒度，另出<strong>層級合計列</strong>（比照官方慣例）。</li>
+    <li>✅ <strong>逐場成績主鍵</strong>：球員 × 比賽 × 角色（打者／投手）——野手投球、投打二刀流同場兩列並存，由當場行為而非守位決定。</li>
+    <li>✅ <strong>首頁「24 小時」語意</strong>：錨定<strong>最新一個已結算的美國比賽日</strong>＋其後動態，非滾動時鐘窗口。</li>
+    <li>✅ <strong>生涯類 pattern</strong>：資料自 2020 起仍稱「生涯新高」，接受誤差（多數現役台灣球員 2020 後才登美職）。</li>
+    <li>✅ <strong>近況一句話規則</strong>：pattern 優先序＝生涯／球季新高 → 連續紀錄 → 單場亮點 → 近 N 場數據；無賽事資料時 fallback 為<strong>狀態句</strong>（「傷兵名單中，最後出賽 6/12」「休賽期」…）。</li>
+    <li>✅ <strong>白名單生命週期</strong>：手動維護；離開美職體系者轉<strong>精簡存檔頁</strong>（基本資料＋生涯總成績，收起逐場／動態細節），不再進首頁與預設名冊，SEO 連結不斷。</li>
+    <li>✅ <strong>名詞級距 × 層級</strong>：級距做 <strong>MLB／3A／2A</strong> 三組；1A 以下不給級距、附「低階層級數據僅供參考」警語。</li>
+    <li>✅ <strong>進階清單一致性</strong>：換指標時<strong>名詞頁先行</strong>——球員頁僅顯示已有對應名詞頁的指標；舊名詞頁保留不下架。</li>
+    <li>✅ <strong>名詞頁範例回連</strong>：自動挑選（追蹤中、該指標有值且樣本足夠、依層級優先），挑不到則整塊隱藏。</li>
+    <li>✅ <strong>上游修正回填</strong>：季累計每批<strong>整季重拉</strong>（球員量小可行）；逐場回看<strong>近 7~14 天</strong>；近況一句話每批重算；更早的修正靠手動觸發。</li>
+    <li>✅ <strong>首頁空狀態內容</strong>：<strong>本季／上季回顧卡 + 名詞知識入口輪播</strong>（解決 §9.2）。</li>
+    </ul>
     <h3 id="sec-9-2">9.2 待定（Open Questions）</h3>
     <ul class="todo">
-    <li class=""><strong>休賽期 / 無出賽日的首頁空狀態</strong>要放什麼？（v1 先做一個空畫面占位，內容你再想——例：即將開季倒數、最近里程碑回顧、名詞知識入口…）</li>
+    <li class="done">~~休賽期 / 無出賽日的首頁空狀態要放什麼？~~ → 已定（2026-07-23）：本季／上季回顧卡 + 名詞知識入口輪播（見 §9.1）。</li>
     </ul>
+    <p>（目前無待定項）</p>
   </section>
 
   <footer class="page-foot">

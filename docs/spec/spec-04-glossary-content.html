@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Spec 00 — 總覽與追溯</title>
+<title>Spec 04 — 名詞庫內容規格</title>
 <style>
   :root {
     --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
@@ -151,81 +151,95 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">1</span>Spec 切分</a></li><li><a href="#sec-2"><span class="toc-num">2</span>需求追溯（requirements → spec）</a></li><li><a href="#sec-3"><span class="toc-num">3</span>測試策略（接縫）</a></li><li><a href="#sec-4"><span class="toc-num">4</span>全域常數（各 spec 引用）</a></li><li><a href="#sec-5"><span class="toc-num">5</span>範疇外（整組 spec 不涵蓋）</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">A</span>起手清單（v1，26 則）</a></li><li><a href="#sec-2"><span class="toc-num">B</span>每則 frontmatter schema</a></li><li><a href="#sec-3"><span class="toc-num">C</span>級距編制原則</a></li><li><a href="#sec-4"><span class="toc-num">D</span>指標 ↔ 名詞頁對應（名詞頁先行的強制機制）</a></li><li><a href="#sec-5"><span class="toc-num">E</span>範例球員回連（F2-3 回程，自動挑選）</a></li><li><a href="#sec-6"><span class="toc-num">F</span>測試決策</a></li><li><a href="#sec-7"><span class="toc-num">G</span>Open Items</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
-    <h1>Spec 00 — 總覽與追溯</h1>
-    <p><code>spec/</code> 入口地圖（2026-07-23 重建版）：規格切成哪幾塊、彼此依賴、需求追溯、整體測試策略。上游是 <code>requirements.md</code>（產品需求）、<code>adr/decisions.md</code>（技術決策）與 <code>plan/domain-regrill-2026-07-23.md</code>（領域模型）。舊版 spec 已封存於 <code>archive/spec/</code>，本組 spec 與其脫鉤、從零重建。</p>
-    <div class="badges"><span class="badge"><strong>類型</strong> spec 索引/地圖</span><span class="badge"><strong>上游</strong> requirements.md + adr/decisions.md + plan/domain-regrill-2026-07-23.md</span><span class="badge"><strong>重建版</strong> 2026-07-23</span></div>
+    <h1>Spec 04 — 名詞庫內容規格</h1>
+    <p>名詞庫（F2）的內容合約：起手名詞清單、每則的 frontmatter schema、級距×層級、<strong>指標↔名詞頁對應（名詞頁先行的強制機制）</strong>、範例球員回連規則。頁面渲染見 spec-02 §2.4~2.5。內容為靜態 MDX、build time 產出（ADR §5(2)）。</p>
+    <div class="badges"><span class="badge"><strong>形式</strong> MDX + frontmatter</span><span class="badge"><strong>級距</strong> MLB/3A/2A 三組</span><span class="badge"><strong>規則</strong> 名詞頁先行</span><span class="badge"><strong>撰寫</strong> AI 草擬+人工校訂</span></div>
   </header>
 
   <section>
-    <h2 id="sec-1" data-num="1">Spec 切分</h2>
+    <h2 id="sec-1" data-num="A">起手清單（v1，26 則）</h2>
+    <p><strong>打投共用指標一則一頁</strong>（頁內分「打者視角／投手視角」兩段級距）。</p>
     <table>
-    <thead><tr><th>Spec</th><th>範圍</th><th>依賴</th></tr></thead>
+    <thead><tr><th>category</th><th>名詞</th></tr></thead>
     <tbody>
-    <tr><td data-label="Spec"><code>spec-01-domain-and-data-model.md</code></td><td data-label="範圍">領域模型落地：白名單與球員生命週期、事件溯源與狀態投影、curated schema 欄位級定義、enum、upsert key</td><td data-label="依賴">—</td></tr>
-    <tr><td data-label="Spec"><code>spec-02-ia-and-api.md</code></td><td data-label="範圍">路由/頁面 IA、每頁顯示與渲染策略、對外 JSON API 合約（Zod 形狀）、SEO/OG/時區呈現</td><td data-label="依賴">spec-01、spec-04</td></tr>
-    <tr><td data-label="Spec"><code>spec-03-etl-pipeline.md</code></td><td data-label="範圍">Python 資料管線：來源→表對照、一天兩批的班表與職責、回填範圍、近況一句話生成、狀態投影、錯誤處理</td><td data-label="依賴">spec-01</td></tr>
-    <tr><td data-label="Spec"><code>spec-04-glossary-content.md</code></td><td data-label="範圍">名詞庫內容規格：起手名詞清單、MDX frontmatter schema、級距×層級、指標↔名詞頁對應（名詞頁先行）、範例回連規則</td><td data-label="依賴">spec-01（指標鍵名）</td></tr>
+    <tr><td data-label="category"><code>batting_adv</code>（5）</td><td data-label="名詞">wRC+、wOBA、ISO、（BB%、K% →共用）、（WAR、BABIP →共用）</td></tr>
+    <tr><td data-label="category"><code>pitching_adv</code>（3）</td><td data-label="名詞">FIP、HR/9、LOB%</td></tr>
+    <tr><td data-label="category"><code>shared_adv</code>（4）</td><td data-label="名詞">BB%、K%、WAR、BABIP（皆打投雙段）</td></tr>
+    <tr><td data-label="category"><code>standard</code>（8）</td><td data-label="名詞">AVG、OBP、SLG、OPS、ERA、WHIP、IP（局數表示法）、SV/HLD（救援與中繼，一頁）</td></tr>
+    <tr><td data-label="category"><code>roster</code>（6）</td><td data-label="名詞">IL（傷兵名單）、DFA、waiver（讓渡）、option（下放選項）、40-man roster、Rule 5 draft</td></tr>
     </tbody>
     </table>
-    <p><strong>橫向歸屬</strong>：時區（存 UTC＝spec-01；顯示台灣時間＝spec-02；批次錨定＝spec-03）；近況一句話（欄位＝spec-01；顯示＝spec-02；生成＝spec-03）；級距（資料形狀＝spec-04；顯示＝spec-02）。</p>
+    <p>進階 12 頁完整覆蓋球員頁打/投各 7 項指標（<strong>必做核心</strong>）；第二批（基本規則：好球帶、盜壘、犧牲打…）不在 v1。</p>
   </section>
   <section>
-    <h2 id="sec-2" data-num="2">需求追溯（requirements → spec）</h2>
-    <table>
-    <thead><tr><th>需求</th><th>落點</th></tr></thead>
-    <tbody>
-    <tr><td data-label="需求">F1-0 首頁（最新已結算美國比賽日＋動態、即將出賽、空狀態）</td><td data-label="落點">spec-02 §2.1；資料供給 spec-03 §3</td></tr>
-    <tr><td data-label="需求">F1-1 球員總覽頁</td><td data-label="落點">spec-02 §2.2</td></tr>
-    <tr><td data-label="需求">F1-2 球員個人頁（基本資料/近況一句話/球季數據/逐場/時間軸/出賽預告）</td><td data-label="落點">spec-02 §2.3；模型 spec-01 §3~§6</td></tr>
-    <tr><td data-label="需求">F1-3 資料新鮮度（一天兩批、每頁標示更新時間）</td><td data-label="落點">spec-01 §8（sync_runs）；spec-02 §5；spec-03 §2</td></tr>
-    <tr><td data-label="需求">F1-4 收藏我的球員（低優先）</td><td data-label="落點">spec-02 §7（out of scope 註記，localStorage 預留）</td></tr>
-    <tr><td data-label="需求">F2-1~F2-3 名詞庫（三層結構、級距、雙向連結）</td><td data-label="落點">spec-04；頁面 spec-02 §2.4~2.5</td></tr>
-    <tr><td data-label="需求">§7.1 動態/狀態（事件類型、歸屬×健康、層級標示）</td><td data-label="落點">spec-01 §4~§5</td></tr>
-    <tr><td data-label="需求">§7.2/§7.3 數據分層（快訊單場精簡／標準+進階）</td><td data-label="落點">spec-01 §6；spec-02 §2</td></tr>
-    <tr><td data-label="需求">§7.4 近況一句話（優先序＋狀態 fallback、永不為空）</td><td data-label="落點">spec-03 §5</td></tr>
-    <tr><td data-label="需求">§6 非功能（SEO/OG/手機優先/正確性/韌性）</td><td data-label="落點">spec-02 §4~§6；spec-03 §6</td></tr>
-    <tr><td data-label="需求">§9.1 2026-07-23 拍板 13 條</td><td data-label="落點">全數落入對應 spec；核對清單見 <code>plan/domain-regrill-2026-07-23.md</code> §10</td></tr>
-    </tbody>
-    </table>
+    <h2 id="sec-2" data-num="B">每則 frontmatter schema</h2>
+    <pre><code>slug: wrc-plus            # 路由 /glossary/[slug]
+    name_zh: 加權得分創造值
+    name_en: wRC+
+    category: batting_adv     # A 表 enum
+    applies_to: [batter]      # [batter] | [pitcher] | 兩者
+    metric_keys: [wrc_plus]   # 對應 spec-01 數據欄位鍵；roster 類為空
+    higher_is_better: true
+    bands:                    # 級距，僅 mlb/aaa/aa 三組（低階不做，顯示警語）
+      mlb:  [{max: 80, label: 低於平均}, {max: 100, label: 及格},
+             {max: 125, label: 不錯}, {max: 145, label: 厲害}, {label: MVP 等級}]
+      aaa:  [...]
+      aa:   [...]
+    sources:                  # 延伸層的權威連結
+      - {label: MLB Glossary, url: ...}</code></pre>
+    <p>正文（MDX body）依三層結構撰寫：判讀白話與分布 →（模板自動渲染級距表）→ 定義算法小字。撰寫流程：AI 輔助草擬 → 人工校訂後才 merge。</p>
   </section>
   <section>
-    <h2 id="sec-3" data-num="3">測試策略（接縫）</h2>
-    <p>接縫越高、越少越好；本專案的理想主接縫只有一條，架構上已存在（ADR §3）：</p>
-    <ol>
-    <li><strong>主接縫：Postgres curated schema</strong> —— Python ETL 與 Next.js 的唯一合約。
+    <h2 id="sec-3" data-num="C">級距編制原則</h2>
     <ul>
-    <li>Python 側：raw fixture（錄下的上游 payload）→ 轉換函式 → 斷言 curated 列；不打真網路。</li>
-    <li>Node 側：seed 好的測試 DB → <code>lib/services</code> → 斷言查詢結果與 API JSON（Zod schema 同時當測試斷言器）。</li>
-    </ul></li>
-    <li><strong>次接縫：<code>lib/services</code></strong> —— 頁面與 Route Handler 都只經此層；契約測試打在 services 與 <code>/api/*</code> 回應形狀，不測 UI 內部。</li>
-    <li><strong>純函式單元</strong>（不需 DB）：狀態投影（事件列→歸屬×健康）、近況一句話規則引擎（逐場列→句子）、級距判讀查表。規則以表格寫死在 spec，測試即對表驗收。</li>
+    <li>三組級距各自以<strong>該聯盟近年環境</strong>編：MLB 用公開慣例值；3A/2A 以近季聯盟平均±分布手動編（來源在正文註明）。小聯盟環境膨脹，<strong>禁止</strong>直接沿用 MLB 值。</li>
+    <li>已聯盟校正的指標（wRC+ 這類 100=平均）三組可相同，但仍逐組明列（讀者不需要知道哪些指標免校正）。</li>
+    <li>級距屬<strong>人工維護內容</strong>，隨環境變動每季檢視一次即可。</li>
+    </ul>
+  </section>
+  <section>
+    <h2 id="sec-4" data-num="D">指標 ↔ 名詞頁對應（名詞頁先行的強制機制）</h2>
+    <ul>
+    <li>build time 由全部 MDX frontmatter 產生 <strong>registry</strong>（<code>metric_key → slug</code>）。</li>
+    <li>球員頁的「顯示指標清單」（打/投各 7 項設定）中的每個 <code>metric_key</code> <strong>必須</strong>能在 registry 命中，否則 <strong>build fail</strong>——這就是「換指標前名詞頁先行」的機械性保證，不靠人記得。</li>
+    <li>反向：球員頁每個指標名渲染為連向 <code>/glossary/[slug]</code> 的連結（F2-3 去程）。</li>
+    <li>汰換指標時舊名詞頁<strong>保留不下架</strong>（SEO 與外部連結不斷）。</li>
+    </ul>
+  </section>
+  <section>
+    <h2 id="sec-5" data-num="E">範例球員回連（F2-3 回程，自動挑選）</h2>
+    <p>規則（純函式，對 curated 資料查詢）：</p>
+    <ol>
+    <li>候選＝<code>lifecycle=&#x27;tracked&#x27;</code> 且本季該 <code>metric_key</code> 有值；</li>
+    <li>樣本門檻：打者 PA≥50、投手 IP≥20（本季該層級）；</li>
+    <li>依層級優先（MLB &gt; 3A &gt; 2A；1A 以下不當範例——級距不適用）；</li>
+    <li>取 1~2 位，顯示「範例：{球員} 本季 {值}（{層級}，{級距標籤}）」；</li>
+    <li><strong>無人符合 → 整塊隱藏</strong>（不硬塞、不用非台灣球員）。</li>
     </ol>
-    <p>原則：只測外部行為（輸入→輸出），不測實作細節；greenfield 專案無既有測試先例，上述即為先例起點。</p>
+    <p>roster 類名詞（無 metric_keys）改連「最近有此類異動的球員時間軸」，同樣挑不到就隱藏。</p>
   </section>
   <section>
-    <h2 id="sec-4" data-num="4">全域常數（各 spec 引用）</h2>
-    <table>
-    <thead><tr><th>常數</th><th>值</th><th>出處</th></tr></thead>
-    <tbody>
-    <tr><td data-label="常數"><code>SEASON_BACKFILL_START</code></td><td data-label="值">2020</td><td data-label="出處">requirements F1-2</td></tr>
-    <tr><td data-label="常數"><code>GAMELOG_LOOKBACK_DAYS</code></td><td data-label="值">10（範圍 7~14 可調）</td><td data-label="出處">requirements §9.1 回填</td></tr>
-    <tr><td data-label="常數"><code>RECENT_GAMES_N</code></td><td data-label="值">10（球員頁逐場顯示場數）</td><td data-label="出處">requirements F1-2 第 3 區（N 由本 spec 定案）</td></tr>
-    <tr><td data-label="常數">級距層級</td><td data-label="值">MLB / 3A / 2A</td><td data-label="出處">requirements §9.1</td></tr>
-    <tr><td data-label="常數">顯示時區</td><td data-label="值">Asia/Taipei（儲存一律 UTC）</td><td data-label="出處">requirements F1-2</td></tr>
-    </tbody>
-    </table>
+    <h2 id="sec-6" data-num="F">測試決策</h2>
+    <ul>
+    <li>registry 完整性即測試：build 內建檢查（D）；另加單元測試——球員頁指標設定與 frontmatter fixture 對照，缺頁必須 fail。</li>
+    <li>frontmatter 以 Zod（或等價 schema）驗證：欄位齊全、bands 僅含 mlb/aaa/aa、band 區間遞增。</li>
+    <li>範例回連挑選函式：seed 資料表驅動（有人符合／門檻不足／只有低階 → 隱藏）。</li>
+    </ul>
   </section>
   <section>
-    <h2 id="sec-5" data-num="5">範疇外（整組 spec 不涵蓋）</h2>
-    <p>功能 3 新聞、功能 4 專欄（schema 僅預留 domain 邊界，見 spec-01 §9）；pitch-level 數據；使用者帳號/留言/推播/付費；深色模式（設計階段再議）。</p>
+    <h2 id="sec-7" data-num="G">Open Items</h2>
+    <ul class="todo">
+    <li class="">3A/2A 各指標級距的首版數值（編制時附來源註記）</li>
+    <li class="">26 則的撰寫排程：先做 12 則進階（球員頁上線前置），standard/roster 隨後</li>
+    </ul>
   </section>
 
   <footer class="page-foot">
-    自動由 <code>docs/spec/spec-00-overview.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+    自動由 <code>docs/spec/spec-04-glossary-content.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
   </div>

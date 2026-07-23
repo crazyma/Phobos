@@ -151,143 +151,101 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">A</span>管線總覽</a></li><li><a href="#sec-2"><span class="toc-num">B</span>資料源模組</a><ul class="sub"><li><a href="#sec-2-1">B.0 來源 → curated 表 對照</a></li><li><a href="#sec-2-2">B.1 pybaseball（MLB 球季數據）</a></li><li><a href="#sec-2-3">B.2 MLB Stats API（逐場、賽程、異動、名單、小聯盟）</a></li><li><a href="#sec-2-4">B.3 自建爬蟲</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">C</span>排程（一天兩次，非常駐）</a></li><li><a href="#sec-4"><span class="toc-num">D</span>轉換與 upsert 原則</a></li><li><a href="#sec-5"><span class="toc-num">E</span>近況一句話生成（<code>player_recent_form</code>）</a></li><li><a href="#sec-6"><span class="toc-num">F</span>時區</a></li><li><a href="#sec-7"><span class="toc-num">G</span>錯誤處理 / 觀測</a></li><li><a href="#sec-8"><span class="toc-num">H</span>Open Items</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">1</span>管線總覽</a></li><li><a href="#sec-2"><span class="toc-num">2</span>班表（一天兩批）</a></li><li><a href="#sec-3"><span class="toc-num">3</span>來源 → 表對照</a><ul class="sub"><li><a href="#sec-3-1">4. sportId ↔ level 對照</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">5</span>近況一句話生成（每批全量重算）</a></li><li><a href="#sec-5"><span class="toc-num">6</span>狀態投影與對帳</a></li><li><a href="#sec-6"><span class="toc-num">7</span>錯誤處理與韌性</a></li><li><a href="#sec-7"><span class="toc-num">8</span>測試決策</a></li><li><a href="#sec-8"><span class="toc-num">9</span>Open Items</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
     <h1>Spec 03 — ETL / 資料同步管線</h1>
-    <p>定義<strong>資料怎麼進 DB</strong>：各資料源模組、raw→curated 轉換、排程、近況一句話生成、時區與錯誤處理。是 spec-02 頁面/API 的資料供給端。資料表見 <code>spec-01</code>。<br>承 <code>adr/decisions.md</code>：Python 只當<strong>純資料層</strong>，透過 Postgres 與 Web 端解耦；非常駐服務，靠排程批次跑。</p>
-    <div class="badges"><span class="badge"><strong>語言</strong> Python</span><span class="badge"><strong>依賴</strong> spec-01（資料模型）</span><span class="badge"><strong>產出</strong> 資料同步管線設計</span></div>
+    <p>定義<strong>資料怎麼進 DB</strong>：批次職責、來源→表對照、回填範圍、狀態投影與近況一句話生成、錯誤處理。Python 只當純資料層，經 Postgres 與 Web 解耦（ADR §3）；非常駐，兩支 cron job。</p>
+    <div class="badges"><span class="badge"><strong>語言</strong> Python</span><span class="badge"><strong>排程</strong> 一天兩批 cron</span><span class="badge"><strong>原則</strong> upsert + 事件溯源</span><span class="badge"><strong>上游</strong> spec-01</span></div>
   </header>
 
   <section>
-    <h2 id="sec-1" data-num="A">管線總覽</h2>
-    <pre><code>[來源]                          [raw layer]              [curated layer]
-    pybaseball（FanGraphs）  ──►  raw_fangraphs_*      ──┐
-    MLB Stats API                                        ├─► 轉換/正規化 ──► players / teams
-      schedule ─────────────►  raw_statsapi_schedule  ──┤                     season_*_stats
-      gameLog ──────────────►  raw_statsapi_gamelog   ──┤                     game_*_stats
-      transactions ─────────►  raw_statsapi_txn       ──┤                     transactions
-      roster ───────────────►  raw_statsapi_roster    ──┘                     roster_status / games
-                                                         └─► ETL 端歸納 ────► player_recent_form</code></pre>
+    <h2 id="sec-1" data-num="1">管線總覽</h2>
+    <div class="arch-diagram">[StatsAPI / pybaseball] → fetch（存 raw_payloads）→ transform（純函式）→ upsert curated
+                                                            ↓ 每批收尾
+                                        狀態投影（transaction_events → player_current_status）
+                                        近況一句話（game lines → player_recent_form）
+                                        sync_runs 落帳</div>
     <ul>
-    <li><strong>raw 先落地</strong>（<code>payload jsonb</code> + <code>fetched_at</code>）；curated 由 raw 轉換而來。上游變格式只需重寫轉換 + reprocess，不必重抓。</li>
-    <li>各來源<strong>獨立成模組/腳本</strong>，單源失敗不拖累其他（見 §G）。</li>
+    <li>各來源獨立模組；單一來源失敗跳過並記錄，不中斷整批（<code>sync_runs.status=&#x27;partial&#x27;</code>）。</li>
+    <li>一律 <strong>upsert</strong>（上游會事後修正，ADR §6.1）；upsert key 見 spec-01 各表。</li>
+    <li>只處理 <code>players.lifecycle=&#x27;tracked&#x27;</code> 的球員。</li>
     </ul>
   </section>
   <section>
-    <h2 id="sec-2" data-num="B">資料源模組</h2>
-    <h3 id="sec-2-1">B.0 來源 → curated 表 對照</h3>
+    <h2 id="sec-2" data-num="2">班表（一天兩批）</h2>
     <table>
-    <thead><tr><th>curated 表</th><th>主要來源</th><th>備註</th></tr></thead>
+    <thead><tr><th>批次</th><th>台灣時間（建議，可調）</th><th>職責</th></tr></thead>
     <tbody>
-    <tr><td data-label="curated 表"><code>players</code>（bio/crosswalk）</td><td data-label="主要來源">手動白名單 + StatsAPI <code>people</code> + pybaseball <code>playerid_lookup</code></td><td data-label="備註">種子見 spec-01 A.2</td></tr>
-    <tr><td data-label="curated 表"><code>teams</code></td><td data-label="主要來源">StatsAPI <code>teams</code>（追蹤球員所屬各層級球隊）</td><td data-label="備註"></td></tr>
-    <tr><td data-label="curated 表"><code>season_batting/pitching_stats</code>（MLB）</td><td data-label="主要來源"><strong>pybaseball</strong> <code>batting_stats()</code>/<code>pitching_stats()</code></td><td data-label="備註">FanGraphs，含進階 wRC+/wOBA/WAR/FIP</td></tr>
-    <tr><td data-label="curated 表"><code>season_batting/pitching_stats</code>（小聯盟）</td><td data-label="主要來源"><strong>StatsAPI</strong> <code>stats?stats=season&amp;sportId=…</code></td><td data-label="備註">多為計數；進階常缺 → best-effort</td></tr>
-    <tr><td data-label="curated 表"><code>game_batting/pitching_stats</code></td><td data-label="主要來源"><strong>StatsAPI</strong> <code>people/{id}/stats?stats=gameLog</code></td><td data-label="備註">逐場 box line</td></tr>
-    <tr><td data-label="curated 表"><code>games</code></td><td data-label="主要來源"><strong>StatsAPI</strong> <code>schedule</code>（含 <code>probablePitcher</code>、<code>gameDate</code>、<code>venue</code>、score、status）</td><td data-label="備註"></td></tr>
-    <tr><td data-label="curated 表"><code>transactions</code></td><td data-label="主要來源"><strong>StatsAPI</strong> <code>transactions</code></td><td data-label="備註"></td></tr>
-    <tr><td data-label="curated 表"><code>roster_status</code></td><td data-label="主要來源"><strong>StatsAPI</strong> <code>roster</code> + 由 transactions 推導 IL/options</td><td data-label="備註"></td></tr>
-    <tr><td data-label="curated 表"><code>player_recent_form</code></td><td data-label="主要來源">ETL 端由 <code>game_*_stats</code> 歸納</td><td data-label="備註">見 §E</td></tr>
+    <tr><td data-label="批次"><code>morning</code></td><td data-label="台灣時間（建議，可調）">09:00</td><td data-label="職責"><strong>結算為主</strong>：昨日（美國比賽日）box score→逐場、賽果；球季數據<strong>整季重拉</strong>；投影＋一句話重算</td></tr>
+    <tr><td data-label="批次"><code>evening</code></td><td data-label="台灣時間（建議，可調）">17:30</td><td data-label="職責"><strong>前瞻＋掃尾</strong>：美西晚場此時已結束→補結算殘餘場次；當日賽程＋先發投手預告；transactions＋roster/IL</td></tr>
     </tbody>
     </table>
-    <h3 id="sec-2-2">B.1 pybaseball（MLB 球季數據）</h3>
-    <ul>
-    <li><code>batting_stats(season)</code> / <code>pitching_stats(season)</code>（FanGraphs）→ MLB 進階數據來源。</li>
-    <li><strong>crosswalk</strong>：pybaseball 以 <code>key_fangraphs</code> 命名，須經 <code>playerid_lookup</code> 對回 <code>mlb_player_id</code>（結果快取進 <code>players</code>，spec-01 A.3）。</li>
-    <li><strong>注意事項</strong>（承 plan §5）：</li>
-    </ul>
-    <h3 id="sec-2-3">B.2 MLB Stats API（逐場、賽程、異動、名單、小聯盟）</h3>
-    <ul>
-    <li>JSON REST（<code>statsapi.mlb.com/api/v1/...</code>）；可用 <code>MLB-StatsAPI</code> 套件或直呼。</li>
-    <li><strong>端點用途</strong>：
-    <ul>
-    <li><code>schedule?teamId=&amp;sportId=&amp;date=</code> → <code>games</code>（含 <code>probablePitcher</code>、開賽時間 UTC、<code>venue</code>、比分、status）</li>
-    <li><code>people/{id}/stats?stats=gameLog&amp;group=hitting|pitching&amp;season=</code> → <code>game_*_stats</code></li>
-    <li><code>people/{id}/stats?stats=season&amp;sportId=</code> → 小聯盟 <code>season_*_stats</code></li>
-    <li><code>transactions?startDate=&amp;endDate=</code> → <code>transactions</code></li>
-    <li><code>teams/{id}/roster</code> + transactions 推導 → <code>roster_status</code></li>
-    </ul></li>
-    <li>無正式官方文件，<strong>實作前先實測</strong> transactions/roster/gameLog 的參數與回傳（spec-01 §E）。</li>
-    </ul>
-    <h3 id="sec-2-4">B.3 自建爬蟲</h3>
-    <ul>
-    <li>v1 不做。若日後 pybaseball/StatsAPI 都缺某欄位再評估，且優先找結構化 API，避免 HTML 爬蟲。</li>
-    </ul>
+    <blockquote><p>美國比賽日跨台灣兩個日曆日（美西晚場約台灣 16:00 才結束），所以<strong>單一批次不保證結算完整比賽日</strong>——兩批都執行「嘗試結算」，首頁只認「該比賽日所有相關比賽皆 <code>final</code>」的最新一日（spec-02 §2.1）。這是設計，不是缺陷。</p></blockquote>
   </section>
   <section>
-    <h2 id="sec-3" data-num="C">排程（一天兩次，非常駐）</h2>
-    <p>兩支獨立 cron / systemd timer（不用 APScheduler）：</p>
+    <h2 id="sec-3" data-num="3">來源 → 表對照</h2>
     <table>
-    <thead><tr><th>時機</th><th>觸發點</th><th>同步內容</th></tr></thead>
+    <thead><tr><th>資料</th><th>來源</th><th>寫入</th><th>批次</th></tr></thead>
     <tbody>
-    <tr><td data-label="時機"><strong>早班</strong></td><td data-label="觸發點">前一天賽事結算穩定後</td><td data-label="同步內容">昨日 <code>games</code> 結果與比分、當日結束球員的 <code>game_*_stats</code>（逐場）、更新 <code>season_*_stats</code> 累計、<strong>重算 <code>player_recent_form</code></strong></td></tr>
-    <tr><td data-label="時機"><strong>晚班</strong></td><td data-label="觸發點">當日開打前</td><td data-label="同步內容">當日/未來 <code>games</code> 賽程 + <code>probablePitcher</code>、<code>transactions</code>、<code>roster_status</code>（升降/IL 常臨場才公布）</td></tr>
+    <tr><td data-label="資料">賽程/賽果/先發預告</td><td data-label="來源">StatsAPI <code>schedule</code>（帶 <code>sportId</code>，<code>hydrate=probablePitcher</code>）</td><td data-label="寫入"><code>games</code></td><td data-label="批次">兩批</td></tr>
+    <tr><td data-label="資料">逐場 box line</td><td data-label="來源">StatsAPI boxscore／人員 <code>gameLog</code></td><td data-label="寫入"><code>game_*_lines</code></td><td data-label="批次">morning（回看 <code>GAMELOG_LOOKBACK_DAYS=10</code> 天）＋evening 掃尾</td></tr>
+    <tr><td data-label="資料">球季標準數據（全層級）</td><td data-label="來源">StatsAPI 人員 season stats（各 sportId）</td><td data-label="寫入"><code>season_*_stats</code> 計數欄</td><td data-label="批次">morning（<strong>2020 起整季重拉</strong>，人數少可行）</td></tr>
+    <tr><td data-label="資料">球季進階數據（MLB 為主）</td><td data-label="來源">pybaseball（FanGraphs <code>batting_stats</code>/<code>pitching_stats</code>）</td><td data-label="寫入"><code>season_*_stats</code> 進階欄</td><td data-label="批次">morning；抓不到（低階）留 NULL，best-effort</td></tr>
+    <tr><td data-label="資料">異動</td><td data-label="來源">StatsAPI <code>transactions</code></td><td data-label="寫入"><code>transaction_events</code></td><td data-label="批次">evening（另 morning 補漏）</td></tr>
+    <tr><td data-label="資料">roster / IL</td><td data-label="來源">StatsAPI roster 端點</td><td data-label="寫入">僅當<strong>對帳信號</strong>（§6），不直接寫狀態</td><td data-label="批次">evening</td></tr>
+    <tr><td data-label="資料">球員/球隊基本資料</td><td data-label="來源">StatsAPI people / teams</td><td data-label="寫入"><code>players</code>（非白名單欄位）、<code>teams</code></td><td data-label="批次">低頻（每週或手動）</td></tr>
     </tbody>
     </table>
-    <ul>
-    <li>具體台灣時間點為<strong>設定值</strong>（美國賽事跨夜，見 §F、§H）。</li>
-    <li>每次跑完更新「資料最後更新時間」，供頁面顯示（requirements F1-3）；並可觸發 Web 端 revalidation（對接 spec-02 §D）。</li>
-    </ul>
+    <h3 id="sec-3-1">4. sportId ↔ level 對照</h3>
+    <p><code>1=mlb, 11=aaa, 12=aa, 13=a_plus, 14=a, 16=rookie</code>（實作時以 StatsAPI <code>/sports</code> 端點驗證後寫成常數表）。</p>
   </section>
   <section>
-    <h2 id="sec-4" data-num="D">轉換與 upsert 原則</h2>
-    <ol>
-    <li><strong>各來源獨立模組</strong>（pybaseball ETL、StatsAPI 各端點同步），單源失敗跳過並記錄。</li>
-    <li><strong>Upsert 而非 append</strong>（球季/逐場數據都可能事後修正）；upsert key 見 spec-01 各表。</li>
-    <li><strong>best-effort 層級</strong>：低階小聯盟資料稀疏/缺，抓得到就寫、缺則略過，不視為錯誤。</li>
-    <li><strong>只存無法由計數重算的進階值</strong>（wOBA/wRC+/WAR/FIP）；其餘由 Web 端算（spec-01 B.4/B.5）。</li>
-    <li><strong>raw 保留</strong>：轉換邏輯改動時 reprocess 既有 raw，不必重抓上游。</li>
-    </ol>
-  </section>
-  <section>
-    <h2 id="sec-5" data-num="E">近況一句話生成（<code>player_recent_form</code>）</h2>
-    <ul>
-    <li><strong>輸入</strong>：該球員近期 <code>game_*_stats</code>（+ 生涯/賽季基準供「新高」判定）。</li>
-    <li><strong>輸出</strong>：一句 ≤20 字的 <code>blurb</code>（無明顯亮點則留 NULL，不硬湊）。</li>
-    <li><strong>偵測 pattern（依訊號強度排序，取最有代表性的一句）</strong>：</li>
-    </ul>
+    <h2 id="sec-4" data-num="5">近況一句話生成（每批全量重算）</h2>
+    <p>輸入：該球員近期 game lines（含跨層級）＋<code>player_current_status</code>＋歷史極值。規則引擎為<strong>純函式</strong>，依優先序取第一個命中：</p>
     <table>
-    <thead><tr><th>類型</th><th>例</th></tr></thead>
+    <thead><tr><th>優先序</th><th>pattern</th><th>例</th></tr></thead>
     <tbody>
-    <tr><td data-label="類型">連續紀錄</td><td data-label="例">「連續 5 場有安打」「先發連 3 場無自責分」</td></tr>
-    <tr><td data-label="類型">單場亮點（上一場）</td><td data-label="例">「上一場 3 安 1 轟」「上一場投出 8 次三振」</td></tr>
-    <tr><td data-label="類型">生涯/賽季新高</td><td data-label="例">「敲出生涯首轟」「單場生涯最多 8K」</td></tr>
-    <tr><td data-label="類型">近期彙總</td><td data-label="例">「近 5 場打擊率 .420」「近 3 場防禦率 1.20」</td></tr>
+    <tr><td data-label="優先序">1</td><td data-label="pattern"><code>career_high</code> / <code>season_high</code>（單場計數欄創 2020 起新高；<strong>照樣稱「生涯」</strong>，接受基準誤差）</td><td data-label="例">「上一場投出生涯最多 8 次三振」</td></tr>
+    <tr><td data-label="優先序">2</td><td data-label="pattern"><code>streak</code>（連續安打場次≥3、連續無失分場次等；<strong>連續紀錄跨層級延續</strong>）</td><td data-label="例">「連續 5 場有安打」</td></tr>
+    <tr><td data-label="優先序">3</td><td data-label="pattern"><code>single_game</code>（上一場亮點：3 安以上、全壘打、優質先發…）</td><td data-label="例">「上一場 3 支安打」</td></tr>
+    <tr><td data-label="優先序">4</td><td data-label="pattern"><code>recent_agg</code>（近 5~10 場聚合）</td><td data-label="例">「近 3 場防禦率 1.20」</td></tr>
+    <tr><td data-label="優先序">5</td><td data-label="pattern"><code>status_fallback</code>（無近期賽事資料時<strong>必定命中</strong>，句子永不為空）</td><td data-label="例">「傷兵名單中，最後出賽 6/12」「休賽期」「近兩週無出賽紀錄」</td></tr>
     </tbody>
     </table>
+    <p>門檻與句式表（含 ≤20 字裁切規則）維護在 ETL 程式碼的規則常數中，新增 pattern 時回填本表。</p>
+  </section>
+  <section>
+    <h2 id="sec-5" data-num="6">狀態投影與對帳</h2>
     <ul>
-    <li><strong>選句規則</strong>：新高 &gt; 連續紀錄 &gt; 單場亮點 &gt; 近期彙總；同級取數值最突出者。門檻（幾場算連續、彙總看幾場）為<strong>設定值</strong>，可調。</li>
-    <li>於<strong>早班</strong>重算全體。生成為規則式（pandas 算連續/rolling/max），<strong>不需 LLM</strong>。</li>
+    <li>每批收尾以事件流全量重放（球員數 × 事件數都小）寫 <code>player_current_status</code>（規則＝spec-01 B.3）。</li>
+    <li><strong>對帳</strong>：evening 批抓的 roster/IL 快照與投影結果比對；不一致 → log 告警（<code>sync_runs.detail</code>），提示補錄 manual 事件——<strong>不自動改投影</strong>（維持事件為真相）。</li>
     </ul>
   </section>
   <section>
-    <h2 id="sec-6" data-num="F">時區</h2>
+    <h2 id="sec-6" data-num="7">錯誤處理與韌性</h2>
     <ul>
-    <li>上游賽事時間為美國時區；<strong>一律存 UTC</strong>（<code>games.start_time_utc</code> 等），顯示端轉台灣時間（spec-02 §D）。</li>
-    <li>Python 端如需時區運算用標準庫 <code>zoneinfo</code>（3.9+）。</li>
-    <li>排程 cron 的觸發時刻需考慮美國賽事跨夜——「前一天結算」對台灣是隔日早上，時刻設定值待定（§H）。</li>
+    <li>上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、<code>pybaseball.cache.enable()</code>。</li>
+    <li>失敗語意：來源級失敗 → 該來源跳過、其餘照跑、<code>partial</code>；整批失敗 → <code>failed</code>，網站繼續供舊資料（spec-02 §5）。</li>
+    <li>手動工具（CLI）：<code>resync --season</code>、<code>resync --gamelog --from DATE</code>（早於 lookback 的上游修正用）、<code>add-event</code>（補錄 manual 事件）、<code>reproject</code>（重放投影）。</li>
     </ul>
   </section>
   <section>
-    <h2 id="sec-7" data-num="G">錯誤處理 / 觀測</h2>
+    <h2 id="sec-7" data-num="8">測試決策</h2>
     <ul>
-    <li><strong>來源隔離</strong>：單一來源/單一球員失敗 → 記 log、跳過、續跑，不中斷整批。</li>
-    <li><strong>重試/退避</strong>：呼叫加保守 delay 與有限重試，避免被上游 ban。</li>
-    <li><strong>log</strong>：每次同步記錄抓取筆數、成功/失敗、耗時；失敗保留足夠上下文可重跑。</li>
-    <li><strong>冪等</strong>：靠 upsert key，重跑同一批不產生重複或髒資料。</li>
+    <li>transform 純函式：<strong>錄下的 StatsAPI/pybaseball fixture</strong> → 斷言 curated 列（不打真網路）；每個來源模組至少一組正常＋一組欄位缺漏 fixture。</li>
+    <li>一句話規則引擎：表驅動測試——輸入 game line 序列，斷言 pattern 與句子；覆蓋 §5 每列＋fallback 必中。</li>
+    <li>投影：同 spec-01 §E（與 Node 側共用 seed 概念，合約=curated schema）。</li>
+    <li>排程/IO 薄殼不測邏輯，只測「來源失敗不中斷整批、sync_runs 正確落帳」。</li>
     </ul>
   </section>
   <section>
-    <h2 id="sec-8" data-num="H">Open Items</h2>
+    <h2 id="sec-8" data-num="9">Open Items</h2>
     <ul class="todo">
-    <li class="">排程的<strong>確切台灣時間點</strong>（早/晚班），對齊美國賽事跨夜結算與開打前公布。</li>
-    <li class="">StatsAPI <code>transactions</code>/<code>roster</code> 回傳實測 → <code>transaction_type</code> 列舉與 <code>roster_status</code> 推導規則。</li>
-    <li class=""><code>roster_status</code> 怎麼從 roster + transactions 可靠推導 IL_10/IL_60/optioned 等狀態與起訖日。</li>
-    <li class="">近況一句話的 pattern 門檻與<strong>生涯基準</strong>（要不要 backfill 生涯資料才能判「生涯新高」）。</li>
-    <li class="">小聯盟球季/逐場資料的 StatsAPI 欄位 → curated 對齊表（含哪些進階算得出）。</li>
-    <li class="">revalidation 觸發方式（ETL 完成後如何通知 Web 端，對接 spec-02 §D）。</li>
+    <li class="">實測 StatsAPI <code>transactions</code> 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（含 waiver claim 歸到 <code>trade</code> 或 <code>other</code>）</li>
+    <li class="">小聯盟 boxscore 欄位與 MLB 差異確認（缺欄留 NULL）</li>
+    <li class="">cron 時刻上線後依實際結算延遲微調（§2 為建議值）</li>
     </ul>
   </section>
 

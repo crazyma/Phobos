@@ -7,6 +7,23 @@
 
 ## ✅ 已完成
 
+### 2026-07-23
+
+- [x] **/grill-with-docs：僅以 `requirements.md` 為輸入重新做領域分析**（刻意不參考既有 spec/adr），四輪訪談拍板 14 項決策：
+  - 模型骨架：名單狀態拆**歸屬×健康**兩軸、**事件為真相來源（狀態＝投影）**；季數據＝球季×層級×球隊＋層級合計列；逐場＝球員×比賽×**角色**（野手投球/二刀流可並存）
+  - 語意收斂：先發預告（投手確定/野手一律「可能出賽」，F1-2 已修正）、首頁 24h＝最新已結算**美國比賽日**、生涯新高照稱（接受 2020 起算誤差）、近況一句話＝優先序＋狀態 fallback（永不為空）
+  - 邊界：白名單退場＝**精簡存檔頁**；名詞級距只做 MLB/3A/2A（低階給警語）；換進階指標**名詞頁先行**；範例回連自動挑、挑不到隱藏；回填＝季累計整季重拉＋逐場回看 7~14 天
+  - 空狀態定案：本季/上季回顧卡＋名詞知識入口輪播（**§9.2 待定清空**）
+  - 產出：requirements §9.1 新增 2026-07-23 區塊＋F1-0/F1-2/§9.2 修正；模型全文 `plan/domain-regrill-2026-07-23.md`
+- [x] **封存舊文件**：定調 spec 與既有內容脫鉤、依 requirements 從零重建——`spec/` 整組移至 `archive/spec/`、`plan/baseball-tracker-plan-rust.*` 移至 `archive/plan/`（各檔加已封存 banner），更新 requirements／plan／adr／CLAUDE.md 交叉引用
+- [x] **重建 spec（/to-spec）**：以 requirements＋plan（domain-regrill）＋adr 為輸入，全新寫出 5 份——
+  - `spec-00-overview`（切分/依賴/需求追溯表/測試策略：主接縫=Postgres curated schema、次接縫=`lib/services`、純函式=投影+一句話引擎；全域常數 N=10、lookback=10 天）
+  - `spec-01-domain-and-data-model`（生命週期、事件溯源狀態機、欄位級 curated schema：兩張 game line 表、季數據含球隊維度、只存不可推導比率）
+  - `spec-02-ia-and-api`（路由/五頁規格/Zod API 合約/OG/SEO/ISR 1800s/台灣時間）
+  - `spec-03-etl-pipeline`（早晚批職責、來源→表、sportId 對照、一句話規則引擎表、roster 對帳不自動改投影、CLI 手動工具）
+  - `spec-04-glossary-content`（26 則起手清單、frontmatter schema、三組級距編制、registry build-fail 強制名詞頁先行、範例回連規則）
+  - regrill §10 檢查清單全數涵蓋核對完畢；requirements/adr/plan 交叉引用改指新 spec
+
 ### 2026-07-22
 
 - [x] `scripts/build_docs.py` 加上**側邊欄目錄（TOC）**：自動從 `##`/`###` 標題產生 sticky 左側導覽，可快速前往章節
@@ -56,22 +73,23 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **Spec 02：頁面 / 路由 IA + 對外 API 合約**（endpoint、參數、回傳 JSON 形狀 = Zod schema 的雛形）
-- [ ] 定案 curated schema 的完整欄位型別（把 Spec 01 補成完整 Drizzle schema）
-- [ ] `players` 白名單種子腳本 + 首版 Drizzle migration
-- [ ] Next.js 端用假資料把 `lib/services` → Route Handler → 頁面串起來（與 Python ETL 平行開發）
-- [ ] 規劃哪些頁走 SSG（規則頁）、哪些動態渲染 / Server Component（球員數據頁）
+> spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
+
+- [x] ~~重建 spec~~（2026-07-23 完成，見已完成區）
+- [ ] 把 spec-01 §C 落成 Drizzle schema + 首版 migration；`players` 白名單種子腳本
+- [ ] Next.js 端用假資料把 `lib/services` → Route Handler → 頁面串起來（與 Python ETL 平行開發；渲染策略已定於 spec-02 §1）
 - [ ] 導入 shadcn/ui + Tailwind，建立基礎「笨元件」
+- [ ] spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）
 
 ---
 
-## ❓ 待決問題（來自 Spec 01 Open Items）
+## ❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）
 
-- [ ] 進階數據要顯示到多細？（只 slash line + HR/RBI，還是含 wRC+ / FIP…）— 影響落庫欄位
-- [ ] **時區**：`games.date` 與 ETL 排程時間怎麼統一（美東賽事 vs 台灣時間）— 傾向存 UTC + 顯示端轉換
-- [ ] 小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表
-- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 `transaction_type` 列舉是否齊全
-- [ ] `players` 白名單維護方式：先手動改 DB / 種子腳本，還是要簡單後台？（v1 先腳本）
+- [x] ~~進階數據要顯示到多細~~ → 已定：打/投各 7 項、只落不可推導欄（spec-01 C.7）
+- [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
+- [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
+- [ ] 小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表（→ spec-03 §9）
+- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）
 
 ---
 
@@ -87,4 +105,4 @@
 
 ## 🗂️ 雜項 / 待整理
 
-- [ ] `plan/baseball-tracker-plan-rust.md` / `.html` 已被 Node.js 方案取代，確認是否清理或封存
+- [x] `plan/baseball-tracker-plan-rust.md` / `.html` 已被 Node.js 方案取代 → 已封存至 `archive/plan/`（2026-07-23）

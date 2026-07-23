@@ -1,155 +1,115 @@
-# Spec 02 — 頁面 / 路由 IA + 對外 API 合約
+# Spec 02 — 頁面 IA 與對外 API 合約
 
-<!--badges: 上游=requirements.md; 依賴=spec-01（資料模型）; 產出=路由/頁面/API 合約-->
+<!--badges: 上游=requirements + spec-01; 渲染=Server Component + ISR / SSG; API=Route Handlers + Zod-->
 
-> 把 requirements 的功能，落成**具體路由、每頁顯示什麼與怎麼渲染、對外 JSON API 合約**。資料模型見 `spec-01`；本 spec 是前端與 API 層的施工圖。
->
-> 分層原則（承 `adr/decisions.md`）：頁面用 **Server Component 經 `lib/services` 直讀 DB**；**Route Handlers（`/api/*`）也走同一組 `lib/services`**，只是把結果包成對外 JSON（供未來行動端等 client 共用）。兩者共用邏輯、不重複。
+> 把需求落成**具體路由、每頁顯示什麼與怎麼渲染、對外 JSON API 合約**。分層原則（ADR §4）：頁面用 **Server Component 經 `lib/services` 直讀 DB**；**Route Handlers（`/api/*`）走同一組 services**，只是把結果包成對外 JSON。兩者共用邏輯、不重複。
 
 ---
 
-## A. 路由 / Sitemap
+## 1. 路由總表
 
-| 路由 | 頁面 | 渲染 | 說明 |
-|---|---|---|---|
-| `/` | 首頁（動態導向） | SSR / ISR | 最近 24h + 即將發生；動態需新鮮 |
-| `/players` | 球員總覽（名冊） | ISR | 全名單現況；一天兩次變動 |
-| `/players/[id]` | 球員個人頁 | ISR（+ `generateStaticParams`） | `id` = `mlb_player_id` |
-| `/glossary` | 名詞總覽（分類） | SSG | 靜態內容 |
-| `/glossary/[slug]` | 單一名詞頁 | SSG（`generateStaticParams`） | `slug` = 名詞代碼（`ops`/`wrc-plus`/`fip`…） |
+| 路由 | 內容 | 渲染 |
+|---|---|---|
+| `/` | 首頁（動態導向） | ISR，revalidate 1800s |
+| `/players` | 球員總覽（名冊） | ISR 1800s |
+| `/players/[id]` | 球員個人頁（`id`＝`mlb_player_id`） | ISR 1800s |
+| `/glossary` | 名詞索引（主題分類） | SSG（MDX，build time） |
+| `/glossary/[slug]` | 名詞頁 | SSG |
+| `/api/*` | 對外 JSON API（§3） | 動態，`Cache-Control` 同 ISR 節奏 |
 
-- **全域導覽（top / side bar）**：放「球員名冊」「名詞」入口（首頁不放名冊，見 requirements F1-0）。
-- **URL 決策（待定）**：球員頁 `id` 用穩定的 `mlb_player_id`；是否為 SEO 追加英文名 slug（`/players/[id]/[slug]`）見 §E。
-- **名詞 slug** 用英文縮寫代碼，兼顧 SEO 與「數據→名詞」雙向連結（球員頁的 `wRC+` 連到 `/glossary/wrc-plus`）。
+- 名冊與名詞入口放**全域導覽（top bar；手機收合選單）**，不佔首頁主體。
+- URL 用數字 id（穩定、免 slug 衝突）；SEO 靠 `<title>`／metadata 的中英文名，日後要美化 slug 再加 alias 轉址。
+- ISR 1800s 的理由：資料一天只更新兩批（spec-03），時間型 revalidate 已足夠；不做 ETL 完成即時觸發 revalidation（v1 簡化，列 §8）。
 
----
+## 2. 頁面規格
 
-## B. 各頁面規格
+### 2.1 首頁 `/`
 
-> 格式：**顯示什麼**（對照 requirements）／**資料來源**（spec-01 的表）／**渲染**。
+由上而下：
 
-### B.1 `/` 首頁（動態導向）
-- **顯示**：① 最近 24h 賽果 + 球員動態（每則可帶近況一句話）② 即將發生（下一場出賽預告、台灣時間）③ 空狀態／休賽期 fallback。
-- **資料**：`games`（近 24h `final` + 即將到來含 `probable_*_pitcher`）、`game_batting_stats`/`game_pitching_stats`（那些場的台灣球員 box）、`transactions` + `roster_status`（近 24h）、`player_recent_form`、`teams`。
-- **渲染**：Server Component 直讀 DB；**ISR**，revalidate 對齊一天兩次同步（見 §D 的 on-demand revalidation）。
+1. **最新賽況（主）**：錨定「**最新一個已結算的美國比賽日**」（該日所有相關比賽 `status=final`；判定由 services 依 `games` 計算）。每張快訊卡＝一位球員一場：中文名、隊伍/層級徽章、**單場精簡 line**（打者：打席/安打/全壘打/打點/保送/三振；投手：局數/被安打/失分/自責/三振/保送）、**近況一句話**。
+2. **球員動態**：該比賽日之後發生的 `transaction_events`（升降/交易/DFA/釋出/IL 進出），一則一行＋日期。
+3. **即將出賽（次）**：每位 `tracked` 球員的下一場：對手、**台灣時間**開賽、標示——**「確定先發」僅投手**（`games.probable_*_pitcher_id` 命中）；其他健康在隊者一律「**可能出賽**」；`health=il` 顯示「傷兵中」不列預告。
+4. **空狀態**：當日無台灣球員賽事或休賽期 → 改顯示**本季/上季回顧卡**（每人季數據摘要＋近況一句話）＋**名詞知識入口輪播**（自名詞庫輪選）。
 
-### B.2 `/players` 球員總覽
-- **顯示**：全名單，每人一列/卡：目前球隊、層級、名單狀態、近況一句話；簡單排序/篩選（層級、球隊）。**v1 極簡**，不做複雜篩選器。
-- **資料**：`players`（`is_tracked=true`）、`roster_status`（現況 = `end_date IS NULL`）、`player_recent_form`、`teams`。
-- **渲染**：ISR。
+### 2.2 球員總覽 `/players`
 
-### B.3 `/players/[id]` 球員個人頁
-- **顯示**（對照 requirements F1-2 五元素）：
-  1. 基本資料 + 近況一句話
-  2. 球季數據（標準 + 進階，分季/分層；進階缺就不顯示）
-  3. 逐場成績（近 N 場 box line）
-  4. 動態時間軸（升降/交易/傷兵…）
-  5. 出賽預告 + 下一個系列賽（先發明顯標示、台灣時間、對手/場地）
-- **資料**：`players`、`season_batting_stats`/`season_pitching_stats`、`game_batting_stats`/`game_pitching_stats`、`roster_status`（歷史）、`transactions`、`games`（下一系列 + probable）、`player_recent_form`、`teams`。
-- **渲染**：Server Component 直讀 DB；`generateStaticParams` 產出名單內球員頁 + **ISR** revalidate。
-- **`generateMetadata`**：OG/分享（標題=球員名、描述=近況一句話、圖=球隊 logo，見 §D）。
+- 每位 `tracked` 球員一列/卡：中英文名、目前隊伍＋層級、狀態一句（歸屬×健康組合，spec-01 B.2）、近況一句話。
+- 可依層級/球隊篩選排序（client 端即可，資料量小）。`archived` 球員收在「歷史球員」折疊區。
 
-### B.4 `/glossary` 名詞總覽
-- **顯示**：依主題分類列出名詞（打擊/投球/規則…）。
-- **資料**：MDX 檔（spec-04 定內容）。**渲染**：SSG。
+### 2.3 球員個人頁 `/players/[id]`
 
-### B.5 `/glossary/[slug]` 單一名詞頁
-- **顯示**：解讀優先三層（判讀/級距 → 定義算法小字 → 權威原始連結）+ 回連範例球員。
-- **資料**：MDX 檔。**渲染**：SSG（`generateStaticParams` 掃 MDX）；`generateMetadata` OG。
+依 requirements F1-2 五區：
 
----
+1. **基本資料＋近況一句話**（顯眼處）；狀態一句組合顯示。
+2. **球季數據**：自 2020 起，依球季分組、層級分節；**球季×層級×球隊分列＋層級合計列**（合計規則見 spec-01 C.7）。標準數據常駐；**進階數據（打/投各 7 項）**放次要位置/可展開，缺值不顯示；每個指標名可點入對應名詞頁（**雙向連結**，對應表見 spec-04 §D）。低階（1A 以下）數據旁固定顯示「低階層級數據僅供參考」。
+3. **逐場成績**：最近 `RECENT_GAMES_N=10` 場 box line，打/投分表（二刀流兩表並列）。
+4. **動態時間軸**：`transaction_events` 依時間倒序；每則含日期、類型徽章、描述。
+5. **出賽預告＋下一個系列賽**：同 2.1 第 3 區規則；系列賽顯示對手、地點（`venue_name`）、`series_game_number/games_in_series`、最近幾場結果。
+- **`archived` 球員**：僅顯示第 1 區（標「已離開美職體系」）＋生涯總成績表；隱藏 3~5 區。
 
-## C. 對外 API 合約（`/api/*`）
+### 2.4 名詞索引 `/glossary`
 
-- 一律回 JSON；時間欄位一律 **UTC ISO-8601**（顯示端轉台灣時間，見 §D）。
-- 查詢參數與環境變數用 **Zod** 驗證；型別由 schema 推導。
-- 錯誤統一形狀：`{ "error": { "code": string, "message": string } }`；常見 `NOT_FOUND` / `BAD_REQUEST`。
+主題分類分組（spec-04 §B 的 category）：打擊進階／投球進階／標準數據／名單與規則。每則列中英文名＋一句白話。
 
-### C.1 Endpoint 一覽
+### 2.5 名詞頁 `/glossary/[slug]`
 
-| Method | 路徑 | 用途 | 主要參數 |
-|---|---|---|---|
-| GET | `/api/players` | 名冊（現況摘要） | — |
-| GET | `/api/players/[id]` | 球員完整（bio + 球季 + 動態 + 下一系列 + 近況） | — |
-| GET | `/api/players/[id]/game-log` | 逐場成績 | `season?`、`group=hitting\|pitching`、`limit?` |
-| GET | `/api/feed` | 首頁動態（近 N 時窗賽果 + 異動） | `window=24h`（預設） |
-| GET | `/api/schedule/upcoming` | 即將出賽 / 下一系列（含先發預告） | `playerId?` |
+三層結構由 MDX 模板強制（內容規格見 spec-04）：
 
-- 名詞（glossary）為靜態 MDX，**無需 API**。
+1. **判讀（主）**：一句白話＋數值分布＋**級距表**——MLB/3A/2A 三欄（tab 或欄），級距標籤：及格/不錯/厲害/MVP 等級。
+2. **定義算法（次，小字）**：中英文名、公式點到為止。
+3. **延伸**：權威原始連結（MLB/Savant/FanGraphs）。
+4. **範例球員回連**（自動挑選，spec-04 §E；挑不到整塊隱藏）。
 
-### C.2 代表性回傳形狀（Zod）
+## 3. 對外 API 合約（`/api/*`）
+
+全部經 `lib/services`，Zod schema 即合約與測試斷言器。代表性形狀（欄位齊全版以 Zod 原始碼為準）：
 
 ```ts
-import { z } from "zod";
+// GET /api/home
+{ digestDate: string /* 美國比賽日 YYYY-MM-DD */,
+  gameCards: Array<{ playerId, nameZh, teamAbbrev, level,
+    role: 'batting'|'pitching', line: {...單場精簡}, recentForm: string }>,
+  events: Array<{ playerId, type, date, description }>,
+  upcoming: Array<{ playerId, opponent, startTimeUtc,
+    tag: 'probable_starter'|'possible'|'il' }>,
+  emptyState: null | { seasonReviewCards: [...], glossaryPicks: [...] },
+  dataUpdatedAt: string }
 
-export const Level = z.enum(["MLB", "AAA", "AA", "A_PLUS", "A", "ROOKIE"]);
+// GET /api/players → PlayerSummary[]
+{ playerId, nameZh, nameEn, position, teamAbbrev, level,
+  statusLine: string, recentForm: string, lifecycle: 'tracked'|'archived' }
 
-// GET /api/players 的單筆
-export const PlayerSummary = z.object({
-  mlbPlayerId: z.number().int(),
-  fullName: z.string(),
-  nameZh: z.string().nullable(),
-  primaryPosition: z.string().nullable(),
-  currentTeam: z.object({ id: z.number().int(), name: z.string(), abbr: z.string().nullable() }).nullable(),
-  currentLevel: Level.nullable(),
-  rosterStatus: z.string().nullable(),        // active / il_10 / minors…
-  recentForm: z.string().nullable(),          // 近況一句話（≤20 字）
-});
-export const PlayersResponse = z.array(PlayerSummary);
-
-// GET /api/players/[id]
-export const SeasonBatting = z.object({
-  season: z.number().int(), level: Level, teamId: z.number().int(),
-  g: z.number().int().nullable(), pa: z.number().int().nullable(), /* …計數… */
-  advanced: z.object({                        // 缺則為 null（best-effort）
-    wrcPlus: z.number().nullable(), woba: z.number().nullable(), war: z.number().nullable(),
-  }).partial().nullable(),
-});
-export const GameLine = z.object({
-  gameId: z.number().int(), gameDate: z.string(),  // YYYY-MM-DD
-  level: Level, teamId: z.number().int(), opponent: z.string().nullable(),
-  // 打者或投手其一
-  batting: z.object({ ab: z.number(), h: z.number(), hr: z.number(), rbi: z.number(), bb: z.number(), so: z.number() }).nullable(),
-  pitching: z.object({ ipOuts: z.number(), h: z.number(), er: z.number(), so: z.number(), bb: z.number(), decision: z.string().nullable() }).nullable(),
-});
-export const TimelineEvent = z.object({
-  date: z.string(), type: z.string(), description: z.string().nullable(),
-  fromTeam: z.string().nullable(), toTeam: z.string().nullable(),
-});
-export const UpcomingGame = z.object({
-  gameId: z.number().int(),
-  startTimeUtc: z.string().nullable(),         // ISO-8601 UTC；顯示端轉台灣時間
-  opponent: z.string().nullable(), venue: z.string().nullable(), home: z.boolean(),
-  probableStarter: z.boolean(),                // 該球員是否為先發預告
-});
-export const PlayerDetail = z.object({
-  bio: PlayerSummary,
-  seasonBatting: z.array(SeasonBatting),
-  seasonPitching: z.array(z.object({ /* 同理，advanced: fip/war */ })),
-  recentGames: z.array(GameLine),
-  timeline: z.array(TimelineEvent),
-  nextSeries: z.array(UpcomingGame),
-});
+// GET /api/players/:id → 上述 + seasons[]（分列+合計）、
+//   gameLog: { batting: [...], pitching: [...] }（各 ≤10）、
+//   timeline: [...]、upcoming: {...}
 ```
 
-- 標準比率（avg/obp/slg/ops、era/whip、iso/bb%/k%/hr9/lob%/babip）由計數欄在 `lib/services` **算好再回**，前端不自算（呼應 spec-01「只存無法重算的」）。
+錯誤慣例：404（不在白名單）、500 帶 `{ error: string }`；不做版本前綴（v1 唯一版本）。
 
----
+## 4. SEO / 分享
 
-## D. 橫向處理
+- `lang="zh-Hant"`；每頁 `<title>`＝「球員中文名（英文名）」或「名詞中文名（英文）」＋站名。
+- `sitemap.xml`：全部球員頁（含 archived）＋全部名詞頁；`robots.txt` 開放。
+- **Open Graph**：球員頁 `og:title`＝名字＋隊伍、`og:description`＝**近況一句話**、`og:image`＝球隊 logo（v1 不做動態合成圖）。名詞頁 og:description＝一句白話。
 
-- **時區**：DB/API 一律 UTC；顯示層用 `Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", … })` 轉台灣時間（零依賴；若嫌繁可加 `date-fns-tz`）。
-- **OG / 分享**：每頁 `generateMetadata` 出 OG/Twitter tags——球員頁（標題=球員名、描述=近況一句話、圖=球隊 logo）、名詞頁（標題=名詞、描述=一句判讀）。動態 OG 圖（`next/og`）列 §E 選配。
-- **空狀態 / 休賽期**：首頁無 24h 動態時顯示 fallback 畫面；**內容待 requirements §9.2 定**，本 spec 先定「有此狀態、走同一版位」。
-- **資料新鮮度 / revalidation**：ISR 對齊一天兩次 ETL——**首選 on-demand revalidation**（ETL 完成後呼叫 `revalidatePath`/`revalidateTag`），退而求其次 time-based（`revalidate` 秒數）。每頁標示「資料最後更新時間」（requirements F1-3）。
+## 5. 資料新鮮度與韌性
 
----
+- 每頁 footer 顯示「資料更新於 {台灣時間}」＝`sync_runs` 最近一筆非 failed 的 `finished_at`（spec-01 C.9）。
+- Web 只讀 DB：ETL 失敗時繼續供既有內容（自然滿足「不因資料層問題整站不可用」）；不做對 ETL 的 health check 依賴。
 
-## E. Open Items
+## 6. 時區與格式
 
-- [ ] **URL 方案**：球員頁是否為 SEO 追加英文名 slug（`/players/[id]/[slug]`）還是純 `mlb_player_id`。
-- [ ] **revalidation 觸發**：on-demand（ETL 打 webhook / `revalidateTag`）vs time-based，擇一定案（與 spec-03 排程對接）。
-- [ ] **動態 OG 圖**：是否用 `next/og` 產近況卡片圖，或 v1 先用球隊 logo/預設圖。
-- [ ] **逐場 `N`**：球員頁逐場成績顯示最近幾場（10？15？）。
-- [ ] **名詞新增後的重建**：SSG 內容新增走 rebuild 還是 ISR（與 spec-04 對接）。
-- [ ] 首頁動態 feed 的排序與去重規則（同一球員同日多事件）。
+- DB 一律 UTC；顯示一律 **Asia/Taipei**（server 端以 `Intl`/`date-fns-tz` 格式化，避免 client 時區飄移）。
+- 局數顯示：`ip_outs` → 「5.2 局」格式；比率顯示位數：AVG/OBP/SLG/OPS 三位小數、ERA/FIP 兩位、百分比一位。
+
+## 7. Out of Scope（本 spec）
+
+收藏「我的球員」（F1-4 低優先：實作時 localStorage＋名冊置頂，不動 API）；轉播/觀看資訊；深色模式；即時比分。
+
+## 8. 測試決策與 Open Items
+
+**測試**：以 seed DB 打 `lib/services` 與 `/api/*`，Zod parse 當斷言；重點案例——最新已結算比賽日的判定（含有比賽未 final 的日子）、二刀流球員的 gameLog 兩表、合計列重算、archived 球員的縮減回應、空狀態分支。頁面僅做 smoke（能 render、關鍵區塊存在）。
+
+- [ ] ISR 是否升級為 ETL 完成後 on-demand revalidate（v2；需 ETL 呼叫 revalidate endpoint）
+- [ ] OG 動態合成圖（v2）

@@ -1,5 +1,7 @@
 # 棒球球員追蹤網站 — 專案規劃
 
+> **⚠️ 已封存（2026-07-23）**：Rust 後端方案已被 Node.js/Next.js 方案取代（見 `adr/decisions.md`），本文件僅留作發想背景，內容不再維護。
+
 > 背景：開發者為 Android engineer，轉寫後端服務，主力語言選擇 Rust，並搭配 Python 處理資料 ETL。
 
 ## 1. 產品範疇

@@ -82,7 +82,7 @@
 
 ## 6. 目前版本的範疇決策
 
-> ⚠️ 已更新：原「只做 season-level」已被 requirements 修正——v1 需**加入 game-log（逐場）層**（供逐場成績、近況一句話、首頁 24h 賽果、出賽預告）。最新資料粒度與 schema 見 `spec/spec-01-scope-and-data-model.md`（A.6、B.8~B.11）。
+> ⚠️ 已更新：原「只做 season-level」已被 requirements 修正——v1 需**加入 game-log（逐場）層**（供逐場成績、近況一句話、首頁 24h 賽果、出賽預告）。最新資料粒度與 schema 見 `spec/spec-01-domain-and-data-model.md`（A.3、C.5~C.8；2026-07-23 重建版）——舊 spec 封存於 `archive/spec/`。
 
 - **先只做球季層級（season-level）數據**，Statcast 逐球（pitch-level）資料之後再加
   - 理由：pitch-level 資料量大（單季 70 萬+ 顆球）、且修正頻繁，先做穩定、資料量可控的部分
