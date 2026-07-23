@@ -101,10 +101,58 @@
     td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
     td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
   }
+
+  /* ── 側邊欄目錄 ──────────────────────────────────────────────────── */
+  html { scroll-behavior: smooth; }
+  h2, h3 { scroll-margin-top: 1.5rem; }
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .layout > .wrap { flex: 1 1 auto; min-width: 0; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: flex-start;
+    flex: 0 0 250px; width: 250px; max-height: 100vh; overflow-y: auto;
+    padding: 2.75rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+  }
+  .toc summary {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: .75rem; pointer-events: none;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::after {
+    content: "\25be"; float: right; transition: transform .15s ease; pointer-events: none;
+  }
+  .toc-box:not([open]) summary::after { transform: rotate(-90deg); }
+  .toc nav ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc nav li { margin: 0; }
+  .toc nav a {
+    display: block; text-decoration: none; color: var(--muted);
+    font-size: .86rem; line-height: 1.4; padding: .32rem .55rem;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+    transition: color .12s, background .12s;
+  }
+  .toc nav a:hover { color: var(--fg); background: var(--code-bg); }
+  .toc nav a.active {
+    color: var(--accent); background: var(--code-bg); border-left-color: var(--accent); font-weight: 600;
+  }
+  .toc .toc-num { color: var(--accent); margin-right: .45rem; font-variant-numeric: tabular-nums; }
+  .toc ul.sub { padding-left: .7rem; margin: .1rem 0 .35rem; }
+  .toc ul.sub a { font-size: .8rem; padding: .24rem .55rem; color: var(--muted); }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    .toc {
+      position: static; width: auto; flex: none; max-height: none; overflow: visible;
+      border-right: none; border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.25rem; margin: 0;
+    }
+    .toc summary { pointer-events: auto; margin-bottom: 0; }
+    .toc-box[open] summary { margin-bottom: .6rem; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">A</span>台灣球員範疇</a><ul class="sub"><li><a href="#sec-1-1">A.1 名單模型：<code>players</code> 表即 source of truth</a></li><li><a href="#sec-1-2">A.2 名單怎麼建與維護</a></li><li><a href="#sec-1-3">A.3 身分主鍵與跨源對照（crosswalk）</a></li><li><a href="#sec-1-4">A.4 涵蓋層級</a></li><li><a href="#sec-1-5">A.5 時間範圍</a></li><li><a href="#sec-1-6">A.6 資料粒度層次</a></li></ul></li><li><a href="#sec-2"><span class="toc-num">B</span>Curated 資料模型（欄位級）</a><ul class="sub"><li><a href="#sec-2-1">B.1 列舉型別（enums）</a></li><li><a href="#sec-2-2">B.2 <code>players</code> — 白名單 + 身分 + bio</a></li><li><a href="#sec-2-3">B.3 <code>teams</code> — 球隊（含小聯盟附屬球隊）</a></li><li><a href="#sec-2-4">B.4 <code>season_batting_stats</code> — 球季打擊</a></li><li><a href="#sec-2-5">B.5 <code>season_pitching_stats</code> — 球季投球</a></li><li><a href="#sec-2-6">B.6 <code>roster_status</code> — 名單狀態歷史</a></li><li><a href="#sec-2-7">B.7 <code>transactions</code> — 球員異動</a></li><li><a href="#sec-2-8">B.8 <code>games</code> — 賽程與結果（供賽程、出賽預告、首頁 24h）</a></li><li><a href="#sec-2-9">B.9 <code>game_batting_stats</code> — 逐場打擊（game-log）</a></li><li><a href="#sec-2-10">B.10 <code>game_pitching_stats</code> — 逐場投球（game-log）</a></li><li><a href="#sec-2-11">B.11 <code>player_recent_form</code> — 近況一句話（ETL 預先歸納）</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">C</span>Raw layer（原則，不逐欄設計）</a></li><li><a href="#sec-4"><span class="toc-num">D</span>代表性 Drizzle schema（核心表，其餘照 B 節欄位比照）</a></li><li><a href="#sec-5"><span class="toc-num">E</span>這塊仍待決 / 往後 spec 要處理的 Open Items</a></li></ul></nav></details></aside>
+  <div class="wrap">
 
   <header class="page-head">
     <h1>Spec 01 — 台灣球員範疇 + 資料模型</h1>
@@ -113,25 +161,25 @@
   </header>
 
   <section>
-    <h2 data-num="A">台灣球員範疇</h2>
-    <h3>A.1 名單模型：<code>players</code> 表即 source of truth</h3>
+    <h2 id="sec-1" data-num="A">台灣球員範疇</h2>
+    <h3 id="sec-1-1">A.1 名單模型：<code>players</code> 表即 source of truth</h3>
     <ul>
     <li>一位球員「在範疇內」的唯一判準：<strong>存在於 <code>players</code> 表且 <code>is_tracked = true</code></strong>。</li>
     <li>ETL、頁面、API 一律只認這張表；不在表內的球員不抓、不顯示。</li>
     </ul>
-    <h3>A.2 名單怎麼建與維護</h3>
+    <h3 id="sec-1-2">A.2 名單怎麼建與維護</h3>
     <ol>
     <li><strong>初始種子</strong>：用 MLB Stats API 查 <code>birthCountry ∈ {&quot;Taiwan&quot;, &quot;Chinese Taipei&quot;}</code> 撈出候選（<code>/api/v1/sports/1/players</code> 或 people search），寫入 <code>players</code>。</li>
     <li><strong>人工確認</strong>：種子結果人工覆核，欄位 <code>verify_source</code> 標記來源（<code>birthCountry-seed</code> / <code>manual</code>）。</li>
     <li><strong>後續維護</strong>：新登場球員手動加一列即可（歷史上台籍大聯盟球員僅十幾位，完全可控）。<code>is_tracked</code> 可關掉某人而不刪資料。</li>
     <li>birthCountry 只在種子階段用一次，<strong>不作為每次 ETL 的即時篩選條件</strong>（上游國籍欄位不可靠）。</li>
     </ol>
-    <h3>A.3 身分主鍵與跨源對照（crosswalk）</h3>
+    <h3 id="sec-1-3">A.3 身分主鍵與跨源對照（crosswalk）</h3>
     <ul>
     <li><strong>正規主鍵</strong>：<code>mlb_player_id</code>（= MLB Stats API 的 person id，等同 pybaseball 的 <code>key_mlbam</code>）。所有表都用它 join。</li>
     <li>pybaseball 的資料是用 <code>key_fangraphs</code> / <code>key_bbref</code> 命名，<strong>必須先透過 <code>playerid_lookup</code> 對照回 <code>mlb_player_id</code></strong> 才能寫入。對照結果存在 <code>players</code> 上的 crosswalk 欄位，避免每次 ETL 重查。</li>
     </ul>
-    <h3>A.4 涵蓋層級</h3>
+    <h3 id="sec-1-4">A.4 涵蓋層級</h3>
     <table>
     <thead><tr><th>層級</th><th>sportId</th><th>level enum</th><th>成績</th><th>說明</th></tr></thead>
     <tbody>
@@ -148,24 +196,38 @@
     <li>資料源差異：MLB 走 pybaseball；小聯盟各級走 MLB Stats API 的 <code>sportId</code>。<strong>低階層級（Rookie/複合聯盟）資料常稀疏甚至缺</strong>，採 best-effort — 有就呈現、沒有就略過，不因缺資料而視為錯誤。</li>
     <li><strong>roster / 異動追蹤</strong>：涵蓋所有層級的升降（含下放到更低層級、IL），那是「動態」的核心。</li>
     </ul>
-    <h3>A.5 時間範圍</h3>
+    <h3 id="sec-1-5">A.5 時間範圍</h3>
     <ul>
     <li><code>SEASON_BACKFILL_START = 2020</code>（設定值，非寫死）。v1 只抓 2020 (含) 之後的球季。</li>
     <li>未來 phase 要往前補時，只需調小這個值 + reprocess，schema 不動。</li>
     </ul>
+    <h3 id="sec-1-6">A.6 資料粒度層次</h3>
+    <p>三種粒度，v1 做前兩種：</p>
+    <table>
+    <thead><tr><th>粒度</th><th>說明</th><th>表</th><th>v1</th></tr></thead>
+    <tbody>
+    <tr><td data-label="粒度">球季累計（season）</td><td data-label="說明">每季／層級／球隊的累計數據</td><td data-label="表"><code>season_batting_stats</code> / <code>season_pitching_stats</code>（B.4/B.5）</td><td data-label="v1">✅</td></tr>
+    <tr><td data-label="粒度"><strong>逐場（game-log）</strong></td><td data-label="說明">每球員每場的 box line，供逐場成績、近況一句話、首頁 24h 賽果</td><td data-label="表"><code>game_batting_stats</code> / <code>game_pitching_stats</code>（B.9/B.10）</td><td data-label="v1">✅ <strong>本次新增</strong></td></tr>
+    <tr><td data-label="粒度">逐球（pitch-level, Statcast）</td><td data-label="說明">單季 70 萬+ 顆球、修正頻繁</td><td data-label="表">—</td><td data-label="v1">⛔ 未來</td></tr>
+    </tbody>
+    </table>
+    <ul>
+    <li>另有 <code>player_recent_form</code>（B.11）存<strong>近況一句話</strong>，由逐場資料在 ETL 端預先歸納（見 requirements §7.4）。</li>
+    <li><strong>game-log 資料源</strong>：MLB Stats API 的 <code>gameLog</code> 端點（pybaseball 無乾淨的逐場 API）；賽程／先發預告亦走 StatsAPI schedule 端點。</li>
+    </ul>
   </section>
   <section>
-    <h2 data-num="B">Curated 資料模型（欄位級）</h2>
+    <h2 id="sec-2" data-num="B">Curated 資料模型（欄位級）</h2>
     <blockquote><p>命名慣例：表名/欄位 <code>snake_case</code>；時間戳一律 <code>timestamptz</code>；金額無；所有表帶 <code>updated_at</code>。</p><p><strong>投球局數不用浮點</strong>：以 <code>ip_outs</code>（出局數 = 局數 × 3）儲存，避免 <code>6.1/6.2</code> 這種棒球記法的精度問題，顯示時再換算。</p></blockquote>
-    <h3>B.1 列舉型別（enums）</h3>
-    <pre><code>level          : MLB | AAA | AA | A_PLUS | A | ROOKIE      # v1 成績只用前三，roster 可用全部
+    <h3 id="sec-2-1">B.1 列舉型別（enums）</h3>
+    <pre><code>level          : MLB | AAA | AA | A_PLUS | A | ROOKIE      # v1 成績涵蓋全層級（能抓到就收）；roster 亦全部
     roster_status  : active | il_10 | il_15 | il_60 | minors | restricted | dfa | free_agent | suspended
     transaction_type: callup | send_down | trade | waiver | released | signed
                     | selected | dfa | il_placed | il_activated | outrighted | other
     game_status    : scheduled | in_progress | final | postponed | suspended
     bat_side       : L | R | S
     throw_side     : L | R</code></pre>
-    <h3>B.2 <code>players</code> — 白名單 + 身分 + bio</h3>
+    <h3 id="sec-2-2">B.2 <code>players</code> — 白名單 + 身分 + bio</h3>
     <table>
     <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
     <tbody>
@@ -191,7 +253,7 @@
     <ul>
     <li><strong>Upsert key</strong>：<code>mlb_player_id</code>。</li>
     </ul>
-    <h3>B.3 <code>teams</code> — 球隊（含小聯盟附屬球隊）</h3>
+    <h3 id="sec-2-3">B.3 <code>teams</code> — 球隊（含小聯盟附屬球隊）</h3>
     <table>
     <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
     <tbody>
@@ -208,7 +270,7 @@
     <ul>
     <li><strong>Upsert key</strong>：<code>mlb_team_id</code>。</li>
     </ul>
-    <h3>B.4 <code>season_batting_stats</code> — 球季打擊</h3>
+    <h3 id="sec-2-4">B.4 <code>season_batting_stats</code> — 球季打擊</h3>
     <ul>
     <li><strong>粒度（grain）</strong>：<code>(mlb_player_id, season, level, team_id)</code> = 一位球員在某季、某層級、某球隊的一段成績。<strong>保留交易造成的多段</strong>（台灣球員常換隊），跨隊/跨層級總和用查詢時聚合，不另存一列避免重複計算。</li>
     </ul>
@@ -220,7 +282,7 @@
     <tr><td data-label="欄位"><code>level</code></td><td data-label="型別"><code>level</code> NOT NULL</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>team_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>teams</code></td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位">計數：<code>g, pa, ab, r, h, b2, b3, hr, rbi, bb, so, sb, cs, hbp, sf, sh, gdp</code></td><td data-label="型別"><code>integer</code></td><td data-label="說明">二壘打/三壘打用 <code>b2</code>/<code>b3</code> 避免數字開頭</td></tr>
-    <tr><td data-label="欄位">進階（存上游值，無法由計數重算的才存）：<code>woba, wrc_plus</code></td><td data-label="型別"><code>numeric</code> NULL</td><td data-label="說明">avg/obp/slg/ops 由計數欄算，不落庫</td></tr>
+    <tr><td data-label="欄位">進階（只存無法由計數重算的）：<code>woba, wrc_plus, war</code></td><td data-label="型別"><code>numeric</code> NULL</td><td data-label="說明"><code>iso</code>/<code>bb%</code>/<code>k%</code>/<code>babip</code>、avg/obp/slg/ops 皆由計數欄算，不落庫</td></tr>
     <tr><td data-label="欄位"><code>source</code></td><td data-label="型別"><code>text</code> NOT NULL</td><td data-label="說明"><code>fangraphs</code> / <code>statsapi</code></td></tr>
     <tr><td data-label="欄位"><code>updated_at</code></td><td data-label="型別"><code>timestamptz</code> NOT NULL</td><td data-label="說明"></td></tr>
     </tbody>
@@ -229,7 +291,7 @@
     <li><strong>PK / Upsert key</strong>：複合 <code>(mlb_player_id, season, level, team_id)</code>。</li>
     <li><strong>Upsert 而非 append</strong>（球季數據會事後修正）。</li>
     </ul>
-    <h3>B.5 <code>season_pitching_stats</code> — 球季投球</h3>
+    <h3 id="sec-2-5">B.5 <code>season_pitching_stats</code> — 球季投球</h3>
     <ul>
     <li><strong>粒度</strong>：同上 <code>(mlb_player_id, season, level, team_id)</code>。</li>
     </ul>
@@ -241,7 +303,7 @@
     <tr><td data-label="欄位"><code>level</code></td><td data-label="型別"><code>level</code> NOT NULL</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>team_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>teams</code></td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>w, l, g, gs, sv, hld, ip_outs, h, r, er, hr, bb, so, hbp, bf, wp, bk</code></td><td data-label="型別"><code>integer</code></td><td data-label="說明"><strong>局數存 <code>ip_outs</code></strong></td></tr>
-    <tr><td data-label="欄位">進階（存值）：<code>era, fip, whip</code></td><td data-label="型別"><code>numeric</code> NULL</td><td data-label="說明">可由計數算的顯示時算；存 fip 因需常數</td></tr>
+    <tr><td data-label="欄位">進階（只存無法由計數重算的）：<code>fip, war</code></td><td data-label="型別"><code>numeric</code> NULL</td><td data-label="說明"><code>era</code>/<code>whip</code>/<code>k%</code>/<code>bb%</code>/<code>hr9</code>/<code>lob%</code>/<code>babip</code> 皆由計數欄算，不落庫（需常數/外部模型者才存）</td></tr>
     <tr><td data-label="欄位"><code>source</code></td><td data-label="型別"><code>text</code> NOT NULL</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>updated_at</code></td><td data-label="型別"><code>timestamptz</code> NOT NULL</td><td data-label="說明"></td></tr>
     </tbody>
@@ -249,7 +311,7 @@
     <ul>
     <li><strong>PK / Upsert key</strong>：複合 <code>(mlb_player_id, season, level, team_id)</code>。</li>
     </ul>
-    <h3>B.6 <code>roster_status</code> — 名單狀態歷史</h3>
+    <h3 id="sec-2-6">B.6 <code>roster_status</code> — 名單狀態歷史</h3>
     <ul>
     <li><strong>存歷史，不只存現況</strong>（呈現異動時間軸）。「現況」= <code>end_date IS NULL</code> 的那一列。</li>
     </ul>
@@ -270,7 +332,7 @@
     <ul>
     <li><strong>Upsert key</strong>：<code>(mlb_player_id, effective_date, status)</code>。</li>
     </ul>
-    <h3>B.7 <code>transactions</code> — 球員異動</h3>
+    <h3 id="sec-2-7">B.7 <code>transactions</code> — 球員異動</h3>
     <table>
     <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
     <tbody>
@@ -289,39 +351,107 @@
     <ul>
     <li><strong>Upsert key</strong>：有 <code>mlb_transaction_id</code> 用它；否則 <code>(mlb_player_id, date, type, description)</code>。</li>
     </ul>
-    <h3>B.8 <code>games</code> — 球隊賽程與結果（供「所屬球隊賽程」）</h3>
+    <h3 id="sec-2-8">B.8 <code>games</code> — 賽程與結果（供賽程、出賽預告、首頁 24h）</h3>
     <ul>
-    <li>v1 先做 <strong>MLB 層級</strong>賽程；為 schedule 顯示用，非逐球資料。</li>
+    <li>涵蓋<strong>被追蹤球員所屬球隊</strong>的賽程（各層級，非全聯盟）；供「下一個系列賽」「出賽預告」「首頁最近 24h 賽果」。</li>
     </ul>
     <table>
     <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
     <tbody>
-    <tr><td data-label="欄位"><code>mlb_game_id</code></td><td data-label="型別"><code>bigint</code> <strong>PK</strong></td><td data-label="說明">StatsAPI gamePk</td></tr>
+    <tr><td data-label="欄位"><code>mlb_game_id</code></td><td data-label="型別"><code>bigint</code> <strong>PK</strong></td><td data-label="說明">StatsAPI gamePk（雙重賽每場各有獨立 gamePk）</td></tr>
     <tr><td data-label="欄位"><code>season</code></td><td data-label="型別"><code>integer</code> NOT NULL</td><td data-label="說明"></td></tr>
-    <tr><td data-label="欄位"><code>date</code></td><td data-label="型別"><code>date</code> NOT NULL</td><td data-label="說明">比賽日（見時區備註）</td></tr>
+    <tr><td data-label="欄位"><code>game_date</code></td><td data-label="型別"><code>date</code> NOT NULL</td><td data-label="說明">比賽日（當地）</td></tr>
+    <tr><td data-label="欄位"><code>start_time_utc</code></td><td data-label="型別"><code>timestamptz</code> NULL</td><td data-label="說明">開賽時間（UTC）；<strong>顯示端轉台灣時間</strong>；未定為 NULL</td></tr>
+    <tr><td data-label="欄位"><code>game_number</code></td><td data-label="型別"><code>smallint</code> NOT NULL default <code>1</code></td><td data-label="說明">雙重賽第幾場（顯示用）</td></tr>
     <tr><td data-label="欄位"><code>level</code></td><td data-label="型別"><code>level</code> NOT NULL</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>home_team_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>teams</code></td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>away_team_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>teams</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>venue_name</code></td><td data-label="型別"><code>text</code> NULL</td><td data-label="說明">場地（供「下一系列在舊金山」）</td></tr>
     <tr><td data-label="欄位"><code>home_score</code></td><td data-label="型別"><code>integer</code> NULL</td><td data-label="說明">未打完為 NULL</td></tr>
     <tr><td data-label="欄位"><code>away_score</code></td><td data-label="型別"><code>integer</code> NULL</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>status</code></td><td data-label="型別"><code>game_status</code> NOT NULL</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>probable_home_pitcher_id</code></td><td data-label="型別"><code>integer</code> NULL → <code>players</code></td><td data-label="說明">先發投手預告（出賽預告用）</td></tr>
+    <tr><td data-label="欄位"><code>probable_away_pitcher_id</code></td><td data-label="型別"><code>integer</code> NULL → <code>players</code></td><td data-label="說明">同上</td></tr>
     <tr><td data-label="欄位"><code>updated_at</code></td><td data-label="型別"><code>timestamptz</code> NOT NULL</td><td data-label="說明"></td></tr>
     </tbody>
     </table>
     <ul>
     <li><strong>Upsert key</strong>：<code>mlb_game_id</code>。</li>
+    <li><strong>系列賽（series）</strong> 為衍生概念：由連續、對同一對手、同場地的 games 分組得出，不另存欄位。</li>
+    <li><strong>野手先發打線</strong>約開賽前 1~2 小時才公布，v1 <strong>不落庫</strong>（best-effort；<code>games</code> 只存先發投手預告）。</li>
+    </ul>
+    <h3 id="sec-2-9">B.9 <code>game_batting_stats</code> — 逐場打擊（game-log）</h3>
+    <ul>
+    <li><strong>粒度</strong>：<code>(mlb_player_id, mlb_game_id)</code> = 一位球員某場的打擊 box line。</li>
+    </ul>
+    <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="欄位"><code>mlb_player_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>players</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>mlb_game_id</code></td><td data-label="型別"><code>bigint</code> NOT NULL → <code>games</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>game_date</code></td><td data-label="型別"><code>date</code> NOT NULL</td><td data-label="說明">供時間軸／24h 篩選</td></tr>
+    <tr><td data-label="欄位"><code>level</code></td><td data-label="型別"><code>level</code> NOT NULL</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>team_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>teams</code></td><td data-label="說明">該場所屬球隊</td></tr>
+    <tr><td data-label="欄位"><code>started</code></td><td data-label="型別"><code>boolean</code> NULL</td><td data-label="說明">是否先發</td></tr>
+    <tr><td data-label="欄位"><code>batting_order</code></td><td data-label="型別"><code>smallint</code> NULL</td><td data-label="說明">棒次</td></tr>
+    <tr><td data-label="欄位">計數：<code>pa, ab, r, h, b2, b3, hr, rbi, bb, so, sb, cs, hbp, sf, sh, gdp</code></td><td data-label="型別"><code>integer</code></td><td data-label="說明">單場</td></tr>
+    <tr><td data-label="欄位"><code>source</code></td><td data-label="型別"><code>text</code> NOT NULL</td><td data-label="說明"><code>statsapi</code></td></tr>
+    <tr><td data-label="欄位"><code>updated_at</code></td><td data-label="型別"><code>timestamptz</code> NOT NULL</td><td data-label="說明"></td></tr>
+    </tbody>
+    </table>
+    <ul>
+    <li><strong>PK / Upsert key</strong>：<code>(mlb_player_id, mlb_game_id)</code>。</li>
+    </ul>
+    <h3 id="sec-2-10">B.10 <code>game_pitching_stats</code> — 逐場投球（game-log）</h3>
+    <ul>
+    <li><strong>粒度</strong>：<code>(mlb_player_id, mlb_game_id)</code>。</li>
+    </ul>
+    <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="欄位"><code>mlb_player_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>players</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>mlb_game_id</code></td><td data-label="型別"><code>bigint</code> NOT NULL → <code>games</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>game_date</code></td><td data-label="型別"><code>date</code> NOT NULL</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>level</code></td><td data-label="型別"><code>level</code> NOT NULL</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>team_id</code></td><td data-label="型別"><code>integer</code> NOT NULL → <code>teams</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>gs</code></td><td data-label="型別"><code>boolean</code> NULL</td><td data-label="說明">是否先發</td></tr>
+    <tr><td data-label="欄位"><code>decision</code></td><td data-label="型別"><code>text</code> NULL</td><td data-label="說明"><code>W</code> / <code>L</code> / <code>SV</code> / <code>HLD</code> / <code>ND</code></td></tr>
+    <tr><td data-label="欄位">計數：<code>ip_outs, h, r, er, hr, bb, so, hbp, bf, pitches</code></td><td data-label="型別"><code>integer</code></td><td data-label="說明"><strong>局數存 <code>ip_outs</code></strong></td></tr>
+    <tr><td data-label="欄位"><code>source</code></td><td data-label="型別"><code>text</code> NOT NULL</td><td data-label="說明"><code>statsapi</code></td></tr>
+    <tr><td data-label="欄位"><code>updated_at</code></td><td data-label="型別"><code>timestamptz</code> NOT NULL</td><td data-label="說明"></td></tr>
+    </tbody>
+    </table>
+    <ul>
+    <li><strong>PK / Upsert key</strong>：<code>(mlb_player_id, mlb_game_id)</code>。</li>
+    </ul>
+    <h3 id="sec-2-11">B.11 <code>player_recent_form</code> — 近況一句話（ETL 預先歸納）</h3>
+    <ul>
+    <li>存每位球員的<strong>近況一句話</strong>（≤20 字），由 B.9/B.10 逐場資料在 ETL 端歸納（連續紀錄、單場亮點、生涯新高…），供球員頁與首頁快訊直接讀、不在 request 時重算。</li>
+    </ul>
+    <table>
+    <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="欄位"><code>mlb_player_id</code></td><td data-label="型別"><code>integer</code> <strong>PK</strong> → <code>players</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>blurb</code></td><td data-label="型別"><code>text</code> NULL</td><td data-label="說明">近況一句話（≤20 字）；無則 NULL</td></tr>
+    <tr><td data-label="欄位"><code>as_of_date</code></td><td data-label="型別"><code>date</code> NULL</td><td data-label="說明">依據到哪天的資料</td></tr>
+    <tr><td data-label="欄位"><code>updated_at</code></td><td data-label="型別"><code>timestamptz</code> NOT NULL</td><td data-label="說明"></td></tr>
+    </tbody>
+    </table>
+    <ul>
+    <li><strong>Upsert key</strong>：<code>mlb_player_id</code>。</li>
+    <li>歸納規則（偵測哪些 pattern、怎麼選最有代表性的一句）為 ETL 邏輯，待 ETL spec 定（見 §E、requirements §7.4）。</li>
     </ul>
   </section>
   <section>
-    <h2 data-num="C">Raw layer（原則，不逐欄設計）</h2>
+    <h2 id="sec-3" data-num="C">Raw layer（原則，不逐欄設計）</h2>
     <ul>
-    <li>每個來源一張 raw 表：<code>raw_fangraphs_batting</code>、<code>raw_fangraphs_pitching</code>、<code>raw_statsapi_transactions</code>、<code>raw_statsapi_roster</code>、<code>raw_statsapi_schedule</code>…</li>
+    <li>每個來源一張 raw 表：<code>raw_fangraphs_batting</code>、<code>raw_fangraphs_pitching</code>、<code>raw_statsapi_transactions</code>、<code>raw_statsapi_roster</code>、<code>raw_statsapi_schedule</code>、<code>raw_statsapi_gamelog</code>…</li>
     <li>統一結構：<code>natural_key</code>（來源自然鍵）+ <code>payload jsonb</code>（原始回傳）+ <code>source</code> + <code>fetched_at</code>。</li>
     <li>curated 由 raw 轉換而來；上游欄位變動時只重寫轉換 + reprocess，不必重抓。</li>
     </ul>
   </section>
   <section>
-    <h2 data-num="D">代表性 Drizzle schema（核心表，其餘照 B 節欄位比照）</h2>
+    <h2 id="sec-4" data-num="D">代表性 Drizzle schema（核心表，其餘照 B 節欄位比照）</h2>
     <pre><code>import { pgTable, integer, text, boolean, date, timestamp, numeric, bigserial, bigint, primaryKey, pgEnum } from &quot;drizzle-orm/pg-core&quot;;
     
     export const level = pgEnum(&quot;level&quot;, [&quot;MLB&quot;, &quot;AAA&quot;, &quot;AA&quot;, &quot;A_PLUS&quot;, &quot;A&quot;, &quot;ROOKIE&quot;]);
@@ -365,10 +495,12 @@
     }));</code></pre>
   </section>
   <section>
-    <h2 data-num="E">這塊仍待決 / 往後 spec 要處理的 Open Items</h2>
+    <h2 id="sec-5" data-num="E">這塊仍待決 / 往後 spec 要處理的 Open Items</h2>
     <ul class="todo">
-    <li class="">進階數據要顯示到多細？（只 slash line + HR/RBI，還是含 wRC+/FIP…）— 影響 B.4/B.5 落庫欄位。</li>
-    <li class=""><strong>時區</strong>：<code>games.date</code>、ETL 排程時間怎麼統一（美東賽事 vs 台灣時間）— 建議一律存 UTC + 顯示端轉換，下一份 ETL spec 定案。</li>
+    <li class="">確認上游（FanGraphs / StatsAPI）是否直接提供需落庫的進階值（打 <code>woba</code>/<code>wrc_plus</code>/<code>war</code>；投 <code>fip</code>/<code>war</code>），或需自算；其餘（iso/bb%/k%/hr9/lob%/babip…）顯示時由計數算（B.4/B.5 已標明存/算之分）。</li>
+    <li class=""><strong>game-log 對齊</strong>：StatsAPI <code>gameLog</code> 端點回傳欄位 → curated <code>game_batting_stats</code> / <code>game_pitching_stats</code> 的對齊表；<code>started</code>/<code>gs</code>/<code>decision</code> 怎麼取。</li>
+    <li class=""><strong>近況一句話規則</strong>：偵測哪些 pattern（連續紀錄、單場亮點、生涯/賽季新高…）、如何選最有代表性的一句、生涯新高需要的歷史基準怎麼算（見 requirements §7.4）。</li>
+    <li class=""><strong>出賽預告 / 時區</strong>：schedule 端點取 <code>start_time_utc</code>、<code>probable_*_pitcher</code>、<code>venue</code>；一律存 UTC + 顯示端轉台灣時間（Node 用原生 <code>Intl</code> 或 <code>date-fns-tz</code>、Python 用 <code>zoneinfo</code>）。</li>
     <li class="">小聯盟成績的資料源細節：StatsAPI <code>sportId=11/12</code> 端點的實際回傳欄位與 pybaseball 欄位對齊表。</li>
     <li class=""><code>transaction_type</code> 列舉是否涵蓋 StatsAPI 實際會出現的所有型別（需實測 transactions 端點）。</li>
     <li class=""><code>players</code> 白名單的維護介面：先手動改 DB / 種子腳本，還是要簡單後台？（v1 可先腳本）</li>
@@ -379,6 +511,36 @@
     自動由 <code>docs/spec/spec-01-scope-and-data-model.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
+  </div>
 </div>
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc nav a'));
+  if (!links.length) return;
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) { byId[id] = a; targets.push(el); }
+  });
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var active = null;
+      for (var i = 0; i < targets.length; i++) {
+        if (visible[targets[i].id]) { active = targets[i].id; break; }
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (active && byId[active]) byId[active].classList.add('active');
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  }
+  // 手機版預設收合目錄
+  var box = document.querySelector('.toc-box');
+  if (box && window.matchMedia('(max-width: 960px)').matches) box.removeAttribute('open');
+})();
+</script>
 </body>
 </html>

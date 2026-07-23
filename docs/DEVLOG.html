@@ -101,10 +101,58 @@
     td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
     td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
   }
+
+  /* ── 側邊欄目錄 ──────────────────────────────────────────────────── */
+  html { scroll-behavior: smooth; }
+  h2, h3 { scroll-margin-top: 1.5rem; }
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .layout > .wrap { flex: 1 1 auto; min-width: 0; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: flex-start;
+    flex: 0 0 250px; width: 250px; max-height: 100vh; overflow-y: auto;
+    padding: 2.75rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+  }
+  .toc summary {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: .75rem; pointer-events: none;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::after {
+    content: "\25be"; float: right; transition: transform .15s ease; pointer-events: none;
+  }
+  .toc-box:not([open]) summary::after { transform: rotate(-90deg); }
+  .toc nav ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc nav li { margin: 0; }
+  .toc nav a {
+    display: block; text-decoration: none; color: var(--muted);
+    font-size: .86rem; line-height: 1.4; padding: .32rem .55rem;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+    transition: color .12s, background .12s;
+  }
+  .toc nav a:hover { color: var(--fg); background: var(--code-bg); }
+  .toc nav a.active {
+    color: var(--accent); background: var(--code-bg); border-left-color: var(--accent); font-weight: 600;
+  }
+  .toc .toc-num { color: var(--accent); margin-right: .45rem; font-variant-numeric: tabular-nums; }
+  .toc ul.sub { padding-left: .7rem; margin: .1rem 0 .35rem; }
+  .toc ul.sub a { font-size: .8rem; padding: .24rem .55rem; color: var(--muted); }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    .toc {
+      position: static; width: auto; flex: none; max-height: none; overflow: visible;
+      border-right: none; border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.25rem; margin: 0;
+    }
+    .toc summary { pointer-events: auto; margin-bottom: 0; }
+    .toc-box[open] summary { margin-bottom: .6rem; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">✅ 已完成</a><ul class="sub"><li><a href="#sec-1-1">2026-07-22</a></li><li><a href="#sec-1-2">2026-07-21</a></li></ul></li><li><a href="#sec-2">▶️ 進行中 / 下一步</a></li><li><a href="#sec-3">❓ 待決問題（來自 Spec 01 Open Items）</a></li><li><a href="#sec-4">🔮 未來 Phase（先記著，這版不做）</a></li><li><a href="#sec-5">🗂️ 雜項 / 待整理</a></li></ul></nav></details></aside>
+  <div class="wrap">
 
   <header class="page-head">
     <h1>開發日誌 — 台灣球員大聯盟網站（Phobos）</h1>
@@ -112,8 +160,34 @@
   </header>
 
   <section>
-    <h2>✅ 已完成</h2>
-    <h3>2026-07-21</h3>
+    <h2 id="sec-1">✅ 已完成</h2>
+    <h3 id="sec-1-1">2026-07-22</h3>
+    <ul class="todo">
+    <li class="done"><code>scripts/build_docs.py</code> 加上<strong>側邊欄目錄（TOC）</strong>：自動從 <code>##</code>/<code>###</code> 標題產生 sticky 左側導覽，可快速前往章節
+    <ul>
+    <li>每個 <code>&lt;h2&gt;</code>/<code>&lt;h3&gt;</code> 加錨點 id（<code>sec-N</code> / <code>sec-N-M</code>），h3 以子清單巢狀呈現、h2 保留章節編號徽章</li>
+    <li>IntersectionObserver 標示目前章節；<code>scroll-behavior: smooth</code> 平滑捲動</li>
+    <li>響應式：960px 以下側邊欄收合為頂部 <code>&lt;details&gt;</code>（手機預設收合），沿用既有明暗主題變數</li>
+    <li>已全量重建現有 8 份文件的 <code>.html</code></li>
+    </ul></li>
+    <li class="done"><strong>（Spec 02 前置）重新檢討 requirements</strong>——從使用者角度壓力測試，補強/收斂多項並寫進 PRD：
+    <ul>
+    <li>新增：出賽預告（先發明顯標示 + 台灣時間）、<strong>近況一句話</strong>（≤20 字自動生成，球員頁+首頁快訊）、逐場成績 game log、社群分享（OG）、收藏我的球員（低優先）、首頁空狀態</li>
+    <li>收斂：賽程 → 至少「下一個系列賽（對手/地點）」；進階數據定位為「重要但非 v1 首要，可延續下一 phase」（名詞解釋維持核心）</li>
+    <li>深色模式留待設計階段；§9.2 新增待定：休賽期空狀態內容</li>
+    </ul></li>
+    <li class="done">依調整後 requirements 重審 dev plan 技術：<strong>語言/核心套件不用改</strong>，真正變的是資料範疇——<strong>新增 game-log（逐場）層</strong>
+    <ul>
+    <li>spec-01 補：A.6 資料粒度層次、B.8 games 擴充（start_time_utc/venue/先發投手預告）、B.9 <code>game_batting_stats</code>、B.10 <code>game_pitching_stats</code>、B.11 <code>player_recent_form</code>（近況一句話）、raw 加 gamelog、更新 §E</li>
+    <li>game-log 資料源走 MLB Stats API <code>gameLog</code>；時區 Node 用 Intl/date-fns-tz、Python 用 zoneinfo</li>
+    <li>plan §6「season-level only」標記過時、指向 spec-01</li>
+    </ul></li>
+    <li class="done">建立 spec 總覽 <code>docs/spec/spec-00-overview.md</code>——把規格切成 spec-01~04（範疇+資料模型／IA+API／ETL／名詞庫），含各自範圍、橫向項目歸屬、依賴關係、狀態</li>
+    <li class="done">spec-01 一致性複查+修正：B.1 enum 註解過時（已全層級）、B.4 打者進階補 <code>war</code>、B.5 投手進階改 <code>fip/war</code>、§E 收斂；統一「只存無法由計數重算的」原則</li>
+    <li class="done">開 <strong>spec-02（頁面/路由 IA + 對外 API 合約）初稿</strong>：路由/sitemap、5 頁規格（顯示/資料源/渲染）、<code>/api/*</code> endpoint + 代表性 Zod 回傳形狀、時區/OG/ISR 橫向處理；6 項 open items（URL slug、revalidation 觸發、動態 OG、逐場 N…）</li>
+    <li class="done">開 <strong>spec-03（ETL / 資料同步管線）初稿</strong>：管線總覽、來源→表對照、pybaseball/StatsAPI 各模組、一天兩次排程（早/晚班）、upsert 原則、<strong>近況一句話生成規則</strong>、時區存 UTC、錯誤處理；6 項 open items（排程時刻、roster 推導、生涯基準…）</li>
+    </ul>
+    <h3 id="sec-1-2">2026-07-21</h3>
     <ul class="todo">
     <li class="done">比對兩份規劃文件（<code>plan/棒球網站技術選型討論.md</code> vs <code>plan/baseball-tracker-plan.md</code>），整理相同 / 不同之處</li>
     <li class="done">收斂三項分歧決策：
@@ -144,9 +218,8 @@
     </ul>
   </section>
   <section>
-    <h2>▶️ 進行中 / 下一步</h2>
+    <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
-    <li class=""><strong>（Spec 02 前置）重新檢討 <code>requirements.md</code></strong>——整體再看一遍，確認產品需求有無要調整/補強，再往下開規格</li>
     <li class=""><strong>Spec 02：頁面 / 路由 IA + 對外 API 合約</strong>（endpoint、參數、回傳 JSON 形狀 = Zod schema 的雛形）</li>
     <li class="">定案 curated schema 的完整欄位型別（把 Spec 01 補成完整 Drizzle schema）</li>
     <li class=""><code>players</code> 白名單種子腳本 + 首版 Drizzle migration</li>
@@ -156,7 +229,7 @@
     </ul>
   </section>
   <section>
-    <h2>❓ 待決問題（來自 Spec 01 Open Items）</h2>
+    <h2 id="sec-3">❓ 待決問題（來自 Spec 01 Open Items）</h2>
     <ul class="todo">
     <li class="">進階數據要顯示到多細？（只 slash line + HR/RBI，還是含 wRC+ / FIP…）— 影響落庫欄位</li>
     <li class=""><strong>時區</strong>：<code>games.date</code> 與 ETL 排程時間怎麼統一（美東賽事 vs 台灣時間）— 傾向存 UTC + 顯示端轉換</li>
@@ -166,7 +239,7 @@
     </ul>
   </section>
   <section>
-    <h2>🔮 未來 Phase（先記著，這版不做）</h2>
+    <h2 id="sec-4">🔮 未來 Phase（先記著，這版不做）</h2>
     <ul class="todo">
     <li class="">backfill 2020 年以前的歷史球季數據</li>
     <li class="">Statcast 逐球（pitch-level）數據</li>
@@ -176,7 +249,7 @@
     </ul>
   </section>
   <section>
-    <h2>🗂️ 雜項 / 待整理</h2>
+    <h2 id="sec-5">🗂️ 雜項 / 待整理</h2>
     <ul class="todo">
     <li class=""><code>plan/baseball-tracker-plan-rust.md</code> / <code>.html</code> 已被 Node.js 方案取代，確認是否清理或封存</li>
     </ul>
@@ -186,6 +259,36 @@
     自動由 <code>docs/DEVLOG.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
+  </div>
 </div>
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc nav a'));
+  if (!links.length) return;
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) { byId[id] = a; targets.push(el); }
+  });
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var active = null;
+      for (var i = 0; i < targets.length; i++) {
+        if (visible[targets[i].id]) { active = targets[i].id; break; }
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (active && byId[active]) byId[active].classList.add('active');
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  }
+  // 手機版預設收合目錄
+  var box = document.querySelector('.toc-box');
+  if (box && window.matchMedia('(max-width: 960px)').matches) box.removeAttribute('open');
+})();
+</script>
 </body>
 </html>

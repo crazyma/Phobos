@@ -101,10 +101,58 @@
     td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
     td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
   }
+
+  /* ── 側邊欄目錄 ──────────────────────────────────────────────────── */
+  html { scroll-behavior: smooth; }
+  h2, h3 { scroll-margin-top: 1.5rem; }
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .layout > .wrap { flex: 1 1 auto; min-width: 0; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: flex-start;
+    flex: 0 0 250px; width: 250px; max-height: 100vh; overflow-y: auto;
+    padding: 2.75rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+  }
+  .toc summary {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: .75rem; pointer-events: none;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::after {
+    content: "\25be"; float: right; transition: transform .15s ease; pointer-events: none;
+  }
+  .toc-box:not([open]) summary::after { transform: rotate(-90deg); }
+  .toc nav ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc nav li { margin: 0; }
+  .toc nav a {
+    display: block; text-decoration: none; color: var(--muted);
+    font-size: .86rem; line-height: 1.4; padding: .32rem .55rem;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+    transition: color .12s, background .12s;
+  }
+  .toc nav a:hover { color: var(--fg); background: var(--code-bg); }
+  .toc nav a.active {
+    color: var(--accent); background: var(--code-bg); border-left-color: var(--accent); font-weight: 600;
+  }
+  .toc .toc-num { color: var(--accent); margin-right: .45rem; font-variant-numeric: tabular-nums; }
+  .toc ul.sub { padding-left: .7rem; margin: .1rem 0 .35rem; }
+  .toc ul.sub a { font-size: .8rem; padding: .24rem .55rem; color: var(--muted); }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    .toc {
+      position: static; width: auto; flex: none; max-height: none; overflow: visible;
+      border-right: none; border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.25rem; margin: 0;
+    }
+    .toc summary { pointer-events: auto; margin-bottom: 0; }
+    .toc-box[open] summary { margin-bottom: .6rem; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">1</span>產品定位</a></li><li><a href="#sec-2"><span class="toc-num">2</span>目標使用者</a></li><li><a href="#sec-3"><span class="toc-num">3</span>使用者面臨的問題（為什麼需要這服務）</a></li><li><a href="#sec-4"><span class="toc-num">4</span>產品範疇</a><ul class="sub"><li><a href="#sec-4-1">4.1 這一版要做（v1）</a></li><li><a href="#sec-4-2">4.2 設計上預留、這版不做</a></li><li><a href="#sec-4-3">4.3 明確不在範疇（v1）</a></li></ul></li><li><a href="#sec-5"><span class="toc-num">5</span>功能需求（具體描述）</a><ul class="sub"><li><a href="#sec-5-1">F1. 台灣球員追蹤</a></li><li><a href="#sec-5-2">F2. 棒球規則／名詞介紹</a></li></ul></li><li><a href="#sec-6"><span class="toc-num">6</span>非功能需求</a></li><li><a href="#sec-7"><span class="toc-num">7</span>內容 / 資料呈現需求（產品視角）</a><ul class="sub"><li><a href="#sec-7-1">7.1 動態與狀態</a></li><li><a href="#sec-7-2">7.2 數據呈現深度依「情境」而不同</a></li><li><a href="#sec-7-3">7.3 球員頁的數據分層</a></li><li><a href="#sec-7-4">7.4 近況一句話（自動生成的自然語言）</a></li></ul></li><li><a href="#sec-8"><span class="toc-num">8</span>成功樣貌（v1 做到什麼算成功）</a></li><li><a href="#sec-9"><span class="toc-num">9</span>產品決策</a><ul class="sub"><li><a href="#sec-9-1">9.1 已定</a></li><li><a href="#sec-9-2">9.2 待定（Open Questions）</a></li></ul></li></ul></nav></details></aside>
+  <div class="wrap">
 
   <header class="page-head">
     <h1>產品需求文件（PRD）— 台灣球員大聯盟網站</h1>
@@ -113,7 +161,7 @@
   </header>
 
   <section>
-    <h2 data-num="1">產品定位</h2>
+    <h2 id="sec-1" data-num="1">產品定位</h2>
     <p>一個<strong>繁體中文</strong>的網站，讓台灣棒球迷能在<strong>同一個地方</strong>追蹤台灣球員在美國職棒（大聯盟與 3A／2A 小聯盟）的表現與動態，並附帶介紹現代棒球的規則與數據名詞。</p>
     <ul>
     <li><strong>一句話</strong>：台灣球員在美職的中文戰情室 + 棒球知識入口。</li>
@@ -121,7 +169,7 @@
     </ul>
   </section>
   <section>
-    <h2 data-num="2">目標使用者</h2>
+    <h2 id="sec-2" data-num="2">目標使用者</h2>
     <table>
     <thead><tr><th>使用者類型</th><th>特徵</th><th>主要需求</th></tr></thead>
     <tbody>
@@ -130,10 +178,10 @@
     <tr><td data-label="使用者類型"><strong>入門球迷 / 路人</strong></td><td data-label="特徵">看比賽或新聞時遇到不懂的名詞（wRC+、FIP、IL…）</td><td data-label="主要需求">用中文快速查到名詞／規則的白話解釋</td></tr>
     </tbody>
     </table>
-    <blockquote><p>開放問題：主要客群偏「關注型」還是「數據型」會影響數據呈現的深度，需你定調（見 §9）。</p></blockquote>
+    <blockquote><p>客群定位已定（見 §9.1）：<strong>兩者兼顧、關注型優先</strong>。名詞解釋所服務的「看到名詞→進站查」情境，是刻意重視的核心情境之一。</p></blockquote>
   </section>
   <section>
-    <h2 data-num="3">使用者面臨的問題（為什麼需要這服務）</h2>
+    <h2 id="sec-3" data-num="3">使用者面臨的問題（為什麼需要這服務）</h2>
     <ol>
     <li>台灣球員散布在不同球隊、不同層級（大聯盟／3A／2A），資訊分散在多個英文網站，<strong>沒有一個中文的集中處</strong>。</li>
     <li>官方英文數據網站對一般球迷<strong>門檻高</strong>（語言、名詞、資訊過載）。</li>
@@ -142,18 +190,18 @@
     </ol>
   </section>
   <section>
-    <h2 data-num="4">產品範疇</h2>
-    <h3>4.1 這一版要做（v1）</h3>
+    <h2 id="sec-4" data-num="4">產品範疇</h2>
+    <h3 id="sec-4-1">4.1 這一版要做（v1）</h3>
     <ul>
     <li><strong>功能一：台灣球員追蹤</strong>（動態內容）</li>
     <li><strong>功能二：棒球規則／名詞介紹</strong>（靜態內容）</li>
     </ul>
-    <h3>4.2 設計上預留、這版不做</h3>
+    <h3 id="sec-4-2">4.2 設計上預留、這版不做</h3>
     <ul>
     <li><strong>功能三：新聞</strong>（爬取官網／社群新聞並呈現）</li>
     <li><strong>功能四：專欄</strong>（寫手發布針對台灣球員的文章、規則更新消息）</li>
     </ul>
-    <h3>4.3 明確不在範疇（v1）</h3>
+    <h3 id="sec-4-3">4.3 明確不在範疇（v1）</h3>
     <ul>
     <li>逐球（pitch-level）等級的細部數據與圖表</li>
     <li>使用者帳號、留言、社群互動</li>
@@ -162,19 +210,20 @@
     </ul>
   </section>
   <section>
-    <h2 data-num="5">功能需求（具體描述）</h2>
-    <h3>F1. 台灣球員追蹤</h3>
+    <h2 id="sec-5" data-num="5">功能需求（具體描述）</h2>
+    <h3 id="sec-5-1">F1. 台灣球員追蹤</h3>
     <p>追蹤名單為<strong>人工維護的台灣球員白名單</strong>（歷史上台籍美職球員僅十幾位，可控）。成績<strong>涵蓋所有能抓到資料的層級</strong>——從大聯盟、3A、2A，一路到 1A、新人聯盟；只要來源有資料就呈現（多數台灣球員剛進體系、主要在低階層級，若只做高階幾乎沒東西可看）。升降／異動涵蓋所有層級。</p>
     <p>#### F1-0 首頁（動態導向）</p>
     <p>首頁以「最近發生 + 即將發生」為主軸，<strong>不放全員名冊</strong>：</p>
     <ol>
-    <li><strong>最近 24 小時</strong>（主）：這段時間內的<strong>比賽結果</strong>與<strong>球員動態</strong>（升降 / 交易 / 傷兵進出等），彙整成動態流／摘要。</li>
-    <li><strong>即將發生</strong>（次）：球員所屬球隊的<strong>下一場比賽</strong>資訊（對手、時間）。</li>
+    <li><strong>最近 24 小時</strong>（主）：這段時間內的<strong>比賽結果</strong>與<strong>球員動態</strong>（升降 / 交易 / 傷兵進出等），彙整成動態流／摘要。每則賽果可帶該球員的<strong>近況一句話</strong>（見 §7.4）。</li>
+    <li><strong>即將發生</strong>（次）：球員的<strong>下一場出賽預告</strong>（是否先發、台灣時間，見 F1-2 第 5 區的定義）。</li>
     </ol>
     <ul>
     <li><strong>球員名冊</strong>不佔首頁主體，改放在 <strong>top bar / side bar 的導覽入口</strong>；名詞介紹（F2）同樣從全域導覽進入。</li>
     <li>動態中的單場數據沿用 §7.2「今日快訊＝單場精簡」。</li>
     <li>「24 小時」為顯示概念，實際資料隨一天兩次同步更新（見 F1-3）。</li>
+    <li><strong>空狀態 / 休賽期</strong>：淡季或當日無台灣球員出賽時，首頁改顯示一個<strong>空狀態畫面</strong>（內容待定，見 §9.2），不留白。</li>
     </ul>
     <blockquote><p>使用者故事：作為關注型球迷，我一打開網站就想看到「這一天發生了什麼、我關注的球員接下來何時出賽」，不用自己一個個點。</p></blockquote>
     <p>#### F1-1 球員總覽頁</p>
@@ -185,24 +234,35 @@
     </ul>
     <blockquote><p>使用者故事：作為關注型球迷，我想在一頁看到所有台灣球員現在人在哪一隊、哪一層、狀態如何，不用一個個查。</p></blockquote>
     <p>#### F1-2 球員個人頁</p>
-    <p>單一球員的完整戰情，分四區：</p>
+    <p>單一球員的完整戰情，重點元素：</p>
     <ol>
-    <li><strong>基本資料</strong>：中英文名、守備位置、打擊／投球慣用手、生日、目前所屬球隊與層級、目前名單狀態。</li>
+    <li><strong>基本資料 + 近況一句話</strong>：中英文名、守備位置、打擊／投球慣用手、生日、目前所屬球隊與層級、目前名單狀態；並在<strong>顯眼處</strong>放一句話近況（≤20 字、自動生成，見 §7.4），一眼抓到手感。</li>
     <li><strong>球季數據</strong>：依球季、依層級（大聯盟到小聯盟各級）呈現<strong>標準季賽數據 + 一組進階數據</strong>（明細見 §7.3）；資料<strong>從 2020 球季起</strong>（未來可往前補）。低階層級資料可能稀疏，抓得到就顯示。</li>
-    <li><strong>動態時間軸</strong>：升上大聯盟 / 下放小聯盟 / 交易 / 進出傷兵名單 / 被 DFA、釋出等異動，<strong>依時間排序成時間軸</strong>，讓人看得出「什麼時候發生什麼」。</li>
-    <li><strong>所屬球隊賽程</strong>：該球員目前球隊的近期與即將到來的賽程與比分。</li>
+    <li><strong>逐場成績（近況細節）</strong>：最近 N 場的<strong>逐場 box line</strong>（打者：打數／安打／全壘打／打點／保送／三振…；投手：局數／被安打／失分／自責／三振／保送…），給想細看手感的人。</li>
+    <li><strong>動態時間軸</strong>：升上大聯盟 / 下放小聯盟 / 交易 / 進出傷兵名單 / 被 DFA、釋出等異動，<strong>依時間排序成時間軸</strong>。</li>
+    <li><strong>出賽預告 + 下一個系列賽</strong>：
+    <ul>
+    <li><strong>出賽預告</strong>：下一場是否出賽——<strong>確定先發</strong>要<strong>明顯標示</strong>（投手先發預告通常較早可知）；中繼／後援投手、野手可能比賽後段才上場，即使非先發也標示「可能上場」。開賽時間以<strong>台灣時間</strong>呈現。</li>
+    <li><strong>下一個系列賽</strong>：至少呈現下一個系列賽的<strong>對手與地點</strong>（例：本系列在舊金山、下一系列到紐約），並附最近幾場結果。</li>
+    <li>轉播／觀看服務資訊：日後以爬蟲補，<strong>優先度較後</strong>。</li>
+    </ul></li>
     </ol>
-    <blockquote><p>使用者故事：作為球迷，我想在球員頁看到他這季打得如何、最近有沒有被升降或受傷、他隊上接下來打誰。</p></blockquote>
+    <blockquote><p>使用者故事：作為球迷，我想在球員頁一眼看到他最近手感（近況一句話）、這季打得如何、最近有沒有被升降或受傷、<strong>下一場台灣時間幾點、會不會先發</strong>。</p></blockquote>
     <p>#### F1-3 資料新鮮度</p>
     <ul>
     <li>每頁需標示<strong>資料最後更新時間</strong>，讓使用者判斷新鮮度。</li>
     <li>更新頻率為<strong>一天兩次</strong>（早上結算前一天賽果與累計數據；傍晚同步當日賽程、異動與傷兵名單）。</li>
     </ul>
-    <h3>F2. 棒球規則／名詞介紹</h3>
+    <p>#### F1-4 收藏「我的球員」（低優先 / 加分項）</p>
+    <ul>
+    <li>讓使用者釘選常追的球員（<strong>localStorage，無需帳號</strong>），名冊／首頁優先顯示。</li>
+    <li><strong>低優先</strong>：球員與每日賽事量都不大（一天有台灣球員的比賽常不到 10 場），一次瀏覽即可看完，故列為有餘力再做。</li>
+    </ul>
+    <h3 id="sec-5-2">F2. 棒球規則／名詞介紹</h3>
     <p>使用者通常是<strong>在站內或站外看到某個名詞、想搞懂它</strong>才點進來——目標是<strong>幫他讀懂當下的脈絡</strong>，而非教科書式從定義講起。</p>
     <p>#### F2-1 涵蓋範圍（逐步累積）</p>
     <ul>
-    <li><strong>v1 優先：數據名詞</strong>——先把球員頁會用到的 6+6 進階數據與常見標準數據講清楚（wRC+、FIP、OPS、WHIP、IL、DFA、waiver…），起手約 <strong>20~30 則高頻名詞</strong>（6+6 為必做核心）。</li>
+    <li><strong>v1 優先：數據名詞</strong>——先把球員頁會用到的進階數據（打投各 7 項）與常見標準數據講清楚（wRC+、FIP、OPS、WHIP、IL、DFA、waiver…），起手約 <strong>20~30 則高頻名詞</strong>（這組進階數據為必做核心）。</li>
     <li><strong>第二批：基本規則</strong>（好球帶、盜壘、犧牲打…）。</li>
     <li><strong>更後面</strong>：戰術／玩法、規則更新消息。</li>
     <li>靜態內容、逐步新增；撰寫採 <strong>AI 輔助草擬 + 人工校訂</strong>。</li>
@@ -231,12 +291,13 @@
     <blockquote><p>使用者故事：作為入門球迷，我在文章看到「OPS .950」不懂算好算壞，點進名詞頁一眼就知道「這是明星等級」，不用先看公式。</p></blockquote>
   </section>
   <section>
-    <h2 data-num="6">非功能需求</h2>
+    <h2 id="sec-6" data-num="6">非功能需求</h2>
     <table>
     <thead><tr><th>面向</th><th>需求</th></tr></thead>
     <tbody>
     <tr><td data-label="面向"><strong>語言</strong></td><td data-label="需求">介面與內容以<strong>繁體中文</strong>為主；球員英文原名保留以利對照。</td></tr>
     <tr><td data-label="面向"><strong>SEO</strong></td><td data-label="需求">公開內容（球員頁、名詞頁）需能被搜尋引擎索引；使用者常從 Google 搜球員名／名詞進來。</td></tr>
+    <tr><td data-label="面向"><strong>社群分享</strong></td><td data-label="需求">球員頁／亮點需可分享到 LINE、Threads、社群——分享連結帶 <strong>Open Graph 預覽</strong>（標題、球員近況、logo），兼作自然流量入口。</td></tr>
     <tr><td data-label="面向"><strong>裝置</strong></td><td data-label="需求">響應式設計，<strong>手機優先</strong>（球迷多在手機上看）。</td></tr>
     <tr><td data-label="面向"><strong>效能</strong></td><td data-label="需求">頁面載入要快；靜態知識內容尤其應接近即時。</td></tr>
     <tr><td data-label="面向"><strong>正確性</strong></td><td data-label="需求">數據來自可信來源；上游若事後修正，網站數據<strong>需跟著更新</strong>（不是抓一次就固定）。</td></tr>
@@ -245,14 +306,14 @@
     </table>
   </section>
   <section>
-    <h2 data-num="7">內容 / 資料呈現需求（產品視角）</h2>
-    <h3>7.1 動態與狀態</h3>
+    <h2 id="sec-7" data-num="7">內容 / 資料呈現需求（產品視角）</h2>
+    <h3 id="sec-7-1">7.1 動態與狀態</h3>
     <ul>
     <li><strong>球員動態類型</strong>（要能呈現）：升上大聯盟、下放小聯盟、交易、被指定轉讓（DFA）、釋出、進／出傷兵名單。</li>
     <li><strong>名單狀態</strong>（要能呈現）：出賽中（active）、傷兵名單（IL）、小聯盟（minors）等，並保留<strong>歷史</strong>以畫出時間軸。</li>
     <li><strong>層級標示</strong>：清楚標明每筆成績屬於哪一層級（大聯盟／3A／2A／1A／新人聯盟…），避免混淆。</li>
     </ul>
-    <h3>7.2 數據呈現深度依「情境」而不同</h3>
+    <h3 id="sec-7-2">7.2 數據呈現深度依「情境」而不同</h3>
     <p>數據深度不是單一答案，依出現的頁面/情境決定：</p>
     <table>
     <thead><tr><th>情境</th><th>深度</th><th>內容</th></tr></thead>
@@ -261,16 +322,16 @@
     <tr><td data-label="情境"><strong>球員頁</strong></td><td data-label="深度">標準季賽數據 + 一組進階數據</td><td data-label="內容">見 §7.3。</td></tr>
     </tbody>
     </table>
-    <h3>7.3 球員頁的數據分層</h3>
+    <h3 id="sec-7-3">7.3 球員頁的數據分層</h3>
     <ul>
     <li><strong>標準季賽數據</strong>：一般球迷看得懂的常見數據。
     <ul>
     <li>打者：AVG / OBP / SLG / OPS、HR、RBI、SB、BB、SO…</li>
     <li>投手：ERA、<strong>WHIP</strong>、IP、K、BB、W-L、SV、HLD…（WHIP 為未校正的簡單比率，歸此層而非進階）</li>
     </ul></li>
-    <li><strong>進階數據（可調整清單，不寫死）</strong>：先挑 6 個打者、6 個投手當起點，之後持續增減／替換（呼應棒球演進）。</li>
+    <li><strong>進階數據（可調整清單，不寫死）</strong>：先挑一組打者、一組投手當起點（目前各 7 項），之後持續增減／替換（呼應棒球演進）。</li>
     </ul>
-    <p><strong>打者 6 進階</strong></p>
+    <p><strong>打者進階（7 項）</strong></p>
     <table>
     <thead><tr><th>指標</th><th>說什麼故事</th></tr></thead>
     <tbody>
@@ -280,9 +341,10 @@
     <tr><td data-label="指標"><code>BB%</code></td><td data-label="說什麼故事">保送率（選球眼）</td></tr>
     <tr><td data-label="指標"><code>K%</code></td><td data-label="說什麼故事">三振率（接觸/選球風險）</td></tr>
     <tr><td data-label="指標"><code>WAR</code></td><td data-label="說什麼故事">打擊+跑壘+守備的單一總值</td></tr>
+    <tr><td data-label="指標"><code>BABIP</code></td><td data-label="說什麼故事">場內球變安打的比率，反映接觸品質與運氣（偏離常態代表可能回歸）</td></tr>
     </tbody>
     </table>
-    <p><strong>投手 6 進階</strong></p>
+    <p><strong>投手進階（7 項）</strong></p>
     <table>
     <thead><tr><th>指標</th><th>說什麼故事</th></tr></thead>
     <tbody>
@@ -292,15 +354,23 @@
     <tr><td data-label="指標"><code>HR/9</code></td><td data-label="說什麼故事">每 9 局被轟（長打壓制）</td></tr>
     <tr><td data-label="指標"><code>LOB%</code></td><td data-label="說什麼故事">殘壘率（危機處理/運氣，判斷 ERA 是否回歸）</td></tr>
     <tr><td data-label="指標"><code>WAR</code></td><td data-label="說什麼故事">投手綜合價值單一數字</td></tr>
+    <tr><td data-label="指標"><code>BABIP</code></td><td data-label="說什麼故事">被打進場內的球變安打的比率，判斷運氣成分（過低可能好運、將回歸；與 LOB% 相輔）</td></tr>
     </tbody>
     </table>
     <ul>
-    <li><strong>口袋替補</strong>（日後想換時）：打者 <code>BABIP</code>、<code>OBP</code>；投手 <code>xFIP</code>、<code>SIERA</code>、<code>WHIP</code>。</li>
-    <li><strong>可用性</strong>：進階數據多在 MLB / 高階小聯盟才齊全（wRC+/WAR/FIP 需聯盟/球場係數）；低階層級算不出來就<strong>不顯示</strong>（best-effort）。</li>
+    <li><strong>口袋替補</strong>（日後想換時）：打者 <code>OBP</code>；投手 <code>xFIP</code>、<code>SIERA</code>、<code>WHIP</code>。</li>
+    <li><strong>可用性</strong>：進階數據多在 MLB / 高階小聯盟才齊全（wRC+/WAR/FIP 需聯盟/球場係數）；低階層級算不出來就<strong>不顯示</strong>（best-effort）。多數台灣球員在低階、進階數據常空白——因此<strong>進階數據視為重要但非 v1 首要</strong>，完整化可延續到下一 phase。</li>
+    </ul>
+    <h3 id="sec-7-4">7.4 近況一句話（自動生成的自然語言）</h3>
+    <ul>
+    <li>用<strong>一句話（≤20 字）</strong>描述球員近況，讓輕量使用者「一句看懂手感」，勝過只丟一排逐場 log。</li>
+    <li>例：「連續 5 場有安打」「上一場 3 支安打」「上一場投出生涯最多 8 次三振」「近 3 場防禦率 1.20」。</li>
+    <li>由近期逐場成績<strong>自動歸納</strong>產生（連續紀錄、單場亮點、個人／生涯新高等 pattern）。</li>
+    <li>出現位置：<strong>球員頁顯眼處</strong>與<strong>首頁今日快訊</strong>（F1-0、F1-2 共用）。</li>
     </ul>
   </section>
   <section>
-    <h2 data-num="8">成功樣貌（v1 做到什麼算成功）</h2>
+    <h2 id="sec-8" data-num="8">成功樣貌（v1 做到什麼算成功）</h2>
     <ul>
     <li>名單內<strong>每一位</strong>台灣球員，都能在站上看到：他現在在哪隊哪層、目前狀態、本季主要數據、最近的升降／傷兵動態。</li>
     <li>使用者能在<strong>一頁</strong>看懂某位球員的近況，不需再去英文網站。</li>
@@ -309,26 +379,69 @@
     </ul>
   </section>
   <section>
-    <h2 data-num="9">產品決策</h2>
+    <h2 id="sec-9" data-num="9">產品決策</h2>
     <blockquote><p>產品面決策，與 <code>spec/</code> 的技術未決項不同。</p></blockquote>
-    <h3>9.1 已定</h3>
+    <h3 id="sec-9-1">9.1 已定</h3>
     <ul>
     <li>✅ <strong>主要客群</strong>：兩者兼顧、<strong>關注型優先</strong>——預設呈現簡潔近況與動態，進階數據可展開或放次要位置。</li>
     <li>✅ <strong>首頁形態</strong>：<strong>動態導向</strong>——主軸為最近 24 小時（比賽結果 + 球員動態），其次為即將發生（下一場比賽）；球員名冊改放全域導覽（top / side bar）入口，不佔首頁主體（見 §5 F1-0）。</li>
-    <li>✅ <strong>數據呈現深度</strong>：依情境分層（見 §7.2 / §7.3）——今日快訊用單場精簡；球員頁用標準季賽數據 + 6 打者/6 投手進階數據（可調整清單）。WHIP 歸標準層。</li>
+    <li>✅ <strong>數據呈現深度</strong>：依情境分層（見 §7.2 / §7.3）——今日快訊用單場精簡；球員頁用標準季賽數據 + 一組打者/投手進階數據（各 7 項、可調整清單）。WHIP 歸標準層。</li>
     <li>✅ <strong>圖像素材</strong>：<strong>只放球隊 logo，不放球員照片</strong>（避開球員肖像權）。</li>
-    <li>✅ <strong>名詞／規則內容</strong>：v1 以數據名詞優先（起手 20~30 則、6+6 必做）、逐步累積、AI 輔助草擬+校訂；單頁採<strong>解讀優先</strong>三層結構（判讀/級距 → 定義算法小字 → 權威原始連結）；與球員數據雙向連結（見 §5 F2）。</li>
+    <li>✅ <strong>名詞／規則內容</strong>：v1 以數據名詞優先（起手 20~30 則、進階數據必做）、逐步累積、AI 輔助草擬+校訂；單頁採<strong>解讀優先</strong>三層結構（判讀/級距 → 定義算法小字 → 權威原始連結）；與球員數據雙向連結（見 §5 F2）。</li>
     <li>✅ <strong>語言</strong>：<strong>中文為主 + 英文原名輔助</strong>（球員／球隊附英文名對照），不做全站雙語。</li>
     <li>✅ <strong>通知／訂閱</strong>：<strong>列為 future，v1 不做</strong>（需帳號系統；見 §4.2、§4.3）。</li>
     </ul>
-    <h3>9.2 待定（Open Questions）</h3>
-    <p>（目前無；後續浮現新的產品問題再補回這裡。）</p>
+    <p>（2026-07-22 檢討後新增）</p>
+    <ul>
+    <li>✅ <strong>出賽預告</strong>：球員頁與首頁呈現下一場是否出賽——<strong>確定先發明顯標示</strong>，中繼/後援/野手即使非先發也標「可能上場」；開賽時間以<strong>台灣時間</strong>呈現。轉播/觀看資訊優先度較後（日後爬蟲補）（見 §5 F1-2 第 5 區）。</li>
+    <li>✅ <strong>近況一句話</strong>：≤20 字自動生成的自然語言近況，用於球員頁與首頁快訊（見 §7.4）。</li>
+    <li>✅ <strong>逐場成績</strong>：球員頁提供最近 N 場逐場 box line（見 §5 F1-2 第 3 區）。</li>
+    <li>✅ <strong>賽程呈現</strong>：至少呈現<strong>下一個系列賽</strong>（對手、地點）+ 最近結果，非整季賽程表（見 §5 F1-2 第 5 區）。</li>
+    <li>✅ <strong>社群分享</strong>：球員頁/亮點可分享、帶 Open Graph 預覽（見 §6）。</li>
+    <li>✅ <strong>收藏「我的球員」</strong>：列為<strong>低優先加分項</strong>（localStorage、無帳號）（見 §5 F1-4）。</li>
+    <li>✅ <strong>進階數據定位</strong>：重要但<strong>非 v1 首要</strong>，完整化可延續到下一 phase；名詞解釋則維持核心（呼應重視的入站情境）。</li>
+    <li>✅ <strong>深色模式</strong>：v1 不特別列需求，留待<strong>設計階段</strong>再評估。</li>
+    </ul>
+    <h3 id="sec-9-2">9.2 待定（Open Questions）</h3>
+    <ul class="todo">
+    <li class=""><strong>休賽期 / 無出賽日的首頁空狀態</strong>要放什麼？（v1 先做一個空畫面占位，內容你再想——例：即將開季倒數、最近里程碑回顧、名詞知識入口…）</li>
+    </ul>
   </section>
 
   <footer class="page-foot">
     自動由 <code>docs/requirements.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
+  </div>
 </div>
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc nav a'));
+  if (!links.length) return;
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) { byId[id] = a; targets.push(el); }
+  });
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var active = null;
+      for (var i = 0; i < targets.length; i++) {
+        if (visible[targets[i].id]) { active = targets[i].id; break; }
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (active && byId[active]) byId[active].classList.add('active');
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  }
+  // 手機版預設收合目錄
+  var box = document.querySelector('.toc-box');
+  if (box && window.matchMedia('(max-width: 960px)').matches) box.removeAttribute('open');
+})();
+</script>
 </body>
 </html>

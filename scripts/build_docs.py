@@ -118,6 +118,52 @@ STYLE = """
     td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
     td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
   }
+
+  /* ── 側邊欄目錄 ──────────────────────────────────────────────────── */
+  html { scroll-behavior: smooth; }
+  h2, h3 { scroll-margin-top: 1.5rem; }
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .layout > .wrap { flex: 1 1 auto; min-width: 0; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: flex-start;
+    flex: 0 0 250px; width: 250px; max-height: 100vh; overflow-y: auto;
+    padding: 2.75rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+  }
+  .toc summary {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: .75rem; pointer-events: none;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::after {
+    content: "\\25be"; float: right; transition: transform .15s ease; pointer-events: none;
+  }
+  .toc-box:not([open]) summary::after { transform: rotate(-90deg); }
+  .toc nav ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc nav li { margin: 0; }
+  .toc nav a {
+    display: block; text-decoration: none; color: var(--muted);
+    font-size: .86rem; line-height: 1.4; padding: .32rem .55rem;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+    transition: color .12s, background .12s;
+  }
+  .toc nav a:hover { color: var(--fg); background: var(--code-bg); }
+  .toc nav a.active {
+    color: var(--accent); background: var(--code-bg); border-left-color: var(--accent); font-weight: 600;
+  }
+  .toc .toc-num { color: var(--accent); margin-right: .45rem; font-variant-numeric: tabular-nums; }
+  .toc ul.sub { padding-left: .7rem; margin: .1rem 0 .35rem; }
+  .toc ul.sub a { font-size: .8rem; padding: .24rem .55rem; color: var(--muted); }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    .toc {
+      position: static; width: auto; flex: none; max-height: none; overflow: visible;
+      border-right: none; border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.25rem; margin: 0;
+    }
+    .toc summary { pointer-events: auto; margin-bottom: 0; }
+    .toc-box[open] summary { margin-bottom: .6rem; }
+  }
 """
 
 PAGE = """<!doctype html>
@@ -129,7 +175,8 @@ PAGE = """<!doctype html>
 <style>{style}</style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
+{aside}  <div class="wrap">
 
   <header class="page-head">
     <h1>{h1}</h1>{subtitle}{badges}
@@ -140,10 +187,42 @@ PAGE = """<!doctype html>
     自動由 <code>{src}</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
+  </div>
 </div>
+{script}
 </body>
 </html>
 """
+
+TOC_SCRIPT = """<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc nav a'));
+  if (!links.length) return;
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) { byId[id] = a; targets.push(el); }
+  });
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var active = null;
+      for (var i = 0; i < targets.length; i++) {
+        if (visible[targets[i].id]) { active = targets[i].id; break; }
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (active && byId[active]) byId[active].classList.add('active');
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  }
+  // 手機版預設收合目錄
+  var box = document.querySelector('.toc-box');
+  if (box && window.matchMedia('(max-width: 960px)').matches) box.removeAttribute('open');
+})();
+</script>"""
 
 ARROW_CHARS = set("←↑→↓")
 
@@ -248,6 +327,26 @@ def is_table_sep(line):
     return bool(re.match(r"^\s*\|?[\s:|-]+\|[\s:|-]*$", line)) and "-" in line
 
 
+# ── 側邊欄目錄 ───────────────────────────────────────────────────────────────
+def build_toc(headings):
+    """headings: [{id, num, label, children:[{id, label}]}] → <aside> HTML（空則回傳 ""）"""
+    if not headings:
+        return ""
+    lis = []
+    for h in headings:
+        num = '<span class="toc-num">%s</span>' % h["num"] if h["num"] else ""
+        inner = '<a href="#%s">%s%s</a>' % (h["id"], num, h["label"])
+        if h["children"]:
+            subs = "".join(
+                '<li><a href="#%s">%s</a></li>' % (c["id"], c["label"]) for c in h["children"]
+            )
+            inner += '<ul class="sub">%s</ul>' % subs
+        lis.append("<li>%s</li>" % inner)
+    nav = '<nav><ul>%s</ul></nav>' % "".join(lis)
+    return ('  <aside class="toc"><details class="toc-box" open>'
+            '<summary>目錄</summary>%s</details></aside>\n' % nav)
+
+
 # ── 主轉換 ───────────────────────────────────────────────────────────────────
 def convert(md, src_rel):
     lines = md.split("\n")
@@ -296,6 +395,9 @@ def convert(md, src_rel):
         subtitle_html = "\n    <p>" + "<br>".join(paras) + "</p>"
 
     blocks = []          # (kind, html)
+    headings = []        # 側邊欄目錄用
+    sec_idx = 0          # h2 計數
+    sub_idx = 0          # 目前 h2 底下的 h3 計數
     while i < n:
         line = lines[i]
         stripped = line.strip()
@@ -331,13 +433,26 @@ def convert(md, src_rel):
             level = len(m.group(1))
             text = m.group(2).strip()
             if level == 2:
+                sec_idx += 1
+                sub_idx = 0
+                hid = "sec-%d" % sec_idx
                 dm = re.match(r"^([0-9]+|[A-Z])\.\s+(.*)$", text)
                 if dm:
-                    blocks.append(("h2", '<h2 data-num="%s">%s</h2>' % (dm.group(1), inline(dm.group(2)))))
+                    num, label = dm.group(1), inline(dm.group(2))
+                    blocks.append(("h2", '<h2 id="%s" data-num="%s">%s</h2>' % (hid, num, label)))
                 else:
-                    blocks.append(("h2", "<h2>%s</h2>" % inline(text)))
+                    num, label = "", inline(text)
+                    blocks.append(("h2", '<h2 id="%s">%s</h2>' % (hid, label)))
+                headings.append({"id": hid, "num": num, "label": label, "children": []})
             else:
-                blocks.append(("h3", "<h3>%s</h3>" % inline(text)))
+                sub_idx += 1
+                hid = "sec-%d-%d" % (sec_idx, sub_idx)
+                label = inline(text)
+                blocks.append(("h3", '<h3 id="%s">%s</h3>' % (hid, label)))
+                if headings:
+                    headings[-1]["children"].append({"id": hid, "label": label})
+                else:
+                    headings.append({"id": hid, "num": "", "label": label, "children": []})
             i += 1
             continue
 
@@ -407,6 +522,8 @@ def convert(md, src_rel):
         badges=badges_html,
         body=body,
         src=html.escape(src_rel),
+        aside=build_toc(headings),
+        script=TOC_SCRIPT,
     )
 
 

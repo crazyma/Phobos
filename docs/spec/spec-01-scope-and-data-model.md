@@ -47,6 +47,19 @@
 - `SEASON_BACKFILL_START = 2020`（設定值，非寫死）。v1 只抓 2020 (含) 之後的球季。
 - 未來 phase 要往前補時，只需調小這個值 + reprocess，schema 不動。
 
+### A.6 資料粒度層次
+
+三種粒度，v1 做前兩種：
+
+| 粒度 | 說明 | 表 | v1 |
+|---|---|---|---|
+| 球季累計（season） | 每季／層級／球隊的累計數據 | `season_batting_stats` / `season_pitching_stats`（B.4/B.5） | ✅ |
+| **逐場（game-log）** | 每球員每場的 box line，供逐場成績、近況一句話、首頁 24h 賽果 | `game_batting_stats` / `game_pitching_stats`（B.9/B.10） | ✅ **本次新增** |
+| 逐球（pitch-level, Statcast） | 單季 70 萬+ 顆球、修正頻繁 | — | ⛔ 未來 |
+
+- 另有 `player_recent_form`（B.11）存**近況一句話**，由逐場資料在 ETL 端預先歸納（見 requirements §7.4）。
+- **game-log 資料源**：MLB Stats API 的 `gameLog` 端點（pybaseball 無乾淨的逐場 API）；賽程／先發預告亦走 StatsAPI schedule 端點。
+
 ---
 
 ## B. Curated 資料模型（欄位級）
@@ -57,7 +70,7 @@
 ### B.1 列舉型別（enums）
 
 ```
-level          : MLB | AAA | AA | A_PLUS | A | ROOKIE      # v1 成績只用前三，roster 可用全部
+level          : MLB | AAA | AA | A_PLUS | A | ROOKIE      # v1 成績涵蓋全層級（能抓到就收）；roster 亦全部
 roster_status  : active | il_10 | il_15 | il_60 | minors | restricted | dfa | free_agent | suspended
 transaction_type: callup | send_down | trade | waiver | released | signed
                 | selected | dfa | il_placed | il_activated | outrighted | other
@@ -116,7 +129,7 @@ throw_side     : L | R
 | `level` | `level` NOT NULL | |
 | `team_id` | `integer` NOT NULL → `teams` | |
 | 計數：`g, pa, ab, r, h, b2, b3, hr, rbi, bb, so, sb, cs, hbp, sf, sh, gdp` | `integer` | 二壘打/三壘打用 `b2`/`b3` 避免數字開頭 |
-| 進階（存上游值，無法由計數重算的才存）：`woba, wrc_plus` | `numeric` NULL | avg/obp/slg/ops 由計數欄算，不落庫 |
+| 進階（只存無法由計數重算的）：`woba, wrc_plus, war` | `numeric` NULL | `iso`/`bb%`/`k%`/`babip`、avg/obp/slg/ops 皆由計數欄算，不落庫 |
 | `source` | `text` NOT NULL | `fangraphs` / `statsapi` |
 | `updated_at` | `timestamptz` NOT NULL | |
 
@@ -134,7 +147,7 @@ throw_side     : L | R
 | `level` | `level` NOT NULL | |
 | `team_id` | `integer` NOT NULL → `teams` | |
 | `w, l, g, gs, sv, hld, ip_outs, h, r, er, hr, bb, so, hbp, bf, wp, bk` | `integer` | **局數存 `ip_outs`** |
-| 進階（存值）：`era, fip, whip` | `numeric` NULL | 可由計數算的顯示時算；存 fip 因需常數 |
+| 進階（只存無法由計數重算的）：`fip, war` | `numeric` NULL | `era`/`whip`/`k%`/`bb%`/`hr9`/`lob%`/`babip` 皆由計數欄算，不落庫（需常數/外部模型者才存） |
 | `source` | `text` NOT NULL | |
 | `updated_at` | `timestamptz` NOT NULL | |
 
@@ -175,30 +188,89 @@ throw_side     : L | R
 
 - **Upsert key**：有 `mlb_transaction_id` 用它；否則 `(mlb_player_id, date, type, description)`。
 
-### B.8 `games` — 球隊賽程與結果（供「所屬球隊賽程」）
+### B.8 `games` — 賽程與結果（供賽程、出賽預告、首頁 24h）
 
-- v1 先做 **MLB 層級**賽程；為 schedule 顯示用，非逐球資料。
+- 涵蓋**被追蹤球員所屬球隊**的賽程（各層級，非全聯盟）；供「下一個系列賽」「出賽預告」「首頁最近 24h 賽果」。
 
 | 欄位 | 型別 | 說明 |
 |---|---|---|
-| `mlb_game_id` | `bigint` **PK** | StatsAPI gamePk |
+| `mlb_game_id` | `bigint` **PK** | StatsAPI gamePk（雙重賽每場各有獨立 gamePk） |
 | `season` | `integer` NOT NULL | |
-| `date` | `date` NOT NULL | 比賽日（見時區備註） |
+| `game_date` | `date` NOT NULL | 比賽日（當地） |
+| `start_time_utc` | `timestamptz` NULL | 開賽時間（UTC）；**顯示端轉台灣時間**；未定為 NULL |
+| `game_number` | `smallint` NOT NULL default `1` | 雙重賽第幾場（顯示用） |
 | `level` | `level` NOT NULL | |
 | `home_team_id` | `integer` NOT NULL → `teams` | |
 | `away_team_id` | `integer` NOT NULL → `teams` | |
+| `venue_name` | `text` NULL | 場地（供「下一系列在舊金山」） |
 | `home_score` | `integer` NULL | 未打完為 NULL |
 | `away_score` | `integer` NULL | |
 | `status` | `game_status` NOT NULL | |
+| `probable_home_pitcher_id` | `integer` NULL → `players` | 先發投手預告（出賽預告用） |
+| `probable_away_pitcher_id` | `integer` NULL → `players` | 同上 |
 | `updated_at` | `timestamptz` NOT NULL | |
 
 - **Upsert key**：`mlb_game_id`。
+- **系列賽（series）** 為衍生概念：由連續、對同一對手、同場地的 games 分組得出，不另存欄位。
+- **野手先發打線**約開賽前 1~2 小時才公布，v1 **不落庫**（best-effort；`games` 只存先發投手預告）。
+
+### B.9 `game_batting_stats` — 逐場打擊（game-log）
+
+- **粒度**：`(mlb_player_id, mlb_game_id)` = 一位球員某場的打擊 box line。
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `mlb_player_id` | `integer` NOT NULL → `players` | |
+| `mlb_game_id` | `bigint` NOT NULL → `games` | |
+| `game_date` | `date` NOT NULL | 供時間軸／24h 篩選 |
+| `level` | `level` NOT NULL | |
+| `team_id` | `integer` NOT NULL → `teams` | 該場所屬球隊 |
+| `started` | `boolean` NULL | 是否先發 |
+| `batting_order` | `smallint` NULL | 棒次 |
+| 計數：`pa, ab, r, h, b2, b3, hr, rbi, bb, so, sb, cs, hbp, sf, sh, gdp` | `integer` | 單場 |
+| `source` | `text` NOT NULL | `statsapi` |
+| `updated_at` | `timestamptz` NOT NULL | |
+
+- **PK / Upsert key**：`(mlb_player_id, mlb_game_id)`。
+
+### B.10 `game_pitching_stats` — 逐場投球（game-log）
+
+- **粒度**：`(mlb_player_id, mlb_game_id)`。
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `mlb_player_id` | `integer` NOT NULL → `players` | |
+| `mlb_game_id` | `bigint` NOT NULL → `games` | |
+| `game_date` | `date` NOT NULL | |
+| `level` | `level` NOT NULL | |
+| `team_id` | `integer` NOT NULL → `teams` | |
+| `gs` | `boolean` NULL | 是否先發 |
+| `decision` | `text` NULL | `W` / `L` / `SV` / `HLD` / `ND` |
+| 計數：`ip_outs, h, r, er, hr, bb, so, hbp, bf, pitches` | `integer` | **局數存 `ip_outs`** |
+| `source` | `text` NOT NULL | `statsapi` |
+| `updated_at` | `timestamptz` NOT NULL | |
+
+- **PK / Upsert key**：`(mlb_player_id, mlb_game_id)`。
+
+### B.11 `player_recent_form` — 近況一句話（ETL 預先歸納）
+
+- 存每位球員的**近況一句話**（≤20 字），由 B.9/B.10 逐場資料在 ETL 端歸納（連續紀錄、單場亮點、生涯新高…），供球員頁與首頁快訊直接讀、不在 request 時重算。
+
+| 欄位 | 型別 | 說明 |
+|---|---|---|
+| `mlb_player_id` | `integer` **PK** → `players` | |
+| `blurb` | `text` NULL | 近況一句話（≤20 字）；無則 NULL |
+| `as_of_date` | `date` NULL | 依據到哪天的資料 |
+| `updated_at` | `timestamptz` NOT NULL | |
+
+- **Upsert key**：`mlb_player_id`。
+- 歸納規則（偵測哪些 pattern、怎麼選最有代表性的一句）為 ETL 邏輯，待 ETL spec 定（見 §E、requirements §7.4）。
 
 ---
 
 ## C. Raw layer（原則，不逐欄設計）
 
-- 每個來源一張 raw 表：`raw_fangraphs_batting`、`raw_fangraphs_pitching`、`raw_statsapi_transactions`、`raw_statsapi_roster`、`raw_statsapi_schedule`…
+- 每個來源一張 raw 表：`raw_fangraphs_batting`、`raw_fangraphs_pitching`、`raw_statsapi_transactions`、`raw_statsapi_roster`、`raw_statsapi_schedule`、`raw_statsapi_gamelog`…
 - 統一結構：`natural_key`（來源自然鍵）+ `payload jsonb`（原始回傳）+ `source` + `fetched_at`。
 - curated 由 raw 轉換而來；上游欄位變動時只重寫轉換 + reprocess，不必重抓。
 
@@ -254,8 +326,10 @@ export const seasonBattingStats = pgTable("season_batting_stats", {
 
 ## E. 這塊仍待決 / 往後 spec 要處理的 Open Items
 
-- [ ] 進階數據要顯示到多細？（只 slash line + HR/RBI，還是含 wRC+/FIP…）— 影響 B.4/B.5 落庫欄位。
-- [ ] **時區**：`games.date`、ETL 排程時間怎麼統一（美東賽事 vs 台灣時間）— 建議一律存 UTC + 顯示端轉換，下一份 ETL spec 定案。
+- [ ] 確認上游（FanGraphs / StatsAPI）是否直接提供需落庫的進階值（打 `woba`/`wrc_plus`/`war`；投 `fip`/`war`），或需自算；其餘（iso/bb%/k%/hr9/lob%/babip…）顯示時由計數算（B.4/B.5 已標明存/算之分）。
+- [ ] **game-log 對齊**：StatsAPI `gameLog` 端點回傳欄位 → curated `game_batting_stats` / `game_pitching_stats` 的對齊表；`started`/`gs`/`decision` 怎麼取。
+- [ ] **近況一句話規則**：偵測哪些 pattern（連續紀錄、單場亮點、生涯/賽季新高…）、如何選最有代表性的一句、生涯新高需要的歷史基準怎麼算（見 requirements §7.4）。
+- [ ] **出賽預告 / 時區**：schedule 端點取 `start_time_utc`、`probable_*_pitcher`、`venue`；一律存 UTC + 顯示端轉台灣時間（Node 用原生 `Intl` 或 `date-fns-tz`、Python 用 `zoneinfo`）。
 - [ ] 小聯盟成績的資料源細節：StatsAPI `sportId=11/12` 端點的實際回傳欄位與 pybaseball 欄位對齊表。
 - [ ] `transaction_type` 列舉是否涵蓋 StatsAPI 實際會出現的所有型別（需實測 transactions 端點）。
 - [ ] `players` 白名單的維護介面：先手動改 DB / 種子腳本，還是要簡單後台？（v1 可先腳本）

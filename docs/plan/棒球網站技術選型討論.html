@@ -101,17 +101,65 @@
     td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
     td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
   }
+
+  /* ── 側邊欄目錄 ──────────────────────────────────────────────────── */
+  html { scroll-behavior: smooth; }
+  h2, h3 { scroll-margin-top: 1.5rem; }
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .layout > .wrap { flex: 1 1 auto; min-width: 0; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: flex-start;
+    flex: 0 0 250px; width: 250px; max-height: 100vh; overflow-y: auto;
+    padding: 2.75rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+  }
+  .toc summary {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: .75rem; pointer-events: none;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::after {
+    content: "\25be"; float: right; transition: transform .15s ease; pointer-events: none;
+  }
+  .toc-box:not([open]) summary::after { transform: rotate(-90deg); }
+  .toc nav ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc nav li { margin: 0; }
+  .toc nav a {
+    display: block; text-decoration: none; color: var(--muted);
+    font-size: .86rem; line-height: 1.4; padding: .32rem .55rem;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+    transition: color .12s, background .12s;
+  }
+  .toc nav a:hover { color: var(--fg); background: var(--code-bg); }
+  .toc nav a.active {
+    color: var(--accent); background: var(--code-bg); border-left-color: var(--accent); font-weight: 600;
+  }
+  .toc .toc-num { color: var(--accent); margin-right: .45rem; font-variant-numeric: tabular-nums; }
+  .toc ul.sub { padding-left: .7rem; margin: .1rem 0 .35rem; }
+  .toc ul.sub a { font-size: .8rem; padding: .24rem .55rem; color: var(--muted); }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    .toc {
+      position: static; width: auto; flex: none; max-height: none; overflow: visible;
+      border-right: none; border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.25rem; margin: 0;
+    }
+    .toc summary { pointer-events: auto; margin-bottom: 0; }
+    .toc-box[open] summary { margin-bottom: .6rem; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">專案背景</a></li><li><a href="#sec-2">後端框架：NestJS</a></li><li><a href="#sec-3">Python 資料來源的架構建議</a></li><li><a href="#sec-4">前端框架：Next.js（React）</a></li><li><a href="#sec-5">推薦的起步組合</a></li><li><a href="#sec-6">關於 UI 的可替換性</a></li></ul></nav></details></aside>
+  <div class="wrap">
 
   <header class="page-head">
     <h1>台灣球員大聯盟網站 — 技術選型討論整理</h1>
   </header>
 
   <section>
-    <h2>專案背景</h2>
+    <h2 id="sec-1">專案背景</h2>
     <p>一個關於棒球的網站，初期規劃兩個核心功能，並預想了後續擴充方向。</p>
     <p><strong>現有功能</strong></p>
     <ol>
@@ -126,7 +174,7 @@
     <p><strong>資料來源</strong>：透過已知的 Python API 或自寫爬蟲取得數據。</p>
   </section>
   <section>
-    <h2>後端框架：NestJS</h2>
+    <h2 id="sec-2">後端框架：NestJS</h2>
     <p><strong>推薦理由</strong></p>
     <ul>
     <li>專案會累積多種資料類型（球員資料、打擊/投球數據、動態、新聞、專欄），NestJS 的模組化設計讓各 domain 清楚分離，長期加功能不會越來越亂。</li>
@@ -143,7 +191,7 @@
     <blockquote><p>若覺得 NestJS 太重，Express + TypeScript 或 Fastify 也完全可行。但考量到已預想功能 3、4 的長期演進，前期多花點時間搭架構，後面加功能會輕鬆很多。</p></blockquote>
   </section>
   <section>
-    <h2>Python 資料來源的架構建議</h2>
+    <h2 id="sec-3">Python 資料來源的架構建議</h2>
     <p>不需要把 Python 邏輯搬到 Node，較乾淨的做法是職責分離：</p>
     <ul>
     <li><strong>Python 端</strong>：專心負責爬蟲 / 呼叫 MLB API（<code>pybaseball</code> 這類 library 生態成熟），把資料寫進資料庫或提供內部 API。</li>
@@ -152,7 +200,7 @@
     </ul>
   </section>
   <section>
-    <h2>前端框架：Next.js（React）</h2>
+    <h2 id="sec-4">前端框架：Next.js（React）</h2>
     <p><strong>推薦理由</strong></p>
     <ul>
     <li><strong>靜態 + 動態混合正好對到需求</strong>：App Router 可針對不同頁面選不同渲染策略。
@@ -172,7 +220,7 @@
     <blockquote><p>建議：初期先用 Next.js 全包，等功能 1 數據處理、功能 3 定期爬取、功能 4 寫手權限等複雜度真的長出來，再把後端邏輯抽到獨立的 NestJS 服務。不用一開始就過度設計。</p></blockquote>
   </section>
   <section>
-    <h2>推薦的起步組合</h2>
+    <h2 id="sec-5">推薦的起步組合</h2>
     <table>
     <thead><tr><th>層次</th><th>選擇</th></tr></thead>
     <tbody>
@@ -187,7 +235,7 @@
     <p>整個 web 這側都是 TypeScript，Python 只當純資料層，界線乾淨。</p>
   </section>
   <section>
-    <h2>關於 UI 的可替換性</h2>
+    <h2 id="sec-6">關於 UI 的可替換性</h2>
     <p>UI 這層相對最容易替換，但要分層次看，替換難度差很多：</p>
     <p><strong>由易到難</strong></p>
     <ol>
@@ -218,6 +266,36 @@
     自動由 <code>docs/plan/棒球網站技術選型討論.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
+  </div>
 </div>
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc nav a'));
+  if (!links.length) return;
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) { byId[id] = a; targets.push(el); }
+  });
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var active = null;
+      for (var i = 0; i < targets.length; i++) {
+        if (visible[targets[i].id]) { active = targets[i].id; break; }
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (active && byId[active]) byId[active].classList.add('active');
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  }
+  // 手機版預設收合目錄
+  var box = document.querySelector('.toc-box');
+  if (box && window.matchMedia('(max-width: 960px)').matches) box.removeAttribute('open');
+})();
+</script>
 </body>
 </html>

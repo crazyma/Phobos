@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Python &amp; Rust 開發環境安裝紀錄</title>
+<title>Spec 總覽 — 台灣球員大聯盟網站</title>
 <style>
   :root {
     --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
@@ -151,95 +151,91 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">1</span>安裝前環境檢查</a></li><li><a href="#sec-2"><span class="toc-num">2</span>工具選型</a></li><li><a href="#sec-3"><span class="toc-num">3</span>安裝步驟</a><ul class="sub"><li><a href="#sec-3-1">3.1 uv（Python）</a></li><li><a href="#sec-3-2">3.2 rustup（Rust）</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">4</span>安裝結果</a></li><li><a href="#sec-5"><span class="toc-num">5</span>快速上手指令</a><ul class="sub"><li><a href="#sec-5-1">Python（uv）</a></li><li><a href="#sec-5-2">Rust（cargo）</a></li></ul></li><li><a href="#sec-6"><span class="toc-num">6</span>備註</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">1</span>Spec 清單</a></li><li><a href="#sec-2"><span class="toc-num">2</span>各 Spec 範圍</a><ul class="sub"><li><a href="#sec-2-1">spec-01 — 範疇 + 資料模型（🟡）</a></li><li><a href="#sec-2-2">spec-02 — 頁面 / 路由 IA + 對外 API 合約（🟡 初稿）</a></li><li><a href="#sec-2-3">spec-03 — ETL / 資料同步管線（🟡 初稿）</a></li><li><a href="#sec-2-4">spec-04 — 名詞 / 知識庫（⬜）</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">3</span>橫向項目的歸屬（避免無家可歸）</a></li><li><a href="#sec-4"><span class="toc-num">4</span>依賴關係</a></li><li><a href="#sec-5"><span class="toc-num">5</span>更新慣例</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
-    <h1>Python &amp; Rust 開發環境安裝紀錄</h1>
-    <p>日期：2026-07-16　平台：macOS（Apple Silicon / aarch64）</p>
+    <h1>Spec 總覽 — 台灣球員大聯盟網站</h1>
+    <p><code>spec/</code> 的入口地圖：整份規格預計切成哪幾塊、各做什麼、狀態與依賴。每完成一份 spec 回來更新狀態。上游是 <code>../requirements.md</code>（產品需求）與 <code>../adr/decisions.md</code>（技術決策）。</p>
+    <div class="badges"><span class="badge"><strong>類型</strong> spec 索引/地圖</span><span class="badge"><strong>上游</strong> requirements.md</span><span class="badge"><strong>用途</strong> 一眼看清 spec 切分</span></div>
   </header>
 
   <section>
-    <h2 id="sec-1" data-num="1">安裝前環境檢查</h2>
+    <h2 id="sec-1" data-num="1">Spec 清單</h2>
     <table>
-    <thead><tr><th>項目</th><th>安裝前狀態</th></tr></thead>
+    <thead><tr><th>Spec</th><th>主題</th><th>做什麼</th><th>狀態</th></tr></thead>
     <tbody>
-    <tr><td data-label="項目">Homebrew</td><td data-label="安裝前狀態">已安裝（6.0.11）</td></tr>
-    <tr><td data-label="項目">Xcode Command Line Tools</td><td data-label="安裝前狀態">已安裝</td></tr>
-    <tr><td data-label="項目">Python</td><td data-label="安裝前狀態">僅系統內建 <code>/usr/bin/python3</code>，版本 3.9.6（過舊）</td></tr>
-    <tr><td data-label="項目">Rust</td><td data-label="安裝前狀態">完全未安裝（rustc / cargo / rustup 皆無）</td></tr>
-    <tr><td data-label="項目">uv / pyenv</td><td data-label="安裝前狀態">皆無</td></tr>
+    <tr><td data-label="Spec"><strong>spec-01</strong></td><td data-label="主題">範疇 + 資料模型</td><td data-label="做什麼">台灣球員範疇、層級、資料粒度（season / game-log）、curated schema、raw 分層</td><td data-label="狀態">🟡 大致完成（進階數據欄位待補齊）</td></tr>
+    <tr><td data-label="Spec"><strong>spec-02</strong></td><td data-label="主題">頁面 / 路由 IA + 對外 API 合約</td><td data-label="做什麼">sitemap 與路由、每頁顯示什麼、渲染策略、對外 API endpoint 與回傳 JSON（Zod）、時區顯示、OG／分享</td><td data-label="狀態">🟡 初稿（有 6 項 open items）</td></tr>
+    <tr><td data-label="Spec"><strong>spec-03</strong></td><td data-label="主題">ETL / 資料同步管線</td><td data-label="做什麼">Python 端各資料源模組、raw→curated 轉換、upsert、一天兩次排程、錯誤處理、近況一句話生成、時區存 UTC</td><td data-label="狀態">🟡 初稿（有 6 項 open items）</td></tr>
+    <tr><td data-label="Spec"><strong>spec-04</strong></td><td data-label="主題">名詞 / 知識庫（F2）</td><td data-label="做什麼">MDX 內容系統、單頁「解讀優先」三層模板、分類、與球員數據雙向連結、起手 20~30 則清單</td><td data-label="狀態">⬜ 未開始</td></tr>
     </tbody>
     </table>
+    <p>狀態圖例：✅ 完成｜🟡 大致完成／有待補｜⬜ 未開始</p>
   </section>
   <section>
-    <h2 id="sec-2" data-num="2">工具選型</h2>
-    <table>
-    <thead><tr><th>面向</th><th>選擇</th><th>原因</th></tr></thead>
-    <tbody>
-    <tr><td data-label="面向">Python 工具鏈</td><td data-label="選擇"><strong>uv</strong></td><td data-label="原因">Astral 推出的現代工具，同時管理 Python 版本與虛擬環境/套件，速度快，一個工具搞定</td></tr>
-    <tr><td data-label="面向">Rust 安裝方式</td><td data-label="選擇"><strong>rustup</strong></td><td data-label="原因">Rust 官方安裝工具，方便管理 stable/nightly 版本與 rustc/cargo 更新，是官方建議的標準做法</td></tr>
-    </tbody>
-    </table>
-  </section>
-  <section>
-    <h2 id="sec-3" data-num="3">安裝步驟</h2>
-    <h3 id="sec-3-1">3.1 uv（Python）</h3>
-    <pre><code>brew install uv</code></pre>
-    <p>安裝後透過 uv 安裝獨立的 Python 版本，取代系統舊版 3.9.6：</p>
-    <pre><code>uv python install 3.13</code></pre>
-    <h3 id="sec-3-2">3.2 rustup（Rust）</h3>
-    <p>使用官方安裝腳本（<code>sh.rustup.rs</code>），下載後檢查內容再執行：</p>
-    <pre><code>curl --proto &#x27;=https&#x27; --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
-    sh rustup-init.sh -y --default-toolchain stable --profile default</code></pre>
-    <p>rustup 會自動在 <code>~/.zshenv</code> 加入：</p>
-    <pre><code>. &quot;$HOME/.cargo/env&quot;</code></pre>
-    <p>讓每次開啟新終端機都能載入 <code>cargo</code> / <code>rustc</code> 的 PATH。</p>
-  </section>
-  <section>
-    <h2 id="sec-4" data-num="4">安裝結果</h2>
-    <table>
-    <thead><tr><th>工具</th><th>版本</th></tr></thead>
-    <tbody>
-    <tr><td data-label="工具">uv</td><td data-label="版本">0.11.29</td></tr>
-    <tr><td data-label="工具">Python（uv 管理）</td><td data-label="版本">3.13.14（<code>~/.local/bin/python3.13</code>）</td></tr>
-    <tr><td data-label="工具">rustup</td><td data-label="版本">1.29.0</td></tr>
-    <tr><td data-label="工具">rustc</td><td data-label="版本">1.97.0 (stable)</td></tr>
-    <tr><td data-label="工具">cargo</td><td data-label="版本">1.97.0 (stable)</td></tr>
-    </tbody>
-    </table>
-    <p>已安裝的 Rust component（<code>default</code> profile）：</p>
+    <h2 id="sec-2" data-num="2">各 Spec 範圍</h2>
+    <h3 id="sec-2-1">spec-01 — 範疇 + 資料模型（🟡）</h3>
     <ul>
-    <li><code>rustc</code></li>
-    <li><code>cargo</code></li>
-    <li><code>clippy</code>（linter）</li>
-    <li><code>rustfmt</code>（格式化工具）</li>
-    <li><code>rust-std</code></li>
-    <li><code>rust-docs</code></li>
+    <li>台灣球員白名單、涵蓋層級（MLB→新人聯盟 best-effort）、時間範圍（2020 起）。</li>
+    <li>資料粒度：season 累計、<strong>game-log 逐場</strong>（pitch-level 為未來）。</li>
+    <li>curated schema：<code>players</code> / <code>teams</code> / <code>season_*_stats</code> / <code>game_*_stats</code> / <code>roster_status</code> / <code>transactions</code> / <code>games</code> / <code>player_recent_form</code>；raw 分層。</li>
+    <li><strong>待補</strong>：B.4/B.5 進階數據欄位補齊（對應 requirements §7.3 的打投各 7 項）。</li>
+    </ul>
+    <h3 id="sec-2-2">spec-02 — 頁面 / 路由 IA + 對外 API 合約（🟡 初稿）</h3>
+    <ul>
+    <li><strong>IA / 路由</strong>：首頁（動態導向）、球員總覽、球員頁、名詞頁；全域導覽（top/side bar）放名冊與名詞入口。</li>
+    <li><strong>每頁顯示什麼</strong>：對照 requirements F1-0~F1-4、F2。</li>
+    <li><strong>渲染策略</strong>：名詞頁 SSG；球員數據頁 Server Component 直讀 DB；首頁動態視情況 SSR/ISR。</li>
+    <li><strong>對外 API 合約</strong>：Route Handlers 的 endpoint、參數、回傳 JSON 形狀（= Zod schema 雛形）。</li>
+    <li><strong>橫向</strong>：時區顯示（台灣時間）、OG／分享 metadata、空狀態／休賽期畫面。</li>
+    </ul>
+    <h3 id="sec-2-3">spec-03 — ETL / 資料同步管線（🟡 初稿）</h3>
+    <ul>
+    <li><strong>資料源模組</strong>（各自獨立）：pybaseball 球季數據；MLB Stats API 的 gamelog / schedule（含先發預告、開賽時間、場地）/ transactions / roster。</li>
+    <li>raw→curated 轉換與 <strong>upsert</strong>；一天兩次 cron / systemd timer；單源失敗跳過並記 log。</li>
+    <li><strong>近況一句話生成</strong>：由 game-log 歸納（連續紀錄／單場亮點／生涯新高…）寫入 <code>player_recent_form</code>。</li>
+    <li>時區：一律存 UTC。</li>
+    </ul>
+    <h3 id="sec-2-4">spec-04 — 名詞 / 知識庫（⬜）</h3>
+    <ul>
+    <li>MDX 內容系統、<code>@next/mdx</code> build-time SSG。</li>
+    <li>單頁「解讀優先」三層：判讀／級距 → 定義算法小字 → 權威原始連結。</li>
+    <li>主題分類、與球員頁數據雙向連結、起手 20~30 則（打投各 7 項進階為必做核心）。</li>
     </ul>
   </section>
   <section>
-    <h2 id="sec-5" data-num="5">快速上手指令</h2>
-    <h3 id="sec-5-1">Python（uv）</h3>
-    <pre><code>uv init myproject &amp;&amp; cd myproject
-    uv add requests          # 加套件
-    uv run python main.py    # 在虛擬環境中執行</code></pre>
-    <h3 id="sec-5-2">Rust（cargo）</h3>
-    <pre><code>cargo new myproject &amp;&amp; cd myproject
-    cargo build
-    cargo run</code></pre>
+    <h2 id="sec-3" data-num="3">橫向項目的歸屬（避免無家可歸）</h2>
+    <table>
+    <thead><tr><th>橫向項目</th><th>生成／儲存</th><th>呈現</th></tr></thead>
+    <tbody>
+    <tr><td data-label="橫向項目">近況一句話</td><td data-label="生成／儲存">spec-03（ETL 算）</td><td data-label="呈現">spec-02（球員頁、首頁快訊）</td></tr>
+    <tr><td data-label="橫向項目">時區</td><td data-label="生成／儲存">spec-03（存 UTC）</td><td data-label="呈現">spec-02（轉台灣時間顯示）</td></tr>
+    <tr><td data-label="橫向項目">出賽預告</td><td data-label="生成／儲存">spec-03（同步策略／新鮮度）</td><td data-label="呈現">spec-02（版面）</td></tr>
+    <tr><td data-label="橫向項目">進階數據欄位</td><td data-label="生成／儲存">spec-01（補齊 B.4/B.5）</td><td data-label="呈現">spec-02 呈現、spec-04 解釋</td></tr>
+    </tbody>
+    </table>
   </section>
   <section>
-    <h2 id="sec-6" data-num="6">備註</h2>
+    <h2 id="sec-4" data-num="4">依賴關係</h2>
+    <div class="arch-diagram">spec-01（資料底層） ──┬──► spec-02（前端 / API）   ← 可平行
+                          └──► spec-03（ETL）           ← 可平行
+    spec-04（名詞庫） ── 幾乎獨立，隨時可做</div>
     <ul>
-    <li>系統內建的 <code>/usr/bin/python3</code>（3.9.6）保留不動，僅新增 uv 管理的獨立 Python 版本，不影響系統既有相依。</li>
-    <li><code>~/.local/bin</code> 已存在於 <code>~/.zshrc</code> 的 <code>PATH</code> 設定中，uv 安裝的 Python 執行檔可直接被找到。</li>
-    <li>rustup 偵測到 <code>~/.rustup/settings.toml</code> 已存在（先前殘留設定），沿用其設定，未造成安裝問題。</li>
+    <li>spec-02、spec-03 都建在 spec-01 之上，可平行推進。</li>
+    <li>spec-04 幾乎不依賴其他 spec，可獨立進行。</li>
+    </ul>
+  </section>
+  <section>
+    <h2 id="sec-5" data-num="5">更新慣例</h2>
+    <ul>
+    <li>每份 spec 命名 <code>spec-NN-&lt;slug&gt;.md</code>；本總覽的「狀態」欄與 §1 清單在對應 spec 有進展時回來更新。</li>
+    <li>新增橫向需求時，先在 §3 決定它的歸屬，避免散落。</li>
     </ul>
   </section>
 
   <footer class="page-foot">
-    自動由 <code>docs/plan/dev-environment-setup.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+    自動由 <code>docs/spec/spec-00-overview.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
   </footer>
 
   </div>
