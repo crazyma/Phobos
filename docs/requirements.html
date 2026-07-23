@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>產品需求文件（PRD）— 台灣球員大聯盟網站</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+      --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+    --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.75; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  header.page-head { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+  header.page-head h1 { font-size: 1.7rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+  header.page-head p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+  .badge {
+    font-size: .78rem; padding: .2rem .6rem; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--muted); background: var(--card);
+  }
+  .badge strong { color: var(--accent); }
+  blockquote {
+    margin: 0 0 1.5rem; padding: .75rem 1rem; background: var(--code-bg);
+    border-left: 3px solid var(--accent); border-radius: 4px; color: var(--muted); font-size: .92rem;
+  }
+  blockquote p { margin: 0 0 .5rem; }
+  blockquote p:last-child { margin: 0; }
+  h2 { font-size: 1.25rem; margin: 2.75rem 0 1rem; padding-top: .25rem; color: var(--fg); }
+  h2::before { content: attr(data-num); color: var(--accent); margin-right: .5rem; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 1.02rem; margin: 1.75rem 0 .75rem; color: var(--fg); }
+  p { margin: 0 0 1rem; }
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: .35rem; }
+  strong { color: var(--fg); }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; font-size: .86em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1.25rem;
+  }
+  pre code { background: none; padding: 0; font-size: .82rem; line-height: 1.6; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; font-size: .9rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--code-bg); font-weight: 600; color: var(--muted);
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .arch-diagram {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem;
+    white-space: pre; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 1.1rem 1.2rem; overflow-x: auto; color: var(--muted); margin: 0 0 1.25rem;
+  }
+  .todo { list-style: none; padding-left: 0; }
+  .todo li { position: relative; padding-left: 1.6rem; }
+  .todo li::before {
+    content: ""; position: absolute; left: 0; top: .3rem; width: 1rem; height: 1rem;
+    border: 1.5px solid var(--muted); border-radius: 4px;
+  }
+  .todo li.done::before {
+    content: "\2713"; border-color: var(--accent); color: var(--accent);
+    font-size: .8rem; line-height: 1rem; text-align: center; font-weight: 700;
+  }
+  section { margin-bottom: .5rem; }
+  footer.page-foot {
+    margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .82rem;
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 2rem 1.1rem 4rem; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr { margin-bottom: .75rem; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
+    td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <h1>產品需求文件（PRD）— 台灣球員大聯盟網站</h1>
+    <p>從<strong>產品／服務面</strong>描述這個服務要解決什麼、為誰做、提供哪些具體功能。技術「用什麼、為什麼」見 <code>adr/decisions.md</code>；欄位級規格見 <code>spec/</code>。本文件是那兩者的上游。</p>
+    <div class="badges"><span class="badge"><strong>類型</strong> 產品需求</span><span class="badge"><strong>對象</strong> 台灣棒球迷</span><span class="badge"><strong>版本</strong> v1 範疇</span><span class="badge"><strong>語言</strong> 繁體中文</span></div>
+  </header>
+
+  <section>
+    <h2 data-num="1">產品定位</h2>
+    <p>一個<strong>繁體中文</strong>的網站，讓台灣棒球迷能在<strong>同一個地方</strong>追蹤台灣球員在美國職棒（大聯盟與 3A／2A 小聯盟）的表現與動態，並附帶介紹現代棒球的規則與數據名詞。</p>
+    <ul>
+    <li><strong>一句話</strong>：台灣球員在美職的中文戰情室 + 棒球知識入口。</li>
+    <li><strong>背景</strong>：初期為開發者的個人／學習專案，但產品目標對真實使用者（台灣球迷）有價值，設計以使用者需求為準，而非只當練習。</li>
+    </ul>
+  </section>
+  <section>
+    <h2 data-num="2">目標使用者</h2>
+    <table>
+    <thead><tr><th>使用者類型</th><th>特徵</th><th>主要需求</th></tr></thead>
+    <tbody>
+    <tr><td data-label="使用者類型"><strong>關注型球迷</strong>（主要）</td><td data-label="特徵">平常追某幾位台灣球員，想知道「他最近如何、上大聯盟了沒、有沒有受傷」</td><td data-label="主要需求">快速看到球員近況、動態、數據，中文、不用翻英文網站</td></tr>
+    <tr><td data-label="使用者類型"><strong>數據型球迷</strong></td><td data-label="特徵">想看較完整的打擊／投球數據、跨球季比較</td><td data-label="主要需求">結構化、正確、可比較的數據呈現</td></tr>
+    <tr><td data-label="使用者類型"><strong>入門球迷 / 路人</strong></td><td data-label="特徵">看比賽或新聞時遇到不懂的名詞（wRC+、FIP、IL…）</td><td data-label="主要需求">用中文快速查到名詞／規則的白話解釋</td></tr>
+    </tbody>
+    </table>
+    <blockquote><p>開放問題：主要客群偏「關注型」還是「數據型」會影響數據呈現的深度，需你定調（見 §9）。</p></blockquote>
+  </section>
+  <section>
+    <h2 data-num="3">使用者面臨的問題（為什麼需要這服務）</h2>
+    <ol>
+    <li>台灣球員散布在不同球隊、不同層級（大聯盟／3A／2A），資訊分散在多個英文網站，<strong>沒有一個中文的集中處</strong>。</li>
+    <li>官方英文數據網站對一般球迷<strong>門檻高</strong>（語言、名詞、資訊過載）。</li>
+    <li>球員的「動態」（升上大聯盟、被下放、交易、進傷兵名單）<strong>常常臨場才公布、且不易一眼看到時間軸</strong>。</li>
+    <li>遇到現代棒球名詞（進階數據、規則）時，<strong>缺乏中文、簡潔可信的解釋</strong>。</li>
+    </ol>
+  </section>
+  <section>
+    <h2 data-num="4">產品範疇</h2>
+    <h3>4.1 這一版要做（v1）</h3>
+    <ul>
+    <li><strong>功能一：台灣球員追蹤</strong>（動態內容）</li>
+    <li><strong>功能二：棒球規則／名詞介紹</strong>（靜態內容）</li>
+    </ul>
+    <h3>4.2 設計上預留、這版不做</h3>
+    <ul>
+    <li><strong>功能三：新聞</strong>（爬取官網／社群新聞並呈現）</li>
+    <li><strong>功能四：專欄</strong>（寫手發布針對台灣球員的文章、規則更新消息）</li>
+    </ul>
+    <h3>4.3 明確不在範疇（v1）</h3>
+    <ul>
+    <li>逐球（pitch-level）等級的細部數據與圖表</li>
+    <li>使用者帳號、留言、社群互動</li>
+    <li>即時比分推播 / 通知訂閱（可能列入 future）</li>
+    <li>付費 / 會員機制</li>
+    </ul>
+  </section>
+  <section>
+    <h2 data-num="5">功能需求（具體描述）</h2>
+    <h3>F1. 台灣球員追蹤</h3>
+    <p>追蹤名單為<strong>人工維護的台灣球員白名單</strong>（歷史上台籍美職球員僅十幾位，可控）。成績<strong>涵蓋所有能抓到資料的層級</strong>——從大聯盟、3A、2A，一路到 1A、新人聯盟；只要來源有資料就呈現（多數台灣球員剛進體系、主要在低階層級，若只做高階幾乎沒東西可看）。升降／異動涵蓋所有層級。</p>
+    <p>#### F1-0 首頁（動態導向）</p>
+    <p>首頁以「最近發生 + 即將發生」為主軸，<strong>不放全員名冊</strong>：</p>
+    <ol>
+    <li><strong>最近 24 小時</strong>（主）：這段時間內的<strong>比賽結果</strong>與<strong>球員動態</strong>（升降 / 交易 / 傷兵進出等），彙整成動態流／摘要。</li>
+    <li><strong>即將發生</strong>（次）：球員所屬球隊的<strong>下一場比賽</strong>資訊（對手、時間）。</li>
+    </ol>
+    <ul>
+    <li><strong>球員名冊</strong>不佔首頁主體，改放在 <strong>top bar / side bar 的導覽入口</strong>；名詞介紹（F2）同樣從全域導覽進入。</li>
+    <li>動態中的單場數據沿用 §7.2「今日快訊＝單場精簡」。</li>
+    <li>「24 小時」為顯示概念，實際資料隨一天兩次同步更新（見 F1-3）。</li>
+    </ul>
+    <blockquote><p>使用者故事：作為關注型球迷，我一打開網站就想看到「這一天發生了什麼、我關注的球員接下來何時出賽」，不用自己一個個點。</p></blockquote>
+    <p>#### F1-1 球員總覽頁</p>
+    <ul>
+    <li>從全域導覽（top bar / side bar）進入；列出所有被追蹤的台灣球員。</li>
+    <li>每位球員以卡片／列呈現<strong>一眼可懂的近況</strong>：目前所屬球隊、所在層級（大聯盟／各級小聯盟）、目前名單狀態（出賽中／傷兵／小聯盟）、以及一項近期表現摘要。</li>
+    <li>可依「目前層級」「球隊」等排序或篩選（細節待定）。</li>
+    </ul>
+    <blockquote><p>使用者故事：作為關注型球迷，我想在一頁看到所有台灣球員現在人在哪一隊、哪一層、狀態如何，不用一個個查。</p></blockquote>
+    <p>#### F1-2 球員個人頁</p>
+    <p>單一球員的完整戰情，分四區：</p>
+    <ol>
+    <li><strong>基本資料</strong>：中英文名、守備位置、打擊／投球慣用手、生日、目前所屬球隊與層級、目前名單狀態。</li>
+    <li><strong>球季數據</strong>：依球季、依層級（大聯盟到小聯盟各級）呈現<strong>標準季賽數據 + 一組進階數據</strong>（明細見 §7.3）；資料<strong>從 2020 球季起</strong>（未來可往前補）。低階層級資料可能稀疏，抓得到就顯示。</li>
+    <li><strong>動態時間軸</strong>：升上大聯盟 / 下放小聯盟 / 交易 / 進出傷兵名單 / 被 DFA、釋出等異動，<strong>依時間排序成時間軸</strong>，讓人看得出「什麼時候發生什麼」。</li>
+    <li><strong>所屬球隊賽程</strong>：該球員目前球隊的近期與即將到來的賽程與比分。</li>
+    </ol>
+    <blockquote><p>使用者故事：作為球迷，我想在球員頁看到他這季打得如何、最近有沒有被升降或受傷、他隊上接下來打誰。</p></blockquote>
+    <p>#### F1-3 資料新鮮度</p>
+    <ul>
+    <li>每頁需標示<strong>資料最後更新時間</strong>，讓使用者判斷新鮮度。</li>
+    <li>更新頻率為<strong>一天兩次</strong>（早上結算前一天賽果與累計數據；傍晚同步當日賽程、異動與傷兵名單）。</li>
+    </ul>
+    <h3>F2. 棒球規則／名詞介紹</h3>
+    <p>使用者通常是<strong>在站內或站外看到某個名詞、想搞懂它</strong>才點進來——目標是<strong>幫他讀懂當下的脈絡</strong>，而非教科書式從定義講起。</p>
+    <p>#### F2-1 涵蓋範圍（逐步累積）</p>
+    <ul>
+    <li><strong>v1 優先：數據名詞</strong>——先把球員頁會用到的 6+6 進階數據與常見標準數據講清楚（wRC+、FIP、OPS、WHIP、IL、DFA、waiver…），起手約 <strong>20~30 則高頻名詞</strong>（6+6 為必做核心）。</li>
+    <li><strong>第二批：基本規則</strong>（好球帶、盜壘、犧牲打…）。</li>
+    <li><strong>更後面</strong>：戰術／玩法、規則更新消息。</li>
+    <li>靜態內容、逐步新增；撰寫採 <strong>AI 輔助草擬 + 人工校訂</strong>。</li>
+    </ul>
+    <p>#### F2-2 單頁內容結構（解讀優先）</p>
+    <p>每則名詞頁由上而下三層，重點在「怎麼幫使用者判讀」：</p>
+    <ol>
+    <li><strong>主要（最上、最顯眼）——「這在看什麼、怎麼判讀」</strong>
+    <ul>
+    <li>一句白話點出它衡量什麼。</li>
+    <li>數值大概的分布範圍。</li>
+    <li><strong>級距對照</strong>：哪個區間算及格／不錯／厲害／MVP 等級。← 這頁的主角。</li>
+    </ul></li>
+    <li><strong>次要（下方、字級較小）——名稱與算法</strong>：中英文名、定義、計算方式；<strong>點到為止，不必像 wiki 那麼細</strong>。</li>
+    <li><strong>延伸（最後）——原始權威來源</strong>：附 MLB／Baseball Savant 等原始介紹頁連結，讓想深鑽的人自己去讀。</li>
+    </ol>
+    <blockquote><p>範例（OPS）：先講「衡量打者整體進攻能力，聯盟大致落在 .600~1.000，.800 算不錯、.900 以上明星級、破 1.000 是 MVP 等級」；下方小字補「OPS = 上壘率 + 長打率」；最後給 MLB 官方說明連結。</p></blockquote>
+    <p>#### F2-3 與球員數據雙向連結</p>
+    <ul>
+    <li>球員頁上的數據（如 wRC+）可<strong>點進對應名詞頁</strong>；名詞頁亦可回連範例球員，形成 F1×F2 整合。</li>
+    </ul>
+    <p>#### 其他</p>
+    <ul>
+    <li>以<strong>主題分類</strong>組織，內容可瀏覽、（理想上）可搜尋。</li>
+    </ul>
+    <blockquote><p>使用者故事：作為入門球迷，我在文章看到「OPS .950」不懂算好算壞，點進名詞頁一眼就知道「這是明星等級」，不用先看公式。</p></blockquote>
+  </section>
+  <section>
+    <h2 data-num="6">非功能需求</h2>
+    <table>
+    <thead><tr><th>面向</th><th>需求</th></tr></thead>
+    <tbody>
+    <tr><td data-label="面向"><strong>語言</strong></td><td data-label="需求">介面與內容以<strong>繁體中文</strong>為主；球員英文原名保留以利對照。</td></tr>
+    <tr><td data-label="面向"><strong>SEO</strong></td><td data-label="需求">公開內容（球員頁、名詞頁）需能被搜尋引擎索引；使用者常從 Google 搜球員名／名詞進來。</td></tr>
+    <tr><td data-label="面向"><strong>裝置</strong></td><td data-label="需求">響應式設計，<strong>手機優先</strong>（球迷多在手機上看）。</td></tr>
+    <tr><td data-label="面向"><strong>效能</strong></td><td data-label="需求">頁面載入要快；靜態知識內容尤其應接近即時。</td></tr>
+    <tr><td data-label="面向"><strong>正確性</strong></td><td data-label="需求">數據來自可信來源；上游若事後修正，網站數據<strong>需跟著更新</strong>（不是抓一次就固定）。</td></tr>
+    <tr><td data-label="面向"><strong>可用性／韌性</strong></td><td data-label="需求">即使背後資料同步暫時失敗，網站仍能顯示既有內容，<strong>不因資料層問題而整站不可用</strong>。</td></tr>
+    </tbody>
+    </table>
+  </section>
+  <section>
+    <h2 data-num="7">內容 / 資料呈現需求（產品視角）</h2>
+    <h3>7.1 動態與狀態</h3>
+    <ul>
+    <li><strong>球員動態類型</strong>（要能呈現）：升上大聯盟、下放小聯盟、交易、被指定轉讓（DFA）、釋出、進／出傷兵名單。</li>
+    <li><strong>名單狀態</strong>（要能呈現）：出賽中（active）、傷兵名單（IL）、小聯盟（minors）等，並保留<strong>歷史</strong>以畫出時間軸。</li>
+    <li><strong>層級標示</strong>：清楚標明每筆成績屬於哪一層級（大聯盟／3A／2A／1A／新人聯盟…），避免混淆。</li>
+    </ul>
+    <h3>7.2 數據呈現深度依「情境」而不同</h3>
+    <p>數據深度不是單一答案，依出現的頁面/情境決定：</p>
+    <table>
+    <thead><tr><th>情境</th><th>深度</th><th>內容</th></tr></thead>
+    <tbody>
+    <tr><td data-label="情境"><strong>今日快訊</strong>（單場，如首頁快訊卡）</td><td data-label="深度">精簡、單場</td><td data-label="內容">打者：打席、安打、全壘打、打點、保送、三振。投手：局數、被安打、失分、自責分、三振、保送。「一眼看完今天幹了啥」。</td></tr>
+    <tr><td data-label="情境"><strong>球員頁</strong></td><td data-label="深度">標準季賽數據 + 一組進階數據</td><td data-label="內容">見 §7.3。</td></tr>
+    </tbody>
+    </table>
+    <h3>7.3 球員頁的數據分層</h3>
+    <ul>
+    <li><strong>標準季賽數據</strong>：一般球迷看得懂的常見數據。
+    <ul>
+    <li>打者：AVG / OBP / SLG / OPS、HR、RBI、SB、BB、SO…</li>
+    <li>投手：ERA、<strong>WHIP</strong>、IP、K、BB、W-L、SV、HLD…（WHIP 為未校正的簡單比率，歸此層而非進階）</li>
+    </ul></li>
+    <li><strong>進階數據（可調整清單，不寫死）</strong>：先挑 6 個打者、6 個投手當起點，之後持續增減／替換（呼應棒球演進）。</li>
+    </ul>
+    <p><strong>打者 6 進階</strong></p>
+    <table>
+    <thead><tr><th>指標</th><th>說什麼故事</th></tr></thead>
+    <tbody>
+    <tr><td data-label="指標"><code>wRC+</code></td><td data-label="說什麼故事">校正球場/聯盟後的綜合打擊，100=聯盟平均（頭號指標）</td></tr>
+    <tr><td data-label="指標"><code>wOBA</code></td><td data-label="說什麼故事">加權上壘率，整體攻擊產出</td></tr>
+    <tr><td data-label="指標"><code>ISO</code></td><td data-label="說什麼故事">純長打率（SLG−AVG），power</td></tr>
+    <tr><td data-label="指標"><code>BB%</code></td><td data-label="說什麼故事">保送率（選球眼）</td></tr>
+    <tr><td data-label="指標"><code>K%</code></td><td data-label="說什麼故事">三振率（接觸/選球風險）</td></tr>
+    <tr><td data-label="指標"><code>WAR</code></td><td data-label="說什麼故事">打擊+跑壘+守備的單一總值</td></tr>
+    </tbody>
+    </table>
+    <p><strong>投手 6 進階</strong></p>
+    <table>
+    <thead><tr><th>指標</th><th>說什麼故事</th></tr></thead>
+    <tbody>
+    <tr><td data-label="指標"><code>FIP</code></td><td data-label="說什麼故事">獨立防禦率，排除守備/運氣，比 ERA 更貼近真實</td></tr>
+    <tr><td data-label="指標"><code>K%</code></td><td data-label="說什麼故事">三振率（宰制力）</td></tr>
+    <tr><td data-label="指標"><code>BB%</code></td><td data-label="說什麼故事">保送率（控球）</td></tr>
+    <tr><td data-label="指標"><code>HR/9</code></td><td data-label="說什麼故事">每 9 局被轟（長打壓制）</td></tr>
+    <tr><td data-label="指標"><code>LOB%</code></td><td data-label="說什麼故事">殘壘率（危機處理/運氣，判斷 ERA 是否回歸）</td></tr>
+    <tr><td data-label="指標"><code>WAR</code></td><td data-label="說什麼故事">投手綜合價值單一數字</td></tr>
+    </tbody>
+    </table>
+    <ul>
+    <li><strong>口袋替補</strong>（日後想換時）：打者 <code>BABIP</code>、<code>OBP</code>；投手 <code>xFIP</code>、<code>SIERA</code>、<code>WHIP</code>。</li>
+    <li><strong>可用性</strong>：進階數據多在 MLB / 高階小聯盟才齊全（wRC+/WAR/FIP 需聯盟/球場係數）；低階層級算不出來就<strong>不顯示</strong>（best-effort）。</li>
+    </ul>
+  </section>
+  <section>
+    <h2 data-num="8">成功樣貌（v1 做到什麼算成功）</h2>
+    <ul>
+    <li>名單內<strong>每一位</strong>台灣球員，都能在站上看到：他現在在哪隊哪層、目前狀態、本季主要數據、最近的升降／傷兵動態。</li>
+    <li>使用者能在<strong>一頁</strong>看懂某位球員的近況，不需再去英文網站。</li>
+    <li>常見棒球名詞能用中文查到解釋。</li>
+    <li>球員頁與名詞頁能被 Google 搜到。</li>
+    </ul>
+  </section>
+  <section>
+    <h2 data-num="9">產品決策</h2>
+    <blockquote><p>產品面決策，與 <code>spec/</code> 的技術未決項不同。</p></blockquote>
+    <h3>9.1 已定</h3>
+    <ul>
+    <li>✅ <strong>主要客群</strong>：兩者兼顧、<strong>關注型優先</strong>——預設呈現簡潔近況與動態，進階數據可展開或放次要位置。</li>
+    <li>✅ <strong>首頁形態</strong>：<strong>動態導向</strong>——主軸為最近 24 小時（比賽結果 + 球員動態），其次為即將發生（下一場比賽）；球員名冊改放全域導覽（top / side bar）入口，不佔首頁主體（見 §5 F1-0）。</li>
+    <li>✅ <strong>數據呈現深度</strong>：依情境分層（見 §7.2 / §7.3）——今日快訊用單場精簡；球員頁用標準季賽數據 + 6 打者/6 投手進階數據（可調整清單）。WHIP 歸標準層。</li>
+    <li>✅ <strong>圖像素材</strong>：<strong>只放球隊 logo，不放球員照片</strong>（避開球員肖像權）。</li>
+    <li>✅ <strong>名詞／規則內容</strong>：v1 以數據名詞優先（起手 20~30 則、6+6 必做）、逐步累積、AI 輔助草擬+校訂；單頁採<strong>解讀優先</strong>三層結構（判讀/級距 → 定義算法小字 → 權威原始連結）；與球員數據雙向連結（見 §5 F2）。</li>
+    <li>✅ <strong>語言</strong>：<strong>中文為主 + 英文原名輔助</strong>（球員／球隊附英文名對照），不做全站雙語。</li>
+    <li>✅ <strong>通知／訂閱</strong>：<strong>列為 future，v1 不做</strong>（需帳號系統；見 §4.2、§4.3）。</li>
+    </ul>
+    <h3>9.2 待定（Open Questions）</h3>
+    <p>（目前無；後續浮現新的產品問題再補回這裡。）</p>
+  </section>
+
+  <footer class="page-foot">
+    自動由 <code>docs/requirements.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+  </footer>
+
+</div>
+</body>
+</html>

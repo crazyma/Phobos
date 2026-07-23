@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>台灣球員大聯盟網站 — 技術選型討論整理</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+      --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+    --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.75; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  header.page-head { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+  header.page-head h1 { font-size: 1.7rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+  header.page-head p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+  .badge {
+    font-size: .78rem; padding: .2rem .6rem; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--muted); background: var(--card);
+  }
+  .badge strong { color: var(--accent); }
+  blockquote {
+    margin: 0 0 1.5rem; padding: .75rem 1rem; background: var(--code-bg);
+    border-left: 3px solid var(--accent); border-radius: 4px; color: var(--muted); font-size: .92rem;
+  }
+  blockquote p { margin: 0 0 .5rem; }
+  blockquote p:last-child { margin: 0; }
+  h2 { font-size: 1.25rem; margin: 2.75rem 0 1rem; padding-top: .25rem; color: var(--fg); }
+  h2::before { content: attr(data-num); color: var(--accent); margin-right: .5rem; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 1.02rem; margin: 1.75rem 0 .75rem; color: var(--fg); }
+  p { margin: 0 0 1rem; }
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: .35rem; }
+  strong { color: var(--fg); }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; font-size: .86em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1.25rem;
+  }
+  pre code { background: none; padding: 0; font-size: .82rem; line-height: 1.6; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; font-size: .9rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--code-bg); font-weight: 600; color: var(--muted);
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .arch-diagram {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem;
+    white-space: pre; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 1.1rem 1.2rem; overflow-x: auto; color: var(--muted); margin: 0 0 1.25rem;
+  }
+  .todo { list-style: none; padding-left: 0; }
+  .todo li { position: relative; padding-left: 1.6rem; }
+  .todo li::before {
+    content: ""; position: absolute; left: 0; top: .3rem; width: 1rem; height: 1rem;
+    border: 1.5px solid var(--muted); border-radius: 4px;
+  }
+  .todo li.done::before {
+    content: "\2713"; border-color: var(--accent); color: var(--accent);
+    font-size: .8rem; line-height: 1rem; text-align: center; font-weight: 700;
+  }
+  section { margin-bottom: .5rem; }
+  footer.page-foot {
+    margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .82rem;
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 2rem 1.1rem 4rem; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr { margin-bottom: .75rem; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
+    td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <h1>台灣球員大聯盟網站 — 技術選型討論整理</h1>
+  </header>
+
+  <section>
+    <h2>專案背景</h2>
+    <p>一個關於棒球的網站，初期規劃兩個核心功能，並預想了後續擴充方向。</p>
+    <p><strong>現有功能</strong></p>
+    <ol>
+    <li>記錄並呈現台灣球員在大聯盟的表現及數據（打擊/投球數據、球員基本資料、個人動態：所屬球隊賽程、是否受傷、上大聯盟或下放小聯盟等）</li>
+    <li>介紹現代棒球的各個面向及專有名詞（大多為靜態內容）</li>
+    </ol>
+    <p><strong>後續預想功能</strong></p>
+    <ol start="3">
+    <li>爬取官網或社群新聞，呈現在網站</li>
+    <li>專欄功能，請寫手發布針對台灣球員的文章、大聯盟規則更新消息等</li>
+    </ol>
+    <p><strong>資料來源</strong>：透過已知的 Python API 或自寫爬蟲取得數據。</p>
+  </section>
+  <section>
+    <h2>後端框架：NestJS</h2>
+    <p><strong>推薦理由</strong></p>
+    <ul>
+    <li>專案會累積多種資料類型（球員資料、打擊/投球數據、動態、新聞、專欄），NestJS 的模組化設計讓各 domain 清楚分離，長期加功能不會越來越亂。</li>
+    <li>對熟悉 MVI 架構的人來說，NestJS 的 DI、Module、Controller/Service 分層非常直覺，幾乎零摩擦。</li>
+    <li>TypeScript 原生支援佳，前後端可共用型別定義，省下大量對接與 debug 時間。</li>
+    <li>內建排程任務支援（<code>@nestjs/schedule</code>），適合定期爬取數據/新聞的需求。</li>
+    </ul>
+    <p><strong>其他曾評估的選項</strong></p>
+    <ul>
+    <li><strong>Express</strong>：最成熟、生態系最大、自由度高，但需自己搭配很多東西；適合小型專案 / prototype。</li>
+    <li><strong>Fastify</strong>：效能數一數二，schema-based 驗證佳；適合高吞吐量 API 服務。</li>
+    <li><strong>Hono</strong>：超輕量、支援多 runtime；適合簡單 API 或跨平台部署。</li>
+    </ul>
+    <blockquote><p>若覺得 NestJS 太重，Express + TypeScript 或 Fastify 也完全可行。但考量到已預想功能 3、4 的長期演進，前期多花點時間搭架構，後面加功能會輕鬆很多。</p></blockquote>
+  </section>
+  <section>
+    <h2>Python 資料來源的架構建議</h2>
+    <p>不需要把 Python 邏輯搬到 Node，較乾淨的做法是職責分離：</p>
+    <ul>
+    <li><strong>Python 端</strong>：專心負責爬蟲 / 呼叫 MLB API（<code>pybaseball</code> 這類 library 生態成熟），把資料寫進資料庫或提供內部 API。</li>
+    <li><strong>Node 端（NestJS）</strong>：讀資料庫、組織 business logic、對前端提供 API。</li>
+    <li>兩者透過資料庫或內部 HTTP 溝通，各司其職。</li>
+    </ul>
+  </section>
+  <section>
+    <h2>前端框架：Next.js（React）</h2>
+    <p><strong>推薦理由</strong></p>
+    <ul>
+    <li><strong>靜態 + 動態混合正好對到需求</strong>：App Router 可針對不同頁面選不同渲染策略。
+    <ul>
+    <li>功能 2（名詞介紹）、未來專欄 → 靜態生成（SSG）</li>
+    <li>功能 1（球員數據）、功能 3（新聞）→ SSR 或 ISR（增量靜態再生）</li>
+    </ul></li>
+    <li><strong>SEO 重要</strong>：公開內容希望被搜尋到，Next.js 的 SSR/SSG 對 SEO 遠優於純 SPA。</li>
+    <li><strong>與 NestJS 型別共用</strong>：可用 monorepo 抽出共用型別 package，改後端 API 時前端會在編譯期立即發現不一致。</li>
+    <li><strong>熟 Compose 上手快</strong>：Compose 的宣告式、狀態驅動 UI 思維和 React 幾乎一致。</li>
+    </ul>
+    <p><strong>架構決策：後端要不要分開？</strong></p>
+    <ol>
+    <li><strong>Next.js 全包</strong>：前端 + 後端 API 都用 Next.js，Python 只負責爬資料進 DB。最精簡，適合初期。</li>
+    <li><strong>Next.js（前端）+ NestJS（後端）分開</strong>：職責更清楚，後端邏輯複雜時比較好維護，適合長期演進。</li>
+    </ol>
+    <blockquote><p>建議：初期先用 Next.js 全包，等功能 1 數據處理、功能 3 定期爬取、功能 4 寫手權限等複雜度真的長出來，再把後端邏輯抽到獨立的 NestJS 服務。不用一開始就過度設計。</p></blockquote>
+  </section>
+  <section>
+    <h2>推薦的起步組合</h2>
+    <table>
+    <thead><tr><th>層次</th><th>選擇</th></tr></thead>
+    <tbody>
+    <tr><td data-label="層次">前端 / 後端</td><td data-label="選擇">Next.js (App Router) + TypeScript</td></tr>
+    <tr><td data-label="層次">資料庫</td><td data-label="選擇">PostgreSQL（結構化數據多、關聯性強）</td></tr>
+    <tr><td data-label="層次">ORM</td><td data-label="選擇">Prisma（TS 型別自動生成，也能與 Python 端共用 DB schema）</td></tr>
+    <tr><td data-label="層次">資料抓取</td><td data-label="選擇">Python（<code>pybaseball</code>、爬蟲）寫入 PostgreSQL</td></tr>
+    <tr><td data-label="層次">UI</td><td data-label="選擇">shadcn/ui + Tailwind</td></tr>
+    <tr><td data-label="層次">部署</td><td data-label="選擇">Vercel（Next.js 原生支援，初期免費額度夠用）</td></tr>
+    </tbody>
+    </table>
+    <p>整個 web 這側都是 TypeScript，Python 只當純資料層，界線乾淨。</p>
+  </section>
+  <section>
+    <h2>關於 UI 的可替換性</h2>
+    <p>UI 這層相對最容易替換，但要分層次看，替換難度差很多：</p>
+    <p><strong>由易到難</strong></p>
+    <ol>
+    <li><strong>元件庫樣式（Tailwind + shadcn/ui）→ 最容易換</strong>
+    <ul>
+    <li>shadcn/ui 不是傳統 npm 黑盒套件，而是把元件原始碼直接複製到專案裡，元件就是「你的程式碼」，改樣式、換掉、刪掉都很自由，不會被套件綁死。</li>
+    <li>Tailwind 是 utility class，換色彩/間距/主題很直接。</li>
+    </ul></li>
+    <li><strong>換整個元件庫（shadcn → MUI、Chakra）→ 中等</strong>
+    <ul>
+    <li>需改各元件寫法（props、className），但頁面邏輯、資料流、路由不用動。若有把 UI 元件包裝好，替換更輕鬆。</li>
+    </ul></li>
+    <li><strong>換前端框架本身（Next.js → 別的）→ 最難</strong>
+    <ul>
+    <li>路由、渲染策略、資料抓取方式都綁在框架上，傷筋動骨。</li>
+    </ul></li>
+    </ol>
+    <p><strong>關鍵觀念：分層</strong></p>
+    <p>讓 UI 好替換的重點不在選哪個框架，而在把「業務邏輯 / 資料處理」和「呈現層」分開——就像 MVI 裡 UI 只是 state 的投影，business logic 不該知道 UI 長怎樣。</p>
+    <ul>
+    <li>資料抓取、狀態管理獨立出來（custom hooks 或 server components）</li>
+    <li>UI 元件盡量「笨」（只負責呈現，接 props、發事件）</li>
+    </ul>
+    <p>維持這個界線，換 UI 樣式或元件庫時，動到的範圍就會被限制在呈現層，核心邏輯不受影響。因此用 shadcn/ui + Tailwind 起步很安全：它本身就是最好替換的那種，加上保持分層乾淨，未來彈性很大。</p>
+  </section>
+
+  <footer class="page-foot">
+    自動由 <code>docs/plan/棒球網站技術選型討論.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+  </footer>
+
+</div>
+</body>
+</html>

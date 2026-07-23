@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>開發日誌 — 台灣球員大聯盟網站（Phobos）</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+      --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+    --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.75; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  header.page-head { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+  header.page-head h1 { font-size: 1.7rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+  header.page-head p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+  .badge {
+    font-size: .78rem; padding: .2rem .6rem; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--muted); background: var(--card);
+  }
+  .badge strong { color: var(--accent); }
+  blockquote {
+    margin: 0 0 1.5rem; padding: .75rem 1rem; background: var(--code-bg);
+    border-left: 3px solid var(--accent); border-radius: 4px; color: var(--muted); font-size: .92rem;
+  }
+  blockquote p { margin: 0 0 .5rem; }
+  blockquote p:last-child { margin: 0; }
+  h2 { font-size: 1.25rem; margin: 2.75rem 0 1rem; padding-top: .25rem; color: var(--fg); }
+  h2::before { content: attr(data-num); color: var(--accent); margin-right: .5rem; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 1.02rem; margin: 1.75rem 0 .75rem; color: var(--fg); }
+  p { margin: 0 0 1rem; }
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: .35rem; }
+  strong { color: var(--fg); }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; font-size: .86em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1.25rem;
+  }
+  pre code { background: none; padding: 0; font-size: .82rem; line-height: 1.6; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; font-size: .9rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--code-bg); font-weight: 600; color: var(--muted);
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .arch-diagram {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem;
+    white-space: pre; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 1.1rem 1.2rem; overflow-x: auto; color: var(--muted); margin: 0 0 1.25rem;
+  }
+  .todo { list-style: none; padding-left: 0; }
+  .todo li { position: relative; padding-left: 1.6rem; }
+  .todo li::before {
+    content: ""; position: absolute; left: 0; top: .3rem; width: 1rem; height: 1rem;
+    border: 1.5px solid var(--muted); border-radius: 4px;
+  }
+  .todo li.done::before {
+    content: "\2713"; border-color: var(--accent); color: var(--accent);
+    font-size: .8rem; line-height: 1rem; text-align: center; font-weight: 700;
+  }
+  section { margin-bottom: .5rem; }
+  footer.page-foot {
+    margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .82rem;
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 2rem 1.1rem 4rem; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr { margin-bottom: .75rem; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
+    td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <h1>開發日誌 — 台灣球員大聯盟網站（Phobos）</h1>
+    <p>記錄進度：已完成（含日期）、進行中/下一步、待決問題、未來 phase。<br>文件位置慣例（皆在 <code>docs/</code> 下）：<code>plan/</code> = 發想脈絡；<code>adr/</code> = 技術決策記錄；<code>spec/</code> = 照著能建的規格。路徑引用以 <code>docs/</code> 為根。</p>
+  </header>
+
+  <section>
+    <h2>✅ 已完成</h2>
+    <h3>2026-07-21</h3>
+    <ul class="todo">
+    <li class="done">比對兩份規劃文件（<code>plan/棒球網站技術選型討論.md</code> vs <code>plan/baseball-tracker-plan.md</code>），整理相同 / 不同之處</li>
+    <li class="done">收斂三項分歧決策：
+    <ul>
+    <li>後端走 <strong>Next.js 全包</strong>，但保留 <code>lib/services</code> 分層以利未來抽離（不另起 NestJS）</li>
+    <li>功能範疇 <strong>以 1、2 為主，設計上預留 3（新聞）、4（專欄）</strong></li>
+    <li>UI 採 <strong>shadcn/ui + Tailwind</strong></li>
+    </ul></li>
+    <li class="done">產出技術決策記錄 <code>adr/decisions.md</code> / <code>.html</code>（原 <code>final-spec</code> 改名，改為 ADR 定位）</li>
+    <li class="done">釘死 <strong>Spec 01：台灣球員範疇 + 資料模型</strong> <code>spec/spec-01-scope-and-data-model.md</code> / <code>.html</code>
+    <ul>
+    <li>名單 = 手動白名單表（<code>players</code> 為 source of truth，birthCountry 只當種子）</li>
+    <li>成績涵蓋 <strong>MLB + 3A / 2A</strong>；roster/異動涵蓋所有層級</li>
+    <li>球季數據 <strong>從 2020 起</strong>（<code>SEASON_BACKFILL_START</code> 設定值，未來可 backfill）</li>
+    <li>8 張 curated 表 + enums + upsert key + Drizzle 範本；正規主鍵 <code>mlb_player_id</code></li>
+    </ul></li>
+    <li class="done">建立 <code>spec/</code> 目錄，與 <code>plan/</code> 分開</li>
+    <li class="done">文件重整：全部收進 <code>docs/</code>，並拆出 <code>docs/adr/</code>（<code>decisions.*</code> 移入）；更新交叉引用路徑（以 <code>docs/</code> 為根）</li>
+    <li class="done">建立根目錄 <code>CLAUDE.md</code>，定義工作流程與目錄慣例（DEVLOG 更新規範、md↔html 同步、plan/adr/spec 用途）</li>
+    <li class="done">寫 md→html 產生器 <code>scripts/build_docs.py</code>（零依賴，保留 data-num 編號、響應式表格、arch-diagram、待辦清單）</li>
+    <li class="done">設定 PostToolUse hook（<code>scripts/sync_docs_hook.py</code> + <code>.claude/settings.json</code>）：存檔 <code>docs/**/*.md</code> 後自動同步 <code>.html</code></li>
+    <li class="done">建立產品需求文件 <code>docs/requirements.md</code>（PRD，從產品／服務面描述，比 decisions 更具體）；含 7 項待你定調的產品決策</li>
+    <li class="done">調整層級範疇：成績從「MLB + 3A/2A」擴大為<strong>能抓到資料的所有層級</strong>（含 1A、新人聯盟，best-effort）；理由：多數台灣球員在低階層級。同步更新 spec-01、requirements</li>
+    <li class="done">收斂 3 項 PRD 產品決策（客群=關注型優先兼顧、圖像=只放球隊 logo、數據深度=分情境分層）；數據深度定案：今日快訊單場精簡、球員頁標準+6 打者/6 投手進階（可調整清單），WHIP 歸標準層。寫進 requirements §7、§9</li>
+    <li class="done">首頁形態定案：<strong>動態導向</strong>（最近 24h 賽果+動態為主、即將發生為次；名冊改放全域導覽入口）。順帶定了 IA 骨架。寫進 requirements §5 F1-0、§9.1</li>
+    <li class="done">F2 名詞內容定案：數據名詞優先、逐步累積、AI 輔助+校訂；單頁<strong>解讀優先</strong>三層結構（判讀/級距為主 → 定義算法小字 → 權威原始連結）；與球員數據雙向連結。寫進 requirements §5 F2、§9.1</li>
+    <li class="done">收尾雙語（中文為主+英文名輔助）、通知訂閱（列 future）；<strong>PRD §9 待定清空、requirements 定稿</strong></li>
+    </ul>
+  </section>
+  <section>
+    <h2>▶️ 進行中 / 下一步</h2>
+    <ul class="todo">
+    <li class=""><strong>（Spec 02 前置）重新檢討 <code>requirements.md</code></strong>——整體再看一遍，確認產品需求有無要調整/補強，再往下開規格</li>
+    <li class=""><strong>Spec 02：頁面 / 路由 IA + 對外 API 合約</strong>（endpoint、參數、回傳 JSON 形狀 = Zod schema 的雛形）</li>
+    <li class="">定案 curated schema 的完整欄位型別（把 Spec 01 補成完整 Drizzle schema）</li>
+    <li class=""><code>players</code> 白名單種子腳本 + 首版 Drizzle migration</li>
+    <li class="">Next.js 端用假資料把 <code>lib/services</code> → Route Handler → 頁面串起來（與 Python ETL 平行開發）</li>
+    <li class="">規劃哪些頁走 SSG（規則頁）、哪些動態渲染 / Server Component（球員數據頁）</li>
+    <li class="">導入 shadcn/ui + Tailwind，建立基礎「笨元件」</li>
+    </ul>
+  </section>
+  <section>
+    <h2>❓ 待決問題（來自 Spec 01 Open Items）</h2>
+    <ul class="todo">
+    <li class="">進階數據要顯示到多細？（只 slash line + HR/RBI，還是含 wRC+ / FIP…）— 影響落庫欄位</li>
+    <li class=""><strong>時區</strong>：<code>games.date</code> 與 ETL 排程時間怎麼統一（美東賽事 vs 台灣時間）— 傾向存 UTC + 顯示端轉換</li>
+    <li class="">小聯盟成績資料源細節：StatsAPI <code>sportId=11/12</code> 端點回傳欄位與 pybaseball 欄位對齊表</li>
+    <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 <code>transaction_type</code> 列舉是否齊全</li>
+    <li class=""><code>players</code> 白名單維護方式：先手動改 DB / 種子腳本，還是要簡單後台？（v1 先腳本）</li>
+    </ul>
+  </section>
+  <section>
+    <h2>🔮 未來 Phase（先記著，這版不做）</h2>
+    <ul class="todo">
+    <li class="">backfill 2020 年以前的歷史球季數據</li>
+    <li class="">Statcast 逐球（pitch-level）數據</li>
+    <li class="">功能 3：爬取官網 / 社群新聞（DB 已預留 <code>news</code> domain 邊界）</li>
+    <li class="">功能 4：專欄 / 寫手（DB 已預留 <code>articles</code> + <code>authors</code> domain 邊界）</li>
+    <li class="">視需要把 <code>lib/services</code> 抽成獨立後端服務</li>
+    </ul>
+  </section>
+  <section>
+    <h2>🗂️ 雜項 / 待整理</h2>
+    <ul class="todo">
+    <li class=""><code>plan/baseball-tracker-plan-rust.md</code> / <code>.html</code> 已被 Node.js 方案取代，確認是否清理或封存</li>
+    </ul>
+  </section>
+
+  <footer class="page-foot">
+    自動由 <code>docs/DEVLOG.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+  </footer>
+
+</div>
+</body>
+</html>

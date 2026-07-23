@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-.}/scripts/sync_docs_hook.py\"",
+            "statusMessage": "同步 docs HTML..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python &amp; Rust 開發環境安裝紀錄</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+      --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+    --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.75; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  header.page-head { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+  header.page-head h1 { font-size: 1.7rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+  header.page-head p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+  .badge {
+    font-size: .78rem; padding: .2rem .6rem; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--muted); background: var(--card);
+  }
+  .badge strong { color: var(--accent); }
+  blockquote {
+    margin: 0 0 1.5rem; padding: .75rem 1rem; background: var(--code-bg);
+    border-left: 3px solid var(--accent); border-radius: 4px; color: var(--muted); font-size: .92rem;
+  }
+  blockquote p { margin: 0 0 .5rem; }
+  blockquote p:last-child { margin: 0; }
+  h2 { font-size: 1.25rem; margin: 2.75rem 0 1rem; padding-top: .25rem; color: var(--fg); }
+  h2::before { content: attr(data-num); color: var(--accent); margin-right: .5rem; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 1.02rem; margin: 1.75rem 0 .75rem; color: var(--fg); }
+  p { margin: 0 0 1rem; }
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: .35rem; }
+  strong { color: var(--fg); }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; font-size: .86em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1.25rem;
+  }
+  pre code { background: none; padding: 0; font-size: .82rem; line-height: 1.6; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; font-size: .9rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--code-bg); font-weight: 600; color: var(--muted);
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .arch-diagram {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem;
+    white-space: pre; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 1.1rem 1.2rem; overflow-x: auto; color: var(--muted); margin: 0 0 1.25rem;
+  }
+  .todo { list-style: none; padding-left: 0; }
+  .todo li { position: relative; padding-left: 1.6rem; }
+  .todo li::before {
+    content: ""; position: absolute; left: 0; top: .3rem; width: 1rem; height: 1rem;
+    border: 1.5px solid var(--muted); border-radius: 4px;
+  }
+  .todo li.done::before {
+    content: "\2713"; border-color: var(--accent); color: var(--accent);
+    font-size: .8rem; line-height: 1rem; text-align: center; font-weight: 700;
+  }
+  section { margin-bottom: .5rem; }
+  footer.page-foot {
+    margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .82rem;
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 2rem 1.1rem 4rem; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr { margin-bottom: .75rem; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
+    td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page-head">
+    <h1>Python &amp; Rust 開發環境安裝紀錄</h1>
+    <p>日期：2026-07-16　平台：macOS（Apple Silicon / aarch64）</p>
+  </header>
+
+  <section>
+    <h2 data-num="1">安裝前環境檢查</h2>
+    <table>
+    <thead><tr><th>項目</th><th>安裝前狀態</th></tr></thead>
+    <tbody>
+    <tr><td data-label="項目">Homebrew</td><td data-label="安裝前狀態">已安裝（6.0.11）</td></tr>
+    <tr><td data-label="項目">Xcode Command Line Tools</td><td data-label="安裝前狀態">已安裝</td></tr>
+    <tr><td data-label="項目">Python</td><td data-label="安裝前狀態">僅系統內建 <code>/usr/bin/python3</code>，版本 3.9.6（過舊）</td></tr>
+    <tr><td data-label="項目">Rust</td><td data-label="安裝前狀態">完全未安裝（rustc / cargo / rustup 皆無）</td></tr>
+    <tr><td data-label="項目">uv / pyenv</td><td data-label="安裝前狀態">皆無</td></tr>
+    </tbody>
+    </table>
+  </section>
+  <section>
+    <h2 data-num="2">工具選型</h2>
+    <table>
+    <thead><tr><th>面向</th><th>選擇</th><th>原因</th></tr></thead>
+    <tbody>
+    <tr><td data-label="面向">Python 工具鏈</td><td data-label="選擇"><strong>uv</strong></td><td data-label="原因">Astral 推出的現代工具，同時管理 Python 版本與虛擬環境/套件，速度快，一個工具搞定</td></tr>
+    <tr><td data-label="面向">Rust 安裝方式</td><td data-label="選擇"><strong>rustup</strong></td><td data-label="原因">Rust 官方安裝工具，方便管理 stable/nightly 版本與 rustc/cargo 更新，是官方建議的標準做法</td></tr>
+    </tbody>
+    </table>
+  </section>
+  <section>
+    <h2 data-num="3">安裝步驟</h2>
+    <h3>3.1 uv（Python）</h3>
+    <pre><code>brew install uv</code></pre>
+    <p>安裝後透過 uv 安裝獨立的 Python 版本，取代系統舊版 3.9.6：</p>
+    <pre><code>uv python install 3.13</code></pre>
+    <h3>3.2 rustup（Rust）</h3>
+    <p>使用官方安裝腳本（<code>sh.rustup.rs</code>），下載後檢查內容再執行：</p>
+    <pre><code>curl --proto &#x27;=https&#x27; --tlsv1.2 -sSf https://sh.rustup.rs -o rustup-init.sh
+    sh rustup-init.sh -y --default-toolchain stable --profile default</code></pre>
+    <p>rustup 會自動在 <code>~/.zshenv</code> 加入：</p>
+    <pre><code>. &quot;$HOME/.cargo/env&quot;</code></pre>
+    <p>讓每次開啟新終端機都能載入 <code>cargo</code> / <code>rustc</code> 的 PATH。</p>
+  </section>
+  <section>
+    <h2 data-num="4">安裝結果</h2>
+    <table>
+    <thead><tr><th>工具</th><th>版本</th></tr></thead>
+    <tbody>
+    <tr><td data-label="工具">uv</td><td data-label="版本">0.11.29</td></tr>
+    <tr><td data-label="工具">Python（uv 管理）</td><td data-label="版本">3.13.14（<code>~/.local/bin/python3.13</code>）</td></tr>
+    <tr><td data-label="工具">rustup</td><td data-label="版本">1.29.0</td></tr>
+    <tr><td data-label="工具">rustc</td><td data-label="版本">1.97.0 (stable)</td></tr>
+    <tr><td data-label="工具">cargo</td><td data-label="版本">1.97.0 (stable)</td></tr>
+    </tbody>
+    </table>
+    <p>已安裝的 Rust component（<code>default</code> profile）：</p>
+    <ul>
+    <li><code>rustc</code></li>
+    <li><code>cargo</code></li>
+    <li><code>clippy</code>（linter）</li>
+    <li><code>rustfmt</code>（格式化工具）</li>
+    <li><code>rust-std</code></li>
+    <li><code>rust-docs</code></li>
+    </ul>
+  </section>
+  <section>
+    <h2 data-num="5">快速上手指令</h2>
+    <h3>Python（uv）</h3>
+    <pre><code>uv init myproject &amp;&amp; cd myproject
+    uv add requests          # 加套件
+    uv run python main.py    # 在虛擬環境中執行</code></pre>
+    <h3>Rust（cargo）</h3>
+    <pre><code>cargo new myproject &amp;&amp; cd myproject
+    cargo build
+    cargo run</code></pre>
+  </section>
+  <section>
+    <h2 data-num="6">備註</h2>
+    <ul>
+    <li>系統內建的 <code>/usr/bin/python3</code>（3.9.6）保留不動，僅新增 uv 管理的獨立 Python 版本，不影響系統既有相依。</li>
+    <li><code>~/.local/bin</code> 已存在於 <code>~/.zshrc</code> 的 <code>PATH</code> 設定中，uv 安裝的 Python 執行檔可直接被找到。</li>
+    <li>rustup 偵測到 <code>~/.rustup/settings.toml</code> 已存在（先前殘留設定），沿用其設定，未造成安裝問題。</li>
+    </ul>
+  </section>
+
+  <footer class="page-foot">
+    自動由 <code>docs/plan/dev-environment-setup.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+  </footer>
+
+</div>
+</body>
+</html>

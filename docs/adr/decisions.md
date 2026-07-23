@@ -1,6 +1,8 @@
-# 台灣球員大聯盟網站 — Final Spec
+# 台灣球員大聯盟網站 — 技術決策記錄（Decisions / ADR）
 
-> 本文件整併 `棒球網站技術選型討論.md`（框架選型）與 `baseball-tracker-plan.md`（落地規劃）兩份思考，並收斂三項分歧決策後定案。
+<!--badges: 前端=Next.js 全包; ORM=Drizzle; 驗證=Zod; UI=shadcn/ui + Tailwind; DB=PostgreSQL; ETL=Python-->
+
+> 本文件整併 `棒球網站技術選型討論.md`（框架選型）與 `baseball-tracker-plan.md`（落地規劃）兩份思考，收斂三項分歧後記錄「選什麼、為什麼」。欄位級規格見 `spec/`。
 >
 > 開發者背景：Android engineer 轉後端，主力語言 Node.js（TypeScript），搭配 Python 處理資料 ETL。
 
