@@ -79,7 +79,7 @@
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
 - [x] ~~重建 spec~~（2026-07-23 完成，見已完成區）
-- [ ] 把 spec-01 §C 落成 Drizzle schema + 首版 migration；`players` 白名單種子腳本
+- [ ] **schema + seed slice**（已用 /to-tickets 拆成 3 票，見 `.scratch/curated-schema-and-seed/issues/`）：01 bootstrap 資料層骨架（pnpm/TS/Drizzle/docker-compose Postgres）→ 02 spec-01 §C 全 curated schema + 首版 migration → 03 players 白名單 seed（StatsAPI 拉+人工校、幂等）
 - [ ] Next.js 端用假資料把 `lib/services` → Route Handler → 頁面串起來（與 Python ETL 平行開發；渲染策略已定於 spec-02 §1）
 - [ ] 導入 shadcn/ui + Tailwind，建立基礎「笨元件」
 - [ ] spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）
