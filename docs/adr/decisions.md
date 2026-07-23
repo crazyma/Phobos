@@ -98,12 +98,10 @@ lib/
 
 ## 6. 資料來源
 
-### 6.1 pybaseball（主要來源）
+### 6.1 pybaseball（~~主要來源~~ → 僅 Savant/Statcast 接口可用，見 §6.4）
 
 - 涵蓋：Statcast / Baseball Savant、FanGraphs、Baseball-Reference、Retrosheet、Lahman。回傳 pandas DataFrame。
-- 本專案用到：
-  - 球季數據：`batting_stats()` / `pitching_stats()`
-  - 球隊賽程 / 戰績：`schedule_and_record()`
+- ~~本專案用到：球季數據 `batting_stats()` / `pitching_stats()`；球隊賽程 / 戰績 `schedule_and_record()`~~ ← **實測不可用**：這兩路分別走 FanGraphs / Baseball-Reference 的 HTML 爬蟲，兩站已上 Cloudflare 防護，一律回 **403**（2026-07-23 實測，見 §6.4）。
 
 | 注意事項 | 說明 |
 |---|---|
@@ -123,6 +121,23 @@ lib/
 
 - 原設想補 mlb.com / FanGraphs / Savant 缺漏；因異動與傷兵改用 MLB Stats API，必要性大幅降低。
 - 若日後發現 pybaseball 缺特定欄位再評估，且**優先找結構化 API**，避免 HTML 爬蟲。
+
+### 6.4 來源可用性實測與修正（2026-07-23 定案）
+
+實測結果與由此收斂的來源策略：
+
+| 發現 | 內容 |
+|---|---|
+| **FanGraphs / Baseball-Reference 不可用** | pybaseball 對這兩站走 HTML 爬蟲，兩站已上 **Cloudflare 防護**，一律回 403；短期無解，不嘗試繞過 |
+| **可用來源只剩兩個** | **MLB Stats API**（`statsapi.mlb.com/api/v1/`）＋ **pybaseball 的 Savant/Statcast 接口** |
+| **更新速度差異** | MLB API 更新**快**、Savant **較慢** |
+| **MLB API 有累積數據** | 直接提供至今累積 AVG／ERA／OPS 等，不必自己從逐場加總 |
+
+**決策**：
+
+- **以 MLB Stats API 為主**：賽程/賽果、box score、**累積季數據**、異動、roster/IL 全走它。
+- **Savant（經 pybaseball）為輔**：只補 Statcast 系進階數據（xwOBA 等）；因更新較慢，允許落後主資料一批（best-effort）。
+- **後果（同日實測後更新）**：FanGraphs 系指標改由 **StatsAPI `stats=sabermetrics`** 供應——打 `woba/wRcPlus/war`、投 `fip/xfip/war`，為 MLB 官方自算版本（與 FanGraphs 同量級、非同值）；**僅 MLB 層級**（小聯盟進階維持 best-effort NULL）、2020~ 可回查。SIERA 仍無來源。實測紀錄見 spec-03 §9、應變決策見 requirements §9.1。
 
 ---
 

@@ -35,8 +35,10 @@
 |---|---|---|---|
 | 賽程/賽果/先發預告 | StatsAPI `schedule`（帶 `sportId`，`hydrate=probablePitcher`） | `games` | 兩批 |
 | 逐場 box line | StatsAPI boxscore／人員 `gameLog` | `game_*_lines` | morning（回看 `GAMELOG_LOOKBACK_DAYS=10` 天）＋evening 掃尾 |
-| 球季標準數據（全層級） | StatsAPI 人員 season stats（各 sportId） | `season_*_stats` 計數欄 | morning（**2020 起整季重拉**，人數少可行） |
-| 球季進階數據（MLB 為主） | pybaseball（FanGraphs `batting_stats`/`pitching_stats`） | `season_*_stats` 進階欄 | morning；抓不到（低階）留 NULL，best-effort |
+| 球季標準數據（全層級） | StatsAPI 人員 season stats（各 sportId；**上游直接提供累積 AVG/ERA/OPS 等，取計數欄落庫、比率仍由 services 推導**） | `season_*_stats` 計數欄 | morning（**2020 起整季重拉**，人數少可行） |
+| 球季進階數據（僅 MLB 層級） | **StatsAPI `stats=sabermetrics`**（打 `woba/wRcPlus/war`、投 `fip/fipMinus/xfip/war/eraMinus`，2026-07-23 實測確認）＋ **ETL 自算**（LOB%）＋ pybaseball Savant 可選補充（xwOBA 等 Statcast 系） | `season_*_stats` 進階欄 | morning；小聯盟不供應→留 NULL，best-effort |
+
+> **來源可用性（ADR §6.4，2026-07-23 實測）**：pybaseball 的 FanGraphs／Baseball-Reference 接口因兩站 Cloudflare 防護一律 403，**不可用、不繞過**——一切以 **MLB Stats API 為主**，Savant 只當進階數據補充。Savant 更新較 MLB API 慢：進階欄允許**落後主資料一批**，不因 Savant 未更新而標整批失敗。wRC+/WAR/xFIP 已確認可由 StatsAPI `stats=sabermetrics` 取得（僅 MLB 層級、2020~ 可回查；為 MLB 官方自算版本，名詞頁延伸來源指向 MLB），見 §9 實測紀錄。
 | 異動 | StatsAPI `transactions` | `transaction_events` | evening（另 morning 補漏） |
 | roster / IL | StatsAPI roster 端點 | 僅當**對帳信號**（§6），不直接寫狀態 | evening |
 | 球員/球隊基本資料 | StatsAPI people / teams | `players`（非白名單欄位）、`teams` | 低頻（每週或手動） |
@@ -82,3 +84,4 @@
 - [ ] 實測 StatsAPI `transactions` 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（含 waiver claim 歸到 `trade` 或 `other`）
 - [ ] 小聯盟 boxscore 欄位與 MLB 差異確認（缺欄留 NULL）
 - [ ] cron 時刻上線後依實際結算延遲微調（§2 為建議值）
+- [x] ~~實測 StatsAPI `stats=sabermetrics`~~ → **已實測（2026-07-23）：命中**——(a) hitting 供 `woba/wRc/wRcPlus/war`、pitching 供 `fip/fipMinus/xfip/war/eraMinus`；(b) **僅 MLB**：sportId≠1 回空（以三位台灣球員 2025 AAA「season 有 split、sabermetrics 回空」對照確認）；(c) 2020~ 可回查；(d) 抽樣 Judge 2024：wRC+ 219.8 vs FG 218、WAR 11.33 vs 11.2（wOBA .476 vs .458，MLB 自算權重）。→ 維持清單、requirements §9.1 預案封存

@@ -191,13 +191,14 @@
     <tbody>
     <tr><td data-label="資料">賽程/賽果/先發預告</td><td data-label="來源">StatsAPI <code>schedule</code>（帶 <code>sportId</code>，<code>hydrate=probablePitcher</code>）</td><td data-label="寫入"><code>games</code></td><td data-label="批次">兩批</td></tr>
     <tr><td data-label="資料">逐場 box line</td><td data-label="來源">StatsAPI boxscore／人員 <code>gameLog</code></td><td data-label="寫入"><code>game_*_lines</code></td><td data-label="批次">morning（回看 <code>GAMELOG_LOOKBACK_DAYS=10</code> 天）＋evening 掃尾</td></tr>
-    <tr><td data-label="資料">球季標準數據（全層級）</td><td data-label="來源">StatsAPI 人員 season stats（各 sportId）</td><td data-label="寫入"><code>season_*_stats</code> 計數欄</td><td data-label="批次">morning（<strong>2020 起整季重拉</strong>，人數少可行）</td></tr>
-    <tr><td data-label="資料">球季進階數據（MLB 為主）</td><td data-label="來源">pybaseball（FanGraphs <code>batting_stats</code>/<code>pitching_stats</code>）</td><td data-label="寫入"><code>season_*_stats</code> 進階欄</td><td data-label="批次">morning；抓不到（低階）留 NULL，best-effort</td></tr>
-    <tr><td data-label="資料">異動</td><td data-label="來源">StatsAPI <code>transactions</code></td><td data-label="寫入"><code>transaction_events</code></td><td data-label="批次">evening（另 morning 補漏）</td></tr>
-    <tr><td data-label="資料">roster / IL</td><td data-label="來源">StatsAPI roster 端點</td><td data-label="寫入">僅當<strong>對帳信號</strong>（§6），不直接寫狀態</td><td data-label="批次">evening</td></tr>
-    <tr><td data-label="資料">球員/球隊基本資料</td><td data-label="來源">StatsAPI people / teams</td><td data-label="寫入"><code>players</code>（非白名單欄位）、<code>teams</code></td><td data-label="批次">低頻（每週或手動）</td></tr>
+    <tr><td data-label="資料">球季標準數據（全層級）</td><td data-label="來源">StatsAPI 人員 season stats（各 sportId；<strong>上游直接提供累積 AVG/ERA/OPS 等，取計數欄落庫、比率仍由 services 推導</strong>）</td><td data-label="寫入"><code>season_*_stats</code> 計數欄</td><td data-label="批次">morning（<strong>2020 起整季重拉</strong>，人數少可行）</td></tr>
+    <tr><td data-label="資料">球季進階數據（僅 MLB 層級）</td><td data-label="來源"><strong>StatsAPI <code>stats=sabermetrics</code></strong>（打 <code>woba/wRcPlus/war</code>、投 <code>fip/fipMinus/xfip/war/eraMinus</code>，2026-07-23 實測確認）＋ <strong>ETL 自算</strong>（LOB%）＋ pybaseball Savant 可選補充（xwOBA 等 Statcast 系）</td><td data-label="寫入"><code>season_*_stats</code> 進階欄</td><td data-label="批次">morning；小聯盟不供應→留 NULL，best-effort</td></tr>
     </tbody>
     </table>
+    <blockquote><p><strong>來源可用性（ADR §6.4，2026-07-23 實測）</strong>：pybaseball 的 FanGraphs／Baseball-Reference 接口因兩站 Cloudflare 防護一律 403，<strong>不可用、不繞過</strong>——一切以 <strong>MLB Stats API 為主</strong>，Savant 只當進階數據補充。Savant 更新較 MLB API 慢：進階欄允許<strong>落後主資料一批</strong>，不因 Savant 未更新而標整批失敗。wRC+/WAR/xFIP 已確認可由 StatsAPI <code>stats=sabermetrics</code> 取得（僅 MLB 層級、2020~ 可回查；為 MLB 官方自算版本，名詞頁延伸來源指向 MLB），見 §9 實測紀錄。</p></blockquote>
+    <p>| 異動 | StatsAPI <code>transactions</code> | <code>transaction_events</code> | evening（另 morning 補漏） |</p>
+    <p>| roster / IL | StatsAPI roster 端點 | 僅當<strong>對帳信號</strong>（§6），不直接寫狀態 | evening |</p>
+    <p>| 球員/球隊基本資料 | StatsAPI people / teams | <code>players</code>（非白名單欄位）、<code>teams</code> | 低頻（每週或手動） |</p>
     <h3 id="sec-3-1">4. sportId ↔ level 對照</h3>
     <p><code>1=mlb, 11=aaa, 12=aa, 13=a_plus, 14=a, 16=rookie</code>（實作時以 StatsAPI <code>/sports</code> 端點驗證後寫成常數表）。</p>
   </section>
@@ -246,6 +247,7 @@
     <li class="">實測 StatsAPI <code>transactions</code> 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（含 waiver claim 歸到 <code>trade</code> 或 <code>other</code>）</li>
     <li class="">小聯盟 boxscore 欄位與 MLB 差異確認（缺欄留 NULL）</li>
     <li class="">cron 時刻上線後依實際結算延遲微調（§2 為建議值）</li>
+    <li class="done">~~實測 StatsAPI <code>stats=sabermetrics</code>~~ → <strong>已實測（2026-07-23）：命中</strong>——(a) hitting 供 <code>woba/wRc/wRcPlus/war</code>、pitching 供 <code>fip/fipMinus/xfip/war/eraMinus</code>；(b) <strong>僅 MLB</strong>：sportId≠1 回空（以三位台灣球員 2025 AAA「season 有 split、sabermetrics 回空」對照確認）；(c) 2020~ 可回查；(d) 抽樣 Judge 2024：wRC+ 219.8 vs FG 218、WAR 11.33 vs 11.2（wOBA .476 vs .458，MLB 自算權重）。→ 維持清單、requirements §9.1 預案封存</li>
     </ul>
   </section>
 

@@ -358,8 +358,9 @@
     </tbody>
     </table>
     <ul>
-    <li><strong>口袋替補</strong>（日後想換時）：打者 <code>OBP</code>；投手 <code>xFIP</code>、<code>SIERA</code>、<code>WHIP</code>。</li>
+    <li><strong>口袋替補</strong>（日後想換時）：打者 <code>OBP</code>；投手 <code>xFIP</code>（StatsAPI sabermetrics 可得，2026-07-23 實測確認）、~~<code>SIERA</code>~~（仍無來源）、<code>K-BB%</code>（自算）、<code>xERA</code>（Savant）、<code>WHIP</code>。</li>
     <li><strong>可用性</strong>：進階數據多在 MLB / 高階小聯盟才齊全（wRC+/WAR/FIP 需聯盟/球場係數）；低階層級算不出來就<strong>不顯示</strong>（best-effort）。多數台灣球員在低階、進階數據常空白——因此<strong>進階數據視為重要但非 v1 首要</strong>，完整化可延續到下一 phase。</li>
+    <li><strong>來源應變（2026-07-23，詳 §9.1）</strong>：wRC+／WAR 的原定來源（FanGraphs）不可得（adr §6.4）→ 同日實測 StatsAPI <code>stats=sabermetrics</code> <strong>命中</strong>（wOBA/wRC+/WAR/FIP/xFIP；<strong>僅 MLB 層級</strong>，小聯盟缺值本就 best-effort 不顯示；2020~ 可回查）——<strong>維持現清單</strong>，遞補鏈（wRC+→xwOBA→wOBA）與 WAR 移除等預案<strong>封存不啟動</strong>。</li>
     </ul>
     <h3 id="sec-7-4">7.4 近況一句話（自動生成的自然語言）</h3>
     <ul>
@@ -417,6 +418,16 @@
     <li>✅ <strong>名詞頁範例回連</strong>：自動挑選（追蹤中、該指標有值且樣本足夠、依層級優先），挑不到則整塊隱藏。</li>
     <li>✅ <strong>上游修正回填</strong>：季累計每批<strong>整季重拉</strong>（球員量小可行）；逐場回看<strong>近 7~14 天</strong>；近況一句話每批重算；更早的修正靠手動觸發。</li>
     <li>✅ <strong>首頁空狀態內容</strong>：<strong>本季／上季回顧卡 + 名詞知識入口輪播</strong>（解決 §9.2）。</li>
+    </ul>
+    <p>（2026-07-23 資料源檢討後新增——起因：pybaseball 的 FanGraphs／Baseball-Reference 接口 403，見 <code>adr/decisions.md</code> §6.4）</p>
+    <ul>
+    <li>✅ <strong>進階數據來源應變（決策樹）</strong>：
+    <ol>
+    <li><strong>先實測</strong> StatsAPI <code>stats=sabermetrics</code> 端點（驗證欄位、小聯盟覆蓋、2020~ 歷史回查、抽樣對照）——命中則維持現清單、全解。</li>
+    <li>未命中預案：打者頭號欄<strong>遞補鏈 <code>wRC+ → xwOBA → wOBA</code></strong>（退至 wOBA 時清單縮 6）；<strong>WAR 打投皆移除、不補</strong>（單一總值故事無好替品）；口袋替補換血（投手 <code>K-BB%</code>／<code>xERA</code>／<code>WHIP</code>）。</li>
+    </ol></li>
+    <li>✅ <strong>名詞頁不連動</strong>：wRC+／WAR 名詞頁<strong>照寫</strong>、當純知識內容（站外看到→進站查的情境不依賴球員頁是否顯示該欄）；若 xwOBA 因遞補進清單，其名詞頁<strong>先行補寫</strong>再上線。</li>
+    <li>✅ <strong>實測結果（2026-07-23，決策樹 ①命中）</strong>：StatsAPI <code>stats=sabermetrics</code> 供打者 <code>woba/wRcPlus/war</code>、投手 <code>fip/xfip/war</code>——<strong>僅 MLB 層級</strong>（sportId≠1 回空；小聯盟缺進階＝既定 best-effort）、2020~ 歷史可回查、抽樣與 FanGraphs 同量級（為 MLB 官方自算版本，數值非完全相同，名詞頁延伸來源指向 MLB）。<strong>維持現清單、預案封存</strong>；口袋替補 xFIP 復活、SIERA 仍除名。</li>
     </ul>
     <h3 id="sec-9-2">9.2 待定（Open Questions）</h3>
     <ul class="todo">

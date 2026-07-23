@@ -133,11 +133,13 @@ Upsert key：`source_tx_id`；無上游 id 時 `(player_id, type, effective_date
 
 PK 皆 `(player_id, season, level, team_id)`——同季同層級跨隊分列；**層級合計列由 services 從計數欄重算**（比率可加總重算；進階指標不可加總，合計列僅在該層級單隊時顯示進階值）。**不做跨層級合計**。
 
-`season_batting_stats`：計數 `g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf`；進階（可空，best-effort）`woba, wrc_plus, war`；`source_updated_at`。
+`season_batting_stats`：計數 `g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf`；進階（可空，best-effort）`woba, xwoba, wrc_plus, war`（`xwoba` 為遞補鏈預留欄，Savant 取得）；`source_updated_at`。
 
 `season_pitching_stats`：計數 `g, gs, ip_outs, bf, h, r, er, hr, bb, so, w, l, sv, hld`；進階（可空）`fip, lob_pct, war`；`source_updated_at`。
 
 > 進階清單為**可調整清單**（目前打/投各 7 項，其中 ISO/BB%/K%/BABIP/HR9 由計數推導、不落欄）。增減指標時遵守「**名詞頁先行**」（spec-04 §D）。
+>
+> **來源定案（2026-07-23 實測，ADR §6.4、requirements §9.1）**：`woba`／`wrc_plus`／`war`（打）與 `fip`／`war`（投）由 **StatsAPI `stats=sabermetrics`** 取得——**僅 MLB 層級**（sportId≠1 回空 → 小聯盟留 NULL，符合既定 best-effort）、2020~ 可回查；數值為 MLB 官方自算版本（與 FanGraphs 同量級、非同值）。`lob_pct` 仍由 ETL 自算；`xwoba` 欄保留為 Savant 可選補充。requirements §9.1 的遞補鏈／WAR 移除預案**封存不啟動**。
 
 ### C.8 `player_recent_form`（近況一句話，ETL 每批重算）
 
@@ -165,3 +167,4 @@ PK 皆 `(player_id, season, level, team_id)`——同季同層級跨隊分列；
 
 - [ ] StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）
 - [ ] `name_zh` 補齊方式（手動 seed；無中文名球員顯示英文）
+- [x] ~~`wrc_plus`／`war` 欄位去留~~ → 已定（2026-07-23 實測命中）：欄位保留，來源＝StatsAPI `stats=sabermetrics`（僅 MLB 層級）
