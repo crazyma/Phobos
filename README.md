@@ -12,6 +12,7 @@ pnpm install
 cp .env.example .env          # 預設連 localhost:5432 的 phobos/phobos/phobos
 docker compose up -d          # 起本地 Postgres（或用你自己的 Postgres，改 .env 即可）
 pnpm db:migrate               # 套用 migration（全新 DB 為乾淨 no-op）
+pnpm db:seed                  # 灌台灣球員白名單（幂等）
 pnpm test                     # 連線 smoke test（需 DB 在跑）
 ```
 
@@ -23,6 +24,7 @@ pnpm test                     # 連線 smoke test（需 DB 在跑）
 |---|---|
 | `pnpm db:generate` | 依 `lib/db/schema` 產生 migration |
 | `pnpm db:migrate` | 套用 `drizzle/` 下的 migration |
+| `pnpm db:seed` | 灌台灣球員白名單（幂等） |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm test` | vitest（部分測試需連 DB） |
 

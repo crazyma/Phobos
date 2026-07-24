@@ -9,6 +9,7 @@
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:seed": "tsx scripts/db/seed.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
