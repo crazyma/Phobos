@@ -7,6 +7,15 @@
 
 ## ✅ 已完成
 
+### 2026-07-24
+
+- [x] **frontend-shell-and-roster slice（spec-02 切片 1+2）全 4 票完成**（`.scratch/frontend-shell-and-roster/issues/`）。Next 端已與資料層同 repo 共存，`/players` 可在瀏覽器看到白名單 5 人：
+  - **票 01 Next.js bootstrap**：Next 16（Turbopack）+ React 19 + Tailwind v4 + shadcn/ui（Base UI 底），與 `lib/db`／vitest 共存，`pnpm dev`/`build` 皆過、既有 9 測全綠。**TS7/tsgo 與 `next build` 內建型別檢查器不相容** → 型別 gate 交給 `pnpm typecheck`（覆蓋 app+lib），`next.config.ts` 設 `typescript.ignoreBuildErrors` 並註明。
+  - **票 02 app shell + lib/format**：root layout 頂欄導覽（`/players`／`/glossary`，手機收合）+ footer「資料更新於（占位）」、`lang=zh-Hant` 手機優先；`lib/format` 純函式（`ip_outs`→「x.y 局」、比率/ERA/百分比位數、UTC→Asia/Taipei），TDD 13 測。
+  - **票 03 services + /api/players**：`getPlayerSummaries()` LEFT JOIN 組 `PlayerSummary`（Zod 合約＋執行期斷言），純函式 `buildStatusSentence` 組歸屬×健康一句（spec-01 B.2）；空狀態 fallback「狀態同步中」不炸；thin route handler。TDD 8（純）+ 5（DB）測。
+  - **票 04 /players 總覽頁**：Server Component 直讀 services（不繞 API）、`PlayersView`（client 篩選/排序）+「歷史球員」折疊區、ISR `revalidate=1800`；`renderToStaticMarkup` 煙測。
+  - 全測 37 綠；`vitest.config` 加 `fileParallelism:false`（共用 Postgres 序列化）與 `@` alias。ETL 未跑 → 目前所有球員 `team=null`／狀態同步中，待 spec-03 slice 供 `player_current_status`/`player_recent_form` 後自動生效。
+
 ### 2026-07-23
 
 - [x] **票 01（bootstrap 資料層骨架）實作完成**（`.scratch/curated-schema-and-seed/issues/01`）：pnpm+TS+Drizzle+drizzle-kit+vitest 骨架、`docker-compose.yml`（Postgres 16）、`lib/db`（client+空 schema barrel）、`scripts/db/migrate.ts`、連線 smoke test 通過、`db:migrate` 對全新 DB 乾淨 no-op、README 啟動步驟。本機無 Docker→smoke test 走 homebrew pg（連線字串與 docker 共用）；pnpm 11 build 核准移至 `pnpm-workspace.yaml`
@@ -79,14 +88,15 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **frontend-shell-and-roster slice**（spec-02 切片 1+2，已用 /to-tickets 拆 4 票，`.scratch/frontend-shell-and-roster/issues/`）：01 Next.js app bootstrap → {02 全站 shell+格式 helper、03 services 基礎+PlayerSummary+/api/players（可並行）} → 04 /players 總覽頁。名詞庫（spec-02 §2.4-5）延到 spec-04 slice；假資料平行開發（ADR）。frontier＝票 01
+- [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
+- [ ] **下一步：ETL slice（spec-03）**——尚未拆票。灌 `transaction_events` 並實作 §B.3 狀態投影（寫 `player_current_status`）、季/逐場數據、`player_recent_form`、`sync_runs`。做完後 `/players` 的隊伍/層級/狀態/近況與 footer 更新時間即由占位轉真值。
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
 - [x] ~~重建 spec~~（2026-07-23 完成，見已完成區）
-- [ ] **schema + seed slice**（已用 /to-tickets 拆成 3 票，見 `.scratch/curated-schema-and-seed/issues/`）：01 bootstrap 資料層骨架（pnpm/TS/Drizzle/docker-compose Postgres）→ 02 spec-01 §C 全 curated schema + 首版 migration → 03 players 白名單 seed（StatsAPI 拉+人工校、幂等）
-- [ ] Next.js 端用假資料把 `lib/services` → Route Handler → 頁面串起來（與 Python ETL 平行開發；渲染策略已定於 spec-02 §1）
-- [ ] 導入 shadcn/ui + Tailwind，建立基礎「笨元件」
+- [x] ~~**schema + seed slice**（3 票）~~（2026-07-24 完成，見已完成區）
+- [x] ~~Next.js 端把 `lib/services` → Route Handler → 頁面串起來~~（2026-07-24 完成；用**真實 seed 資料**而非假資料——白名單已入 DB，故直接串真資料）
+- [x] ~~導入 shadcn/ui + Tailwind，建立基礎「笨元件」~~（2026-07-24 完成，票 01/04）
 - [ ] spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）
 
 ---
