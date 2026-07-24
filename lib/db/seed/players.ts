@@ -22,13 +22,12 @@ interface WhitelistPlayer {
  * birthCountry 只是種子提示、非準則：Stuart Fairchild 生於美國但具台裔血統，屬白名單。
  *
  * ⚠️ 目前為上線前的少量起手清單；完整白名單於上線前補齊。
- * ⚠️ `nameZh` 待人工校對——Tsung-Che Cheng 的中文名需確認。
  */
 export const taiwanesePlayers: WhitelistPlayer[] = [
   {
     mlbPlayerId: 691907,
     nameEn: "Tsung-Che Cheng",
-    nameZh: "鄭宗哲", // TODO: 待確認
+    nameZh: "鄭宗哲",
     primaryPosition: "SS",
     bats: "L",
     throws: "R",
@@ -37,7 +36,7 @@ export const taiwanesePlayers: WhitelistPlayer[] = [
   {
     mlbPlayerId: 656413,
     nameEn: "Stuart Fairchild",
-    nameZh: null, // 美國出生、台裔；無通用中文名
+    nameZh: "史都華·費爾柴德", // 美國出生、台裔
     primaryPosition: "CF",
     bats: "R",
     throws: "R",
