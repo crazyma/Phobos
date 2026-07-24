@@ -79,6 +79,8 @@
 
 ## ▶️ 進行中 / 下一步
 
+- [ ] **frontend-shell-and-roster slice**（spec-02 切片 1+2，已用 /to-tickets 拆 4 票，`.scratch/frontend-shell-and-roster/issues/`）：01 Next.js app bootstrap → {02 全站 shell+格式 helper、03 services 基礎+PlayerSummary+/api/players（可並行）} → 04 /players 總覽頁。名詞庫（spec-02 §2.4-5）延到 spec-04 slice；假資料平行開發（ADR）。frontier＝票 01
+
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
 - [x] ~~重建 spec~~（2026-07-23 完成，見已完成區）
