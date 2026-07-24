@@ -1,0 +1,61 @@
+import type { affiliation, health, teamLevel } from "@/lib/db/schema/enums";
+
+export type Affiliation = (typeof affiliation.enumValues)[number];
+export type Health = (typeof health.enumValues)[number];
+export type TeamLevel = (typeof teamLevel.enumValues)[number];
+
+const LEVEL_LABELS: Record<TeamLevel, string> = {
+  mlb: "大聯盟",
+  aaa: "3A",
+  aa: "2A",
+  a_plus: "高階1A",
+  a: "1A",
+  rookie: "新人聯盟",
+};
+
+/** Team level → zh display, or null when the level is unknown. */
+export function levelLabel(level: TeamLevel | null | undefined): string | null {
+  if (!level) return null;
+  return LEVEL_LABELS[level];
+}
+
+/** `il_60` / `il_15` → `IL-60` / `IL-15`; missing detail → plain `IL`. */
+function ilLabel(ilDetail: string | null | undefined): string {
+  const digits = ilDetail?.match(/(\d+)/)?.[1];
+  return digits ? `IL-${digits}` : "IL";
+}
+
+export type StatusInput = {
+  affiliation: Affiliation | null | undefined;
+  health: Health | null | undefined;
+  ilDetail: string | null | undefined;
+  level: TeamLevel | null | undefined;
+};
+
+/**
+ * Compose the one-line status「歸屬 × 健康」(spec-01 B.2, spec-02 §2.2).
+ * e.g. rostered+il at AAA on the 60-day → "3A・傷兵名單（IL-60）".
+ * When no status has been projected yet (empty state) returns「狀態同步中」so
+ * the roster still renders instead of crashing on a missing row.
+ */
+export function buildStatusSentence(input: StatusInput): string {
+  const { affiliation, health, ilDetail, level } = input;
+
+  if (!affiliation) return "狀態同步中";
+
+  const withHealth = (base: string) =>
+    health === "il" ? `${base}・傷兵名單（${ilLabel(ilDetail)}）` : base;
+
+  switch (affiliation) {
+    case "rostered":
+      return withHealth(levelLabel(level) ?? "現役");
+    case "dfa":
+      return withHealth("指定讓渡（DFA）");
+    case "free_agent":
+      return "自由球員";
+    case "released":
+      return "已遭釋出";
+    case "departed":
+      return "已離開美職";
+  }
+}
