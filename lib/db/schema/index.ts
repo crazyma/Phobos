@@ -1,8 +1,10 @@
 /**
- * Curated-layer schema barrel.
- *
- * Intentionally empty in ticket 01 (bootstrap) — the data-layer skeleton stands
- * up with zero tables. Ticket 02 defines the spec-01 §C tables and enums here
- * and re-exports them, and drizzle-kit reads this barrel to generate migrations.
+ * Curated-layer schema barrel (spec-01 §C). drizzle-kit reads this to generate
+ * migrations; the db client passes it to drizzle() for typed queries.
  */
-export {};
+export * from "./enums.ts";
+export * from "./identity.ts";
+export * from "./status.ts";
+export * from "./games.ts";
+export * from "./season.ts";
+export * from "./operational.ts";
