@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Phobos — 台灣球員大聯盟",
@@ -17,7 +19,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-Hant" className={cn("font-sans", geist.variable)}>
-      <body>{children}</body>
+      <body className="flex min-h-dvh flex-col bg-background text-foreground antialiased">
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+      </body>
     </html>
   );
 }
