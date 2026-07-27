@@ -16,8 +16,9 @@ consolidator can backfill spec-01 §F.
 
 from __future__ import annotations
 
+import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, Optional
 
@@ -25,6 +26,8 @@ import psycopg
 
 from ..batch import Source
 from ..statsapi import StatsApiClient
+
+logger = logging.getLogger(__name__)
 
 STATSAPI_SOURCE = "statsapi"
 
@@ -195,6 +198,34 @@ def transform_transactions(payload: dict[str, Any]) -> list[TxRow]:
     return rows
 
 
+def sanitize_team_refs(
+    rows: list[TxRow], known_team_ids: set[int]
+) -> tuple[list[TxRow], set[int]]:
+    """Null out from/to team refs pointing at teams we don't have.
+
+    A player's transaction history spans their *whole* career, so it can name
+    teams outside the ingested sportIds — foreign/winter/college leagues, defunct
+    clubs (e.g. team 3296) — whose FK would otherwise abort the entire source.
+    We keep the event (its type/date/il_detail are what the projection replays)
+    and drop only the unresolvable team pointer, best-effort per spec-03 §7.
+    Returns the cleaned rows plus the set of dropped team ids (for logging).
+    """
+    dropped: set[int] = set()
+    cleaned: list[TxRow] = []
+    for r in rows:
+        from_id = r.from_team_id if r.from_team_id in known_team_ids else None
+        to_id = r.to_team_id if r.to_team_id in known_team_ids else None
+        if r.from_team_id is not None and from_id is None:
+            dropped.add(r.from_team_id)
+        if r.to_team_id is not None and to_id is None:
+            dropped.add(r.to_team_id)
+        if from_id == r.from_team_id and to_id == r.to_team_id:
+            cleaned.append(r)
+        else:
+            cleaned.append(replace(r, from_team_id=from_id, to_team_id=to_id))
+    return cleaned, dropped
+
+
 def upsert_transaction_events(conn: psycopg.Connection, rows: list[TxRow]) -> int:
     """Upsert events by `source_tx_id` (spec-01 C.3). Does not commit.
 
@@ -248,12 +279,19 @@ def _tracked_player_ids(conn: psycopg.Connection) -> list[int]:
         return [int(r[0]) for r in cur.fetchall()]
 
 
+def _known_team_ids(conn: psycopg.Connection) -> set[int]:
+    with conn.cursor() as cur:
+        cur.execute("select mlb_team_id from teams")
+        return {int(r[0]) for r in cur.fetchall()}
+
+
 def make_transactions_source(client: StatsApiClient, conn: psycopg.Connection) -> Source:
     """Fetch each tracked player's transactions and upsert them.
 
     One request per player (small N) keyed by `playerId` over the curated date
-    window; a player's `to_team_id` FK resolves because the teams source runs
-    earlier in the batch (spec-03 §2).
+    window. Team refs are sanitized against the teams we actually have before
+    upsert: a career-spanning history can name teams outside the ingested
+    sportIds, and those FKs must not abort the source (spec-03 §7).
     """
 
     def run() -> None:
@@ -272,6 +310,14 @@ def make_transactions_source(client: StatsApiClient, conn: psycopg.Connection) -
                 },
             )
             all_rows.extend(transform_transactions(payload))
-        upsert_transaction_events(conn, all_rows)
+        cleaned, dropped = sanitize_team_refs(all_rows, _known_team_ids(conn))
+        if dropped:
+            logger.warning(
+                "transactions: nulled %d team ref(s) not in teams (outside ingested "
+                "sportIds): %s",
+                len(dropped),
+                sorted(dropped),
+            )
+        upsert_transaction_events(conn, cleaned)
 
     return Source("transactions", run)

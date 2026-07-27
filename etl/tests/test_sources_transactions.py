@@ -9,9 +9,50 @@ import pytest
 from etl.sources.transactions import (
     TxRow,
     classify,
+    sanitize_team_refs,
     transform_transactions,
     upsert_transaction_events,
 )
+
+
+def _tx(**kw):
+    """Build a TxRow with sensible defaults for team-ref tests."""
+    base = dict(
+        source_tx_id="1",
+        player_id=100,
+        type="trade",
+        effective_date="2024-04-01",
+        announced_at="2024-04-01",
+        from_team_id=None,
+        to_team_id=None,
+        il_detail=None,
+        description=None,
+    )
+    base.update(kw)
+    return TxRow(**base)
+
+
+def test_sanitize_nulls_unknown_team_refs_but_keeps_the_event():
+    rows = [
+        _tx(source_tx_id="a", from_team_id=133, to_team_id=3296),  # to unknown
+        _tx(source_tx_id="b", from_team_id=999, to_team_id=137),  # from unknown
+        _tx(source_tx_id="c", from_team_id=133, to_team_id=137),  # both known
+    ]
+    cleaned, dropped = sanitize_team_refs(rows, {133, 137})
+
+    assert dropped == {3296, 999}
+    assert len(cleaned) == 3  # no event is lost
+    by_id = {r.source_tx_id: r for r in cleaned}
+    assert by_id["a"].to_team_id is None and by_id["a"].from_team_id == 133
+    assert by_id["b"].from_team_id is None and by_id["b"].to_team_id == 137
+    assert by_id["c"].from_team_id == 133 and by_id["c"].to_team_id == 137
+
+
+def test_sanitize_noop_when_all_known():
+    rows = [_tx(from_team_id=133, to_team_id=137)]
+    cleaned, dropped = sanitize_team_refs(rows, {133, 137})
+    assert dropped == set()
+    assert cleaned == rows
 
 
 def test_classify_roster_moves():
