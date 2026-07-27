@@ -7,7 +7,36 @@ from datetime import datetime, timezone
 
 import pytest
 
-from etl.sources.games import GameRow, _map_status, transform_schedule, upsert_games
+from etl.sources.games import (
+    GameRow,
+    _map_status,
+    sanitize_team_refs,
+    transform_schedule,
+    upsert_games,
+)
+
+
+def _game_row(pk, home, away):
+    return GameRow(
+        game_pk=pk, level="mlb", game_date_us="2026-07-26", start_time_utc=None,
+        home_team_id=home, away_team_id=away, venue_name=None, status="final",
+        home_score=1, away_score=0, game_number=1, games_in_series=1,
+        series_game_number=1, probable_home_pitcher_id=None,
+        probable_away_pitcher_id=None,
+    )
+
+
+def test_sanitize_nulls_unknown_team_refs_but_keeps_the_game():
+    rows = [
+        _game_row(1, home=111, away=2190),  # away is an exhibition/out-of-scope team
+        _game_row(2, home=111, away=147),   # both known
+    ]
+    cleaned, dropped = sanitize_team_refs(rows, {111, 147})
+    assert dropped == {2190}
+    by_pk = {r.game_pk: r for r in cleaned}
+    assert by_pk[1].home_team_id == 111 and by_pk[1].away_team_id is None
+    assert by_pk[2].away_team_id == 147
+    assert len(cleaned) == 2  # no game dropped
 
 
 def _schedule_payload(**overrides):

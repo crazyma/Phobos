@@ -11,15 +11,19 @@ window below only decides *which* dates to ask for, never what gets stored.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 import psycopg
 
 from ..batch import Source
+from ..config import GAMELOG_LOOKBACK_DAYS
 from ..constants import INGEST_SPORT_IDS, level_for_sport_id
 from ..statsapi import StatsApiClient
+
+logger = logging.getLogger(__name__)
 
 # StatsAPI detailedState/abstractGameState → curated `game_status` enum.
 # detailedState is checked first (more granular: postponed/suspended/cancelled
@@ -132,6 +136,38 @@ def transform_schedule(payload: dict[str, Any], *, default_level: str) -> list[G
     return rows
 
 
+def sanitize_team_refs(
+    rows: list[GameRow], known_team_ids: set[int]
+) -> tuple[list[GameRow], set[int]]:
+    """Null home/away team refs pointing at teams we don't have.
+
+    Schedules include the odd exhibition / spring / foreign opponent outside the
+    ingested sportIds (e.g. team 2190); their FK would abort the whole source.
+    Both game team columns are nullable, so we keep the game and drop only the
+    unresolvable pointer (best-effort, spec-03 §7). Returns (rows, dropped ids).
+    """
+    dropped: set[int] = set()
+    cleaned: list[GameRow] = []
+    for r in rows:
+        home = r.home_team_id if r.home_team_id in known_team_ids else None
+        away = r.away_team_id if r.away_team_id in known_team_ids else None
+        if r.home_team_id is not None and home is None:
+            dropped.add(r.home_team_id)
+        if r.away_team_id is not None and away is None:
+            dropped.add(r.away_team_id)
+        if home == r.home_team_id and away == r.away_team_id:
+            cleaned.append(r)
+        else:
+            cleaned.append(replace(r, home_team_id=home, away_team_id=away))
+    return cleaned, dropped
+
+
+def _known_team_ids(conn: psycopg.Connection) -> set[int]:
+    with conn.cursor() as cur:
+        cur.execute("select mlb_team_id from teams")
+        return {int(r[0]) for r in cur.fetchall()}
+
+
 def upsert_games(conn: psycopg.Connection, rows: list[GameRow]) -> int:
     """Upsert games by `game_pk`. Does not commit."""
     count = 0
@@ -184,14 +220,23 @@ def upsert_games(conn: psycopg.Connection, rows: list[GameRow]) -> int:
     return count
 
 
-def _schedule_window(today: date) -> tuple[date, date]:
-    """Yesterday..today — wide enough that either batch settles + previews."""
+def _schedule_window(today: date, kind: str) -> tuple[date, date]:
+    """Schedule window per batch, ending today (so probable pitchers preview).
+
+    `morning` spans the same `GAMELOG_LOOKBACK_DAYS` lookback as the box-line
+    sweep, so those games exist in the `games` table for game_lines to settle
+    (they read game_pks from it); `evening` only needs yesterday..today.
+    """
+    if kind == "morning":
+        return today - timedelta(days=GAMELOG_LOOKBACK_DAYS), today
     return today - timedelta(days=1), today
 
 
-def make_games_source(client: StatsApiClient, conn: psycopg.Connection) -> Source:
+def make_games_source(
+    client: StatsApiClient, conn: psycopg.Connection, *, kind: str = "evening"
+) -> Source:
     def run() -> None:
-        start, end = _schedule_window(datetime.now(timezone.utc).date())
+        start, end = _schedule_window(datetime.now(timezone.utc).date(), kind)
         all_rows: list[GameRow] = []
         for sport_id in INGEST_SPORT_IDS:
             level = level_for_sport_id(sport_id)
@@ -207,6 +252,14 @@ def make_games_source(client: StatsApiClient, conn: psycopg.Connection) -> Sourc
                 },
             )
             all_rows.extend(transform_schedule(payload, default_level=level))
-        upsert_games(conn, all_rows)
+        cleaned, dropped = sanitize_team_refs(all_rows, _known_team_ids(conn))
+        if dropped:
+            logger.warning(
+                "games: nulled %d team ref(s) not in teams (exhibition/out-of-scope "
+                "opponents): %s",
+                len(dropped),
+                sorted(dropped),
+            )
+        upsert_games(conn, cleaned)
 
     return Source("games", run)

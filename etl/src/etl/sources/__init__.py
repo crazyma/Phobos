@@ -25,6 +25,7 @@ from .game_lines import make_game_lines_source
 from .games import make_games_source
 from .players_bio import make_player_bio_source
 from .projection import make_projection_source, make_reconciliation_source
+from .recent_form import make_recent_form_source
 from .season_stats import make_season_stats_source
 from .teams import make_teams_source
 from .transactions import make_transactions_source
@@ -51,7 +52,7 @@ def build_sources(
     # evening: yesterday..today sweep) — spec-03 §3/§04. `games` must run
     # before `game_lines_*` so the latter can see freshly-upserted game rows.
     if kind in ("morning", "evening"):
-        sources.append(make_games_source(client, conn))
+        sources.append(make_games_source(client, conn, kind=kind))
         sources.append(make_game_lines_source(client, conn, kind=kind))
 
     # Season stats are a full re-pull every morning (spec-03 §3): the small
@@ -70,6 +71,12 @@ def build_sources(
     # (spec-03 §6). Every event-touching batch recomputes it, after transactions.
     if kind in ("morning", "evening", "manual"):
         sources.append(make_projection_source(client, conn))
+
+    # Recent-form one-liner recompute (spec-03 §5): after projection so the
+    # status_fallback sees the freshly-projected status; after game lines so it
+    # sees the latest box scores.
+    if kind in ("morning", "evening", "manual"):
+        sources.append(make_recent_form_source(client, conn))
 
     # roster/IL reconciliation (signal only, never auto-corrects; spec-03 §6):
     # the snapshot is fetched in the evening sweep; manual runs it too.

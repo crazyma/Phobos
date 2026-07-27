@@ -163,6 +163,15 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-27</h3>
     <ul class="todo">
+    <li class="done"><strong>ETL slice 票 05（近況一句話引擎 → <code>player_recent_form</code>）完成</strong>（<code>.scratch/etl-pipeline/issues/05</code>，同分支）。純規則引擎 <code>recent_form.py</code>，優先序取第一個命中、fallback 必中、句子永不為空、≤20 字裁切（spec-03 §5）：
+    <ul>
+    <li><strong>五層 pattern</strong>：① <code>career_high</code>/<code>season_high</code>（上一場單場計數欄創 2020 起新高，如「上一場敲生涯最多 3 轟」「投出生涯最多 9 次三振」）→ ② <code>streak</code>（連續有安打/連續無失分 ≥3，跨層級延續）→ ③ <code>single_game</code>（上一場亮點：3+ 安、開轟、優質先發、飆 K）→ ④ <code>recent_agg</code>（近 5 場打擊率/防禦率）→ ⑤ <code>status_fallback</code>（傷兵/休賽期/近兩週無出賽，接投影狀態）。門檻與句式常數維護在程式頂部、回填 spec-03 §5。</li>
+    <li>角色（打/投）由最近一場行為決定;二刀流依先發與否。每批於<strong>投影之後</strong>全量重算（fallback 需最新狀態）。</li>
+    <li><strong>順帶整合修正（games 窗口 + 第三個同型 FK bug）</strong>：morning 的 <code>games</code> schedule 窗口原本只抓「昨天～今天」，導致 game_lines 的 10 天回看（從 games 表讀 game_pk）在新 DB 上無資料可掃 → 近況全 fallback。改成 morning 也抓 <code>GAMELOG_LOOKBACK_DAYS</code> 窗口。此改動暴露第三個 team-FK bug：schedule 含 ingested sportId 外的表演賽/外隊(如 2190)→ <code>games.home/away_team_id</code> FK 炸;比照 transactions 以 <code>sanitize_team_refs</code> 把無法解析的 team ref 設 NULL、保留比賽列。</li>
+    <li>測試：pytest +17（純 15：五層 pattern 各案＋優先序（career_high 壓過 streak）＋fallback 三態＋永不為空/裁切;DB 1：recompute 寫 <code>player_recent_form</code>;games sanitize 1）。etl 全 110 綠。evening 真連線跑通、五名球員都有非空近況句（目前資料稀疏多為 fallback，隨每日累積 game lines 後自動轉為數據句）。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>票 03/04/06 並行開發 + 整合（consolidation）完成</strong>。03/04/06 三個獨立 vertical 以 subagent 於各自 git worktree 並行實作（off 票 02），再由主線合併：03（無獨立 commit，工作落在共用 checkout）+04 併為一個 commit、06 以 cherry-pick 併入，解 <code>sources/__init__.py</code>／DEVLOG 衝突。<strong>跑真實批次做整合驗證，抓到並修好兩個單元測試（各票以 fixture 隔離）測不到的跨票 FK bug</strong>：
     <ul>
     <li><strong>transactions</strong>：球員生涯異動含<strong>六個 ingested sportId 以外</strong>的球隊（外/冬季/大學聯盟、春訓、已解散隊，5 人共 15 個 id 如 3296）→ <code>to/from_team_id</code> FK 炸掉整個 source。修法 <code>sanitize_team_refs</code>：把無法解析的 team ref 設 NULL（兩欄皆可空）、保留事件本身（type/date/il_detail 才是投影所需）。</li>
@@ -333,7 +342,8 @@
     <li class="done">~~<strong>票 01 ETL 骨架</strong>~~（2026-07-27 完成，見已完成區；分支 <code>feat/spec-03-etl-skeleton</code>）。</li>
     <li class="done">~~<strong>票 02 參考資料 teams/bio</strong>~~（2026-07-27 完成，見已完成區）。</li>
     <li class="done">~~<strong>票 03/04/06 並行 vertical + 整合</strong>~~（2026-07-27 完成，見已完成區；含兩個跨票 FK 整合修正）。</li>
-    <li class=""><strong>下一步：票 05 近況一句話 <code>player_recent_form</code>★</strong>（接 03+04）→ <strong>票 07 兩批編排 + CLI 工具（resync/add-event/reproject）收尾</strong>。註：兩批職責已在 <code>sources/__init__.py</code> 編排完成，07 主要剩 CLI 手動工具。</li>
+    <li class="done">~~<strong>票 05 近況一句話 <code>player_recent_form</code>★</strong>~~（2026-07-27 完成，見已完成區）。</li>
+    <li class=""><strong>下一步：票 07 兩批編排 + CLI 工具（resync/add-event/reproject）收尾</strong>。註：兩批職責已在 <code>sources/__init__.py</code> 編排完成，07 主要剩 CLI 手動工具。</li>
     </ul></li>
     </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
