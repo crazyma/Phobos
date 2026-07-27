@@ -9,10 +9,24 @@ from __future__ import annotations
 import logging
 import sys
 
+import psycopg
+
 from .batch import run_batch
+from .cache import FileCache
+from .config import CACHE_DIR
 from .db import connect
+from .raw import store_raw_payload
 from .sources import VALID_KINDS, build_sources
+from .statsapi import StatsApiClient
 from .syncrun import FAILED, PgSyncRunStore
+
+
+def _build_client(conn: psycopg.Connection) -> StatsApiClient:
+    """Wire a StatsAPI client that caches locally and records every raw payload."""
+    return StatsApiClient(
+        cache=FileCache(CACHE_DIR),
+        recorder=lambda **kw: store_raw_payload(conn, **kw),
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,7 +46,8 @@ def main(argv: list[str] | None = None) -> int:
 
     with connect() as conn:
         store = PgSyncRunStore(conn)
-        sources = build_sources(kind, conn)
+        client = _build_client(conn)
+        sources = build_sources(kind, conn, client)
         outcome = run_batch(kind, sources, store)
 
     print(f"sync_run #{outcome.run_id} [{kind}] -> {outcome.status}")

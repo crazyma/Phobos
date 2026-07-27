@@ -163,6 +163,16 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-27</h3>
     <ul class="todo">
+    <li class="done"><strong>ETL slice 票 02（參考資料 teams + 球員 bio）完成</strong>（<code>.scratch/etl-pipeline/issues/02</code>，同分支）。建立<strong>「來源模組」慣例</strong>供後續票遵循：<code>etl/src/etl/sources/</code> 套件，每模組＝純 <code>transform_*(payload)→rows</code> ＋ <code>upsert_*(conn,rows)</code>（<code>ON CONFLICT DO UPDATE</code>、不 commit）＋ <code>make_*_source(client,conn)</code> 工廠。
+    <ul>
+    <li><strong>sportId→level 常數</strong>（<code>constants.py</code>，spec-03 §4）：<code>1=mlb,11=aaa,12=aa,13=a_plus,14=a,16=rookie</code>；<code>level_rank</code> 供 teams 排序。</li>
+    <li><strong>teams source</strong>：抓各 sportId → upsert <code>teams</code>，含 <code>parent_org_team_id</code>（母球團）；rows <strong>MLB 先於 affiliate</strong> 排序，讓 minor-league 的 parent FK 在同 transaction 內成立。</li>
+    <li><strong>players_bio source</strong>：抓 tracked 球員 people → <strong>只更新 bio 欄</strong>（守位／慣用手／生日），<strong>不碰白名單 lifecycle／created_at／name_en／人工 name_zh</strong>、不 insert。</li>
+    <li><strong>實跑驗證（live StatsAPI）</strong>：231 隊入庫（mlb/aaa/aa/a+/a 各 30、rookie 81），AAA affiliate 正確指向母球團、FK 無違反；raw_payloads 落 6 teams＋1 people；status success。sync.py 建 client（FileCache＋raw recorder），reference data 併入 evening／manual 批。</li>
+    <li>測試：pytest +8（teams transform/level fallback/self-parent、DB upsert FK 排序+幂等；people transform、DB bio 更新保留白名單欄、未知球員 0 更新）。etl 全 32 綠。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>ETL slice 票 01（走路骨架）完成</strong>（<code>.scratch/etl-pipeline/issues/01</code>，分支 <code>feat/spec-03-etl-skeleton</code>）。Python 資料層起步、footer 由占位改真值：
     <ul>
     <li><strong>uv 管理的 <code>etl/</code> 專案（src layout）</strong> 與 Node/資料層共存於同 repo，不動既有 <code>pnpm test</code>／<code>typecheck</code>／<code>db:*</code>；<code>psycopg</code> 存取，<strong>把 Drizzle 的 curated schema 當固定合約、絕不下 DDL</strong>。</li>
@@ -274,7 +284,8 @@
     <li class="done">~~<strong>frontend-shell-and-roster slice</strong>（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。</li>
     <li class=""><strong>進行中：ETL slice（spec-03）</strong>——已用 /to-tickets 拆成 <strong>7 票</strong>（<code>.scratch/etl-pipeline/issues/</code>）：01 ETL 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影 player_current_status★、04 逐場 game_*_lines、06 季數據 season_*_stats 可並行} → 05 近況 player_recent_form★（接 04+03）→ 07 兩批編排+CLI 收尾。★＝點亮 <code>/players</code>。frontier＝票 01。語言 Python（uv）、psycopg 存取、把 Drizzle schema 當合約不自行 migrate。
     <ul class="todo">
-    <li class="done">~~<strong>票 01 ETL 骨架</strong>~~（2026-07-27 完成，見已完成區；分支 <code>feat/spec-03-etl-skeleton</code>）。<strong>下一步：票 02 參考資料 teams/bio</strong>（票 03/04/06 可在 02 後並行）。</li>
+    <li class="done">~~<strong>票 01 ETL 骨架</strong>~~（2026-07-27 完成，見已完成區；分支 <code>feat/spec-03-etl-skeleton</code>）。</li>
+    <li class="done">~~<strong>票 02 參考資料 teams/bio</strong>~~（2026-07-27 完成，見已完成區）。<strong>下一步：票 03/04/06 並行</strong>（各為獨立 vertical，off 票 02）→ 05（接 03+04）→ 07 收尾。</li>
     </ul></li>
     </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
