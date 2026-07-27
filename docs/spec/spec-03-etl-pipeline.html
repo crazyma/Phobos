@@ -189,8 +189,8 @@
     <table>
     <thead><tr><th>資料</th><th>來源</th><th>寫入</th><th>批次</th></tr></thead>
     <tbody>
-    <tr><td data-label="資料">賽程/賽果/先發預告</td><td data-label="來源">StatsAPI <code>schedule</code>（帶 <code>sportId</code>，<code>hydrate=probablePitcher</code>）</td><td data-label="寫入"><code>games</code></td><td data-label="批次">兩批</td></tr>
-    <tr><td data-label="資料">逐場 box line</td><td data-label="來源">StatsAPI boxscore／人員 <code>gameLog</code></td><td data-label="寫入"><code>game_*_lines</code></td><td data-label="批次">morning（回看 <code>GAMELOG_LOOKBACK_DAYS=10</code> 天）＋evening 掃尾</td></tr>
+    <tr><td data-label="資料">賽程/先發預告（<strong>前瞻</strong>）</td><td data-label="來源">StatsAPI <code>schedule</code>（帶 <code>sportId</code>，<code>hydrate=probablePitcher</code>）</td><td data-label="寫入"><code>games</code>（即將/今日場次表頭）</td><td data-label="批次">兩批</td></tr>
+    <tr><td data-label="資料">逐場成績</td><td data-label="來源"><strong>StatsAPI 人員 gameLog</strong>（<code>people/{id}/stats?stats=gameLog</code>，每位 tracked 球員、按季／群組 hitting·pitching／必要時 sportId）；整場 boxscore <strong>不落庫</strong>，需要時 by-case 取</td><td data-label="寫入"><code>game_*_lines</code>（＋順手補 <code>games</code> 表頭：已打過的場）</td><td data-label="批次">morning 回看 <code>GAMELOG_LOOKBACK_DAYS=10</code>＋evening 掃尾；初期一次性 <strong>backfill 2020~今</strong></td></tr>
     <tr><td data-label="資料">球季標準數據（全層級）</td><td data-label="來源">StatsAPI 人員 season stats（各 sportId；<strong>上游直接提供累積 AVG/ERA/OPS 等，取計數欄落庫、比率仍由 services 推導</strong>）</td><td data-label="寫入"><code>season_*_stats</code> 計數欄</td><td data-label="批次">morning（<strong>2020 起整季重拉</strong>，人數少可行）</td></tr>
     <tr><td data-label="資料">球季進階數據（僅 MLB 層級）</td><td data-label="來源"><strong>StatsAPI <code>stats=sabermetrics</code></strong>（打 <code>woba/wRcPlus/war</code>、投 <code>fip/fipMinus/xfip/war/eraMinus</code>，2026-07-23 實測確認）＋ <strong>ETL 自算</strong>（LOB%）＋ pybaseball Savant 可選補充（xwOBA 等 Statcast 系）</td><td data-label="寫入"><code>season_*_stats</code> 進階欄</td><td data-label="批次">morning；小聯盟不供應→留 NULL，best-effort</td></tr>
     </tbody>
@@ -199,6 +199,7 @@
     <p>| 異動 | StatsAPI <code>transactions</code> | <code>transaction_events</code> | evening（另 morning 補漏） |</p>
     <p>| roster / IL | StatsAPI roster 端點 | 僅當<strong>對帳信號</strong>（§6），不直接寫狀態 | evening |</p>
     <p>| 球員/球隊基本資料 | StatsAPI people / teams | <code>players</code>（非白名單欄位）、<code>teams</code> | 低頻（每週或手動） |</p>
+    <blockquote><p><strong>逐場來源策略（2026-07-27 定案，球員中心）</strong>：逐場成績一律走<strong>人員 gameLog</strong>（只抓 tracked 球員自己的比賽），<strong>不再逐場掃全賽程 boxscore、也不把 boxscore 落庫</strong>——服務聚焦關注球員，game-中心的完整 box 查詢<strong>刻意取捨</strong>（使用者可回官方站查）。<code>games</code> 表只留兩種來源的列：gameLog 補「球員打過的比賽」＋ schedule 補「即將/今日場次（含先發預告，前瞻功能保留）」。原始層 <code>raw_payloads</code> 保留 gameLog／schedule／people／teams 原檔、<strong>不存 boxscore</strong>。<code>career_high</code>/<code>season_high</code> 以歷史逐場為基準（引擎讀全 <code>game_*_lines</code> 歷史，2026-07-27 驗證無日期窗），故初期需一次性 <strong>backfill 2020~今</strong>才會正確。</p></blockquote>
     <h3 id="sec-3-1">4. sportId ↔ level 對照</h3>
     <p><code>1=mlb, 11=aaa, 12=aa, 13=a_plus, 14=a, 16=rookie</code>（實作時以 StatsAPI <code>/sports</code> 端點驗證後寫成常數表）。</p>
   </section>

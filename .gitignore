@@ -105,6 +105,19 @@ logs/
 .turbo/
 .eslintcache
 
+# === Python / uv (etl/) ===
+# uv self-ignores .venv via .venv/.gitignore, but be explicit for the repo.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# Local StatsAPI response cache (see etl/src/etl/config.py CACHE_DIR)
+etl/.cache/
+
 # === Claude Code ===
 # Personal local settings (permissions etc.) — keep .claude/settings.json (if any) tracked
 .claude/settings.local.json
+# Ephemeral subagent git worktrees
+.claude/worktrees/

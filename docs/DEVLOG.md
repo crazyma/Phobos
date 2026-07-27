@@ -7,6 +7,74 @@
 
 ## ✅ 已完成
 
+### 2026-07-27
+
+- [x] **修正 slice `etl-gamelog-refactor`（2 票）完成——逐場改走球員 gameLog、退役 boxscore 全掃 + 2020 backfill**（`.scratch/etl-gamelog-refactor/issues/`，同分支）。
+  - **票 01（gameLog 取代 boxscore 全掃）**：逐場來源由「掃窗口內全賽程 boxscore、再翻找 tracked 球員（~1.6% 命中、且把先發預告誤判成出賽）」改成「每位 tracked 球員的 `people/{id}/stats?stats=gameLog`——只抓自己的比賽、~100% 命中」。**必須逐一掃六個層級 sportId**（gameLog 帶 sportId 只回該層級、省略只回 MLB；實測鄧愷威 status=AAA 但實際 MLB 投球）。gameLog 每筆順手 upsert `games` 表頭（`game_date_us`／主客/level，coalesce 保留 schedule 設的分數等欄）以滿足外鍵。**schedule 前瞻來源保留**（先發預告/今日/錨點）、raw 層**停存 boxscore**。近況引擎與 schema 皆不需改。順手把票 05 為餵舊 game_lines 而加寬的 morning schedule 窗口還原成昨天～今天。
+  - **票 02（初始 backfill）**：`etl backfill [--from DATE | --season YYYY]`（預設 2020→今）逐球員抓 gameLog → `game_*_lines`（＋補 `games`），**冪等、逐球員 commit 可中斷續跑**、保守 rate-limit（沿用 client delay/重試）、收尾自動 `reproject`＋近況重算。定位手動 CLI（不進兩批）。
+  - **實跑驗證**：evening（當季 gameLog、~30 呼叫）→ `game_batting_lines` 2→224、pitching 0→46，**`/players` 近況由全 fallback 轉為真數據句**（李灝宇「連續 11 場有安打」、費爾柴德「近 5 場打擊率 .412」、鄧愷威「近 5 場防禦率 4.91」…）。backfill（2020→2026）→ 1513 打擊＋269 投球逐場列入庫、跨 2021~2026（這批球員 2020 尚未登錄），career/season high 自此有正確歷史基準。
+  - 測試：pytest 118 綠（game_lines 測改寫為 gameLog fixture：打者/投手客場/二刀流一場兩列/小聯盟缺欄→0＋`inningsPitched` 解析/缺 gamePk 跳過;DB：header upsert 保留 schedule 欄、lines 幂等）。
+
+- [x] **ETL slice 票 07（兩批編排 + CLI 手動工具）完成 — spec-03 ETL slice 全 7 票收尾**（`.scratch/etl-pipeline/issues/07`，同分支）。
+  - **兩批編排**：morning（昨日～10 天結算逐場＋球季整季重拉＋投影＋近況重算）／evening（前瞻當日賽程＋掃尾結算＋transactions＋roster/IL 對帳）＋ manual，已於 `sources/__init__.py` 依相依序編排（games→game_lines、transactions→projection→recent_form、reconciliation 收尾）。cron 建議 morning 09:00／evening 17:30 台灣時間（spec-03 §2，上線後微調）。
+  - **CLI `etl <cmd>`（`cli.py`，argparse）**：`resync --season`（整季重拉）、`resync --gamelog --from DATE`（回補早於 lookback 的逐場，接著 reproject）、`add-event`（補錄 `source='manual'` 事件——投影與現實不符時的正解，不直接改投影，spec-03 §6/§7）、`reproject`（重放投影＋重算近況）。為複用，把 games/game_lines 的抓取抽成 `ingest_schedule`／`ingest_gamelog` 公用函式。console script `etl` 已註冊。
+  - 測試：pytest +6（arg 解析 4：需 command／resync 目標互斥／type 白名單／完整參數;DB 2：`insert_manual_event` 為 source=manual、add-event→reproject 點亮 status＋寫近況）。etl **全 116 綠**。CLI 真跑驗證：`etl reproject` 重投影 5 名球員、usage 錯誤正確報錯。
+  - 薄殼韌性（來源失敗不中斷整批、sync_runs 正確落帳）由 `test_batch.py` 既有 partial 語意測試涵蓋。
+
+- [x] **ETL slice 票 05（近況一句話引擎 → `player_recent_form`）完成**（`.scratch/etl-pipeline/issues/05`，同分支）。純規則引擎 `recent_form.py`，優先序取第一個命中、fallback 必中、句子永不為空、≤20 字裁切（spec-03 §5）：
+  - **五層 pattern**：① `career_high`/`season_high`（上一場單場計數欄創 2020 起新高，如「上一場敲生涯最多 3 轟」「投出生涯最多 9 次三振」）→ ② `streak`（連續有安打/連續無失分 ≥3，跨層級延續）→ ③ `single_game`（上一場亮點：3+ 安、開轟、優質先發、飆 K）→ ④ `recent_agg`（近 5 場打擊率/防禦率）→ ⑤ `status_fallback`（傷兵/休賽期/近兩週無出賽，接投影狀態）。門檻與句式常數維護在程式頂部、回填 spec-03 §5。
+  - 角色（打/投）由最近一場行為決定;二刀流依先發與否。每批於**投影之後**全量重算（fallback 需最新狀態）。
+  - **順帶整合修正（games 窗口 + 第三個同型 FK bug）**：morning 的 `games` schedule 窗口原本只抓「昨天～今天」，導致 game_lines 的 10 天回看（從 games 表讀 game_pk）在新 DB 上無資料可掃 → 近況全 fallback。改成 morning 也抓 `GAMELOG_LOOKBACK_DAYS` 窗口。此改動暴露第三個 team-FK bug：schedule 含 ingested sportId 外的表演賽/外隊(如 2190)→ `games.home/away_team_id` FK 炸;比照 transactions 以 `sanitize_team_refs` 把無法解析的 team ref 設 NULL、保留比賽列。
+  - 測試：pytest +17（純 15：五層 pattern 各案＋優先序（career_high 壓過 streak）＋fallback 三態＋永不為空/裁切;DB 1：recompute 寫 `player_recent_form`;games sanitize 1）。etl 全 110 綠。evening 真連線跑通、五名球員都有非空近況句（目前資料稀疏多為 fallback，隨每日累積 game lines 後自動轉為數據句）。
+
+- [x] **票 03/04/06 並行開發 + 整合（consolidation）完成**。03/04/06 三個獨立 vertical 以 subagent 於各自 git worktree 並行實作（off 票 02），再由主線合併：03（無獨立 commit，工作落在共用 checkout）+04 併為一個 commit、06 以 cherry-pick 併入，解 `sources/__init__.py`／DEVLOG 衝突。**跑真實批次做整合驗證，抓到並修好兩個單元測試（各票以 fixture 隔離）測不到的跨票 FK bug**：
+  - **transactions**：球員生涯異動含**六個 ingested sportId 以外**的球隊（外/冬季/大學聯盟、春訓、已解散隊，5 人共 15 個 id 如 3296）→ `to/from_team_id` FK 炸掉整個 source。修法 `sanitize_team_refs`：把無法解析的 team ref 設 NULL（兩欄皆可空）、保留事件本身（type/date/il_detail 才是投影所需）。
+  - **season_stats**：即使 hydrate 指定 sportId，StatsAPI 仍回傳 ingested 範圍外球隊的球季 split（5579、6038）→ `team_id` FK 炸。因 `team_id` 屬 NOT NULL grain 不能設 NULL，改用 `filter_known_teams` **整列丟棄**（那些聯盟本就在追蹤範疇外，spec-01）。
+  - **驗證**：manual/evening/morning 三批皆跑通真連線→ `player_current_status` 五名球員全上真隊伍/層級/健康（Fairchild IL-60、Cheng BOS、Lee DET、Lin AZ、Teng SUG-AAA）、`games` 120、`season_*_stats` 跨 2020~2026 入庫；`/players` 狀態一句由「同步中」變真值。Node 41 測綠、typecheck 過。
+  - **回報上游決策的兩個觀察（非本 slice 職責，待 spec owner 定）**：(1) `affiliation` enum 的 `free_agent` **目前不可達**——spec-01 B.3 無事件產生它（`Declared Free Agency` 現歸 `other`）；(2) 票 06 的 `lob_pct` 目前只在有 sabermetrics block（＝MLB）時算，是否應「所有層級都由計數自算」待確認。詳見 §待決問題。
+
+- [x] **ETL slice 票 03（狀態 vertical：transactions → transaction_events → 投影 → player_current_status）完成**（`.scratch/etl-pipeline/issues/03`，同分支）。沿用票 02 來源模組慣例：
+  - **transactions source**（`sources/transactions.py`）：每位 tracked 球員打 StatsAPI `transactions`（`playerId` + `startDate=2020-01-01`~今天）→ upsert `transaction_events` by `source_tx_id`（`ON CONFLICT DO UPDATE`）。`event source='statsapi'`；`effective_date` 取 `effectiveDate`（缺→`date`），`announced_at` 存公告 `date`（StatsAPI 無 wall-clock，當 `effective_date` 之後的穩定 tie-break）。
+  - **typeDesc→enum 對照（實測 2024 資料確認，回填 spec-01 §F / spec-03 §9）**：`Signed as Free Agent`/`Signed`→`sign`；`Recalled`/`Selected`/`Purchased`→`call_up`；`Optioned`/`Outrighted`→`send_down`；`Trade`/`Traded`→`trade`；`Designated for Assignment`→`dfa`；`Released`→`release`；`Retired`→`depart`；含 `injured list` 的 placed/transferred→`il_on`（並解析 `il_10/il_15/il_60/il_7`）、activated/reinstated→`il_off`。**未知一律→`other`**：`Assigned`(ASG)、`Status Change`(SC，非 IL 者)、`Claimed Off Waivers`(CLW，waiver claim 依票歸 other)、`Declared Free Agency`(DFA)、`Number Change`(NUM)、`Returned`(RTN)。
+    - **兩個實測坑（已修）**：(1) 典型 IL 異動走 `typeCode=SC/typeDesc="Status Change"`，IL 細節只在 `description`——故分類同時吃 `typeDesc+description` 且 IL 判定優先；SC 不可對到 `sign`。(2) typeCode `DFA` 實為 *Declared Free Agency*（不是 designation！），designation 走 `DES`——已避免撞碼。typeDesc 比對採**詞邊界**（`\bsigned\b` 不誤中 "as·signed" 的 Assigned）。
+  - **投影純函式**（`project_status`，spec-01 B.3）：事件依 `(effective_date, announced_at, id)` 排序重放→`(affiliation, health, team, level, il_detail, as_of_event_id)`；`dfa` 保留原隊參考、`release`/`depart` 清隊並重設 active、`other` 只上時間軸不動 as_of。收尾 `project_all_tracked` 全量重放所有 tracked 球員寫 `player_current_status`（PK upsert）。**無任何 affiliation 事件（如只有 IL toggle）→ 回 None 不寫**（`affiliation` NOT NULL，不捏造）。
+  - **對帳（signal-only）**：`people?hydrate=currentTeam` 快照與投影比對，不一致→`logging.warning` 提示補錄 manual 事件，**不自動改投影**（事件為真相）。**限制**：`sync_runs.detail` 落帳超出 per-source batch API → 採 logged warning（票允許，見下「整合者注意」）；`/people` 不穩定供 IL 狀態，目前 IL 對帳為 best-effort（team 對帳完整），完整 IL 對帳建議日後改抓 team roster snapshot 的 per-entry status code。
+  - **schema 合約缺口**：`affiliation` enum 有 `free_agent`，但 spec-01 B.3 無任何事件會產生它（`Declared Free Agency` 現歸 `other`）→ `free_agent` 目前**不可達**。非本票職責，留給整合者/spec 決定是否補一條事件對照或移除該 enum 值。
+  - 測試：pytest +22（純 20：classify 各軸＋真實字串回歸＋詞邊界、transform 正常/缺欄、投影表驅動涵蓋 sign/call_up↔send_down/IL on-off/dfa/release/depart/other/亂序重放/同日 tie-break/無 affiliation→None、reconcile team+health mismatch/未知欄位跳過/snapshot 解析；DB 2：`source_tx_id` 幂等 upsert、`project_all_tracked` 寫 status 幂等，皆帶 fixture 球員/球隊、`finally` 清理）。`cd etl && uv run pytest -q` 全 75 綠（含 db，Postgres 已起）。
+  - **整合者注意**：本票與票 04/06 並行改了 `sources/__init__.py`（新增 transactions/projection/reconciliation 註冊：transactions 進 morning/evening/manual、projection 續其後、reconciliation 進 evening/manual）與本 DEVLOG 本節——預期衝突，交由整合者合併。未動任何共用基礎檔。
+
+- [x] **ETL slice 票 04（逐場 vertical：schedule + boxscore → games/game_\*_lines）完成**（`.scratch/etl-pipeline/issues/04`，同分支）。沿用票 02 的來源模組慣例：
+  - **games source**（`sources/games.py`）：StatsAPI `schedule`（各 sportId、`hydrate=probablePitcher`、抓「昨天～今天」窗口）→ upsert `games`；`game_date_us` 以 StatsAPI 自己的 `officialDate` 錨定（本地時鐘只決定抓哪幾天，不寫入任何欄位）。**status 對照**：`detailedState` 命中 `postponed/suspended/cancelled` 關鍵字者優先對到對應 enum；否則 `abstractGameState=Final→final`、`Live→live`，其餘（`Scheduled/Pre-Game/Warmup`…）預設 `scheduled`。
+  - **game_lines source**（`sources/game_lines.py`）：`game/{gamePk}/boxscore` → `game_batting_lines`／`game_pitching_lines`，grain `(player_id, game_pk)`；角色由 `stats.batting`/`stats.pitching` 各自的 `gamesPlayed>=1` 判定，二刀流可兩表並存；只收 `lifecycle='tracked'` 球員。morning 回看 `GAMELOG_LOOKBACK_DAYS=10` 天（上游會事後修正）、evening 掃「昨天～今天」窄窗（補西岸晚場殘餘）。`build_sources` 內 `games` 先於 `game_lines_*` 註冊，確保同批次內先看得到剛 upsert 的比賽。
+  - **小聯盟缺欄**：兩張 lines 表的計數欄在 Drizzle schema 皆 `NOT NULL DEFAULT 0`（唯一可為 NULL 的是 `team_id`），故「缺欄留 NULL」落地為「缺欄→0」；`team_id` 解析不到時才真的留 NULL。無 schema 缺口需回報。
+  - 測試：pytest +21（純 19：schedule 欄位映射／缺 pk-or-officialDate 跳過／status 對照表 10 組參數化／MLB 正常 boxscore 二刀流兩表並存＋濾除未追蹤球員／小聯盟缺欄 fixture 全落 0／`ip_outs` 优先 `outs` 欄、否則解析 `inningsPitched` 局數×3；DB 2：games upsert 幂等改狀態、lines upsert 幂等，皆帶 fixture 球員/比賽、`finally` 清理）。`cd etl && uv run pytest -q` 全綠（含 db 標記，Postgres 已起）。
+  - 與票 03/06 並行，`sources/__init__.py`／DEVLOG 本節預期與其他票衝突，交由整合者合併。
+
+- [x] **ETL slice 票 06（球季數據 season_\*_stats：標準計數＋進階）完成**（`.scratch/etl-pipeline/issues/06`，同分支）。新增 `etl/src/etl/sources/season_stats.py`，沿用票 02 建立的來源模組慣例。
+  - **來源確認（實測，先前無 fixture 記錄）**：`GET /people?personIds=…&hydrate=stats(group=[hitting,pitching],type=[season,sabermetrics],season=Y,sportId=N)`——一次 call 拿到該 (season, sportId) 下所有 tracked 球員的打／投、計數／進階兩型別，call 數＝season 數 × sportId 數（與球員數無關）。
+  - **grain 正確性**：payload 同季跨隊會多一列「跨隊聚合」split（無 `team` 欄）＋各隊一列；只取有 `team` 的列，符合 `(player_id, season, level, team_id)` grain、不做跨隊/跨層級合計。
+  - **進階欄僅 MLB**：非 MLB sportId 查詢 `sabermetrics` 型別**直接回傳整個 block 不存在**（非空陣列、非報錯）——已用 sportId=11 實測驗證；因此 `woba/wrc_plus/war`（打）、`fip/war`（投）自然為 None，無需特判。`lob_pct` 由 ETL 自算（公式 `(H+BB+HBP-R)/(H+BB+HBP-1.4*HR)`），但比照票 06 說明「小聯盟進階留 NULL」的整組語意，只在該 (season,sportId) 有回傳 sabermetrics block 時才算——這是本票的解讀取捨，非上游限制，留給整合者確認。
+  - **xwoba 本票不寫**：Savant 整個跳過（不加 pybaseball 依賴）；`upsert_season_batting` 的 `ON CONFLICT DO UPDATE` **刻意不含 `xwoba`**，只在 INSERT 分支帶 NULL，避免本來源每次重拉把未來 Savant 來源寫入的值蓋回 NULL。
+  - **測試**：pytest +13（純 11：計數/進階欄位映射、跨隊聚合列剔除、缺 sabermetrics→None、`_lob_pct`／`_outs`（含 `inningsPitched` 字串回退）／`_season_range`；DB 2：batting/pitching upsert 幂等＋ xwoba 不被覆蓋，皆用越界 id＋`finally` 清理，含 players/teams 前置 fixture 列）。另跑一次**真連線 smoke**（Aaron Judge 2024 MLB、AAA 球員 2025）核對 transform 輸出。etl 全 45 綠。
+  - 已註冊進 `sources/__init__.py` 的 **morning** 批次（spec-03 §2：球季數據整季重拉屬 morning 職責）。
+  - **註冊**：進 `sources/__init__.py` 的 **morning** 批次（spec-03 §2：球季數據整季重拉屬 morning 職責）。
+
+- [x] **ETL slice 票 02（參考資料 teams + 球員 bio）完成**（`.scratch/etl-pipeline/issues/02`，同分支）。建立**「來源模組」慣例**供後續票遵循：`etl/src/etl/sources/` 套件，每模組＝純 `transform_*(payload)→rows` ＋ `upsert_*(conn,rows)`（`ON CONFLICT DO UPDATE`、不 commit）＋ `make_*_source(client,conn)` 工廠。
+  - **sportId→level 常數**（`constants.py`，spec-03 §4）：`1=mlb,11=aaa,12=aa,13=a_plus,14=a,16=rookie`；`level_rank` 供 teams 排序。
+  - **teams source**：抓各 sportId → upsert `teams`，含 `parent_org_team_id`（母球團）；rows **MLB 先於 affiliate** 排序，讓 minor-league 的 parent FK 在同 transaction 內成立。
+  - **players_bio source**：抓 tracked 球員 people → **只更新 bio 欄**（守位／慣用手／生日），**不碰白名單 lifecycle／created_at／name_en／人工 name_zh**、不 insert。
+  - **實跑驗證（live StatsAPI）**：231 隊入庫（mlb/aaa/aa/a+/a 各 30、rookie 81），AAA affiliate 正確指向母球團、FK 無違反；raw_payloads 落 6 teams＋1 people；status success。sync.py 建 client（FileCache＋raw recorder），reference data 併入 evening／manual 批。
+  - 測試：pytest +8（teams transform/level fallback/self-parent、DB upsert FK 排序+幂等；people transform、DB bio 更新保留白名單欄、未知球員 0 更新）。etl 全 32 綠。
+
+- [x] **ETL slice 票 01（走路骨架）完成**（`.scratch/etl-pipeline/issues/01`，分支 `feat/spec-03-etl-skeleton`）。Python 資料層起步、footer 由占位改真值：
+  - **uv 管理的 `etl/` 專案（src layout）** 與 Node/資料層共存於同 repo，不動既有 `pnpm test`／`typecheck`／`db:*`；`psycopg` 存取，**把 Drizzle 的 curated schema 當固定合約、絕不下 DDL**。
+  - **StatsAPI client**（`statsapi.py`）：保守 delay、重試 2 次（3 次嘗試）、可選本地檔案快取（`cache.py`，含 TTL）、成功回應經注入的 recorder 落 `raw_payloads`。HTTP session／sleep／cache／recorder 全可注入 → 重試/快取/記錄邏輯離線可測、不打真網路。
+  - **`sync_runs` 開帳→收帳**：開帳時**悲觀寫 `failed`**、乾淨收尾才改 `success`/`partial`——中途死掉的殘帳自然被「最近一筆非-failed finished_at」略過（crash-safe）。`run_batch` 逐來源獨立 transaction：成功 commit、失敗只 rollback 該來源並記 `detail`、**不中斷整批**（→ partial）；全來源失敗→ failed；框架級致命→ 強制 failed 後重拋。
+  - **CLI `python -m etl.sync <morning|evening|manual>`**：跑一個批次（此票各批來源清單暫空）並落一筆 `sync_runs`。
+  - **Node 端**：`lib/services/getLastSyncedAt()` 讀最近一筆非-failed 且已 `finished_at` 的 run；root layout 改 async 注入 `SiteFooter`，「資料更新於」由占位「—」變真實台灣時間。
+  - **測試**：pytest 24（純：status 判定／batch partial 語意／StatsAPI 重試+快取+記錄／FileCache；DB 整合：raw 落庫、run 開→收、失敗來源只 rollback 自己）＋ vitest `getLastSyncedAt` 4 案；全綠（Node 41、Python 24），`pnpm typecheck` 過。
+  - 收尾：`.gitignore` 補 Python 段；`docs/spec/spec-03` §9 的 transactions typeDesc／小聯盟 boxscore 兩個 open item 留給票 03/04 實作時實測回填。
+
 ### 2026-07-24
 
 - [x] **frontend-shell-and-roster slice（spec-02 切片 1+2）全 4 票完成**（`.scratch/frontend-shell-and-roster/issues/`）。Next 端已與資料層同 repo 共存，`/players` 可在瀏覽器看到白名單 5 人：
@@ -89,7 +157,17 @@
 ## ▶️ 進行中 / 下一步
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
-- [ ] **下一步：ETL slice（spec-03）**——已用 /to-tickets 拆成 **7 票**（`.scratch/etl-pipeline/issues/`）：01 ETL 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影 player_current_status★、04 逐場 game_*_lines、06 季數據 season_*_stats 可並行} → 05 近況 player_recent_form★（接 04+03）→ 07 兩批編排+CLI 收尾。★＝點亮 `/players`。frontier＝票 01。語言 Python（uv）、psycopg 存取、把 Drizzle schema 當合約不自行 migrate。
+- [x] ~~**ETL slice（spec-03）全 7 票完成**~~（2026-07-27，分支 `feat/spec-03-etl-skeleton`）——01 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影★、04 逐場、06 季數據 並行} → 05 近況★ → 07 兩批編排+CLI。★＝點亮 `/players`。語言 Python（uv）、psycopg、把 Drizzle schema 當合約不自行 migrate。三批（morning/evening/manual）真連線跑通、`/players` 狀態＋近況上真值。詳見已完成區各票。
+  - [x] ~~**票 01 ETL 骨架**~~（2026-07-27 完成，見已完成區；分支 `feat/spec-03-etl-skeleton`）。
+  - [x] ~~**票 02 參考資料 teams/bio**~~（2026-07-27 完成，見已完成區）。
+  - [x] ~~**票 03/04/06 並行 vertical + 整合**~~（2026-07-27 完成，見已完成區；含兩個跨票 FK 整合修正）。
+  - [x] ~~**票 05 近況一句話 `player_recent_form`★**~~（2026-07-27 完成，見已完成區）。
+  - [x] ~~**票 07 兩批編排 + CLI 工具**~~（2026-07-27 完成，見已完成區）。**spec-03 ETL slice 全 7 票完成** 🎉
+
+- [ ] **etl-gamelog-refactor slice（2026-07-27 定案，2 票，`.scratch/etl-gamelog-refactor/issues/`）**——ETL slice 驗收時抓到的來源策略修正：
+  - **診斷**：`/players` 近況全 fallback，根因是 `game_*_lines` 幾乎空（2 筆）。查 `raw_payloads`（存了 120 份 boxscore）發現逐場走「掃全賽程 boxscore」——120 場橫跨全層級、5 名球員只真出現 ~2 場（掛名先發預告會誤判），整季會爆量。**狀態投影另查為正確**（transactions 已 2020+ 全量，Cheng 6/26 recall 到 BOS、Lee 6/13 到 DET 皆真事件）。近況引擎經驗證**已讀全歷史**、不需改。
+  - **決策（球員中心）**：逐場改走**人員 gameLog**（只抓關注球員自己的比賽）；整場 boxscore 不落庫、raw 停存 boxscore；**schedule 前瞻（先發預告/今日/即將）保留**；`games` 只留 gameLog（打過的）＋schedule（即將）兩來源；game-中心查詢刻意取捨。已更新 spec-03 §3。
+  - 票 01：逐場改 gameLog、退役 boxscore 全掃。票 02：初始 backfill 2020~今（補 `game_*_lines`，讓 career_high 誠實）＋收尾 reproject/重算近況。
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
@@ -107,8 +185,10 @@
 - [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
 - [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
 - [ ] 小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表（→ spec-03 §9）
-- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）
+- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。
 - [x] ~~實測 StatsAPI `stats=sabermetrics` 端點~~ → 已實測（2026-07-23）：**命中、維持原清單、預案封存**（結果見 spec-03 §9）
+- [x] ~~**（2026-07-27 ETL 整合浮現）`affiliation` enum 的 `free_agent` 不可達**~~ → **已定：補對照**（2026-07-27，batu）。新增 `transaction_type` enum 值 `declare_fa`（migration `0001`），StatsAPI「Declared Free Agency」/typeCode `DFA` → `declare_fa` → 投影 `free_agent`（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。
+- [x] ~~**（2026-07-27 ETL 整合浮現）`season_pitching_stats.lob_pct` 的層級範圍**~~ → **已定：所有層級皆算**（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 `hbp` 欄故 services 無法事後重算 → 必須 ETL 落庫。
 
 ---
 

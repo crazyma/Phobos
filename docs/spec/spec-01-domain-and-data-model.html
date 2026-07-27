@@ -202,7 +202,8 @@
     <tbody>
     <tr><td data-label="事件 type"><code>sign</code> / <code>trade</code> / <code>call_up</code> / <code>send_down</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）</td><td data-label="健康變化">不變</td></tr>
     <tr><td data-label="事件 type"><code>dfa</code></td><td data-label="歸屬變化">→ <code>dfa</code>（保留原隊參考）</td><td data-label="健康變化">不變</td></tr>
-    <tr><td data-label="事件 type"><code>release</code></td><td data-label="歸屬變化">→ <code>released</code></td><td data-label="健康變化">重設 <code>active</code></td></tr>
+    <tr><td data-label="事件 type"><code>release</code></td><td data-label="歸屬變化">→ <code>released</code>（清隊）</td><td data-label="健康變化">重設 <code>active</code></td></tr>
+    <tr><td data-label="事件 type"><code>declare_fa</code></td><td data-label="歸屬變化">→ <code>free_agent</code>（清隊）</td><td data-label="健康變化">重設 <code>active</code></td></tr>
     <tr><td data-label="事件 type"><code>il_on</code></td><td data-label="歸屬變化">不變</td><td data-label="健康變化">→ <code>il</code>（記 <code>il_detail</code>）</td></tr>
     <tr><td data-label="事件 type"><code>il_off</code></td><td data-label="歸屬變化">不變</td><td data-label="健康變化">→ <code>active</code></td></tr>
     <tr><td data-label="事件 type"><code>depart</code>（手動事件）</td><td data-label="歸屬變化">→ <code>departed</code></td><td data-label="健康變化">重設 <code>active</code></td></tr>
@@ -244,7 +245,7 @@
     <tr><td data-label="欄位"><code>id</code></td><td data-label="型別">bigserial <strong>PK</strong></td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>source_tx_id</code></td><td data-label="型別">text，可空 unique</td><td data-label="說明">上游 transaction id</td></tr>
     <tr><td data-label="欄位"><code>player_id</code></td><td data-label="型別">int FK</td><td data-label="說明"></td></tr>
-    <tr><td data-label="欄位"><code>type</code></td><td data-label="型別">enum <code>sign,call_up,send_down,trade,dfa,release,il_on,il_off,depart,other</code></td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>type</code></td><td data-label="型別">enum <code>sign,call_up,send_down,trade,dfa,release,declare_fa,il_on,il_off,depart,other</code></td><td data-label="說明"><code>declare_fa</code>＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 <code>free_agent</code></td></tr>
     <tr><td data-label="欄位"><code>effective_date</code></td><td data-label="型別">date</td><td data-label="說明">排序主鍵之一</td></tr>
     <tr><td data-label="欄位"><code>announced_at</code></td><td data-label="型別">timestamptz，可空</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>from_team_id</code> / <code>to_team_id</code></td><td data-label="型別">int FK，可空</td><td data-label="說明"></td></tr>
