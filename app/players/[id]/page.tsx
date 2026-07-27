@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPlayerDetail } from "@/lib/services";
 import { PlayerHero } from "@/components/player-detail/player-hero";
+import { SeasonStats } from "@/components/player-detail/season-stats";
 
 // ISR: data refreshes twice a day (spec-03); a 30-min revalidate suffices
 // (spec-02 §2.3). On-demand revalidation on ETL completion is a v2 open item.
@@ -53,7 +54,12 @@ export default async function PlayerPage({
         </p>
       )}
 
-      {/* zones 2–5 land in tickets 02–04 */}
+      <SeasonStats
+        seasons={player.seasons}
+        heading={isArchived ? "生涯總成績" : "球季數據"}
+      />
+
+      {/* zones 3–5 land in tickets 03–04 */}
     </article>
   );
 }

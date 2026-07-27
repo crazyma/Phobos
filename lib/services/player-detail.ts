@@ -9,6 +9,7 @@ import {
 } from "../db/schema/index.ts";
 import { handedness, playerLifecycle, teamLevel } from "../db/schema/enums.ts";
 import { buildStatusSentence, levelLabel } from "./player-status.ts";
+import { getPlayerSeasons, SeasonSchema } from "./player-seasons.ts";
 
 /** Current team block, shared with the roster summary shape. */
 const TeamSchema = z
@@ -42,6 +43,8 @@ export const PlayerDetailSchema = z.object({
   statusSentence: z.string(),
   /** 近況一句話；ETL 尚未產出時為 null。 */
   recentForm: z.string().nullable(),
+  /** 球季數據，自 2020 起、依球季分組（spec-02 §2.3；ticket 02）。 */
+  seasons: z.array(SeasonSchema),
 });
 
 export type PlayerDetail = z.infer<typeof PlayerDetailSchema>;
@@ -87,6 +90,7 @@ export async function getPlayerDetail(
   const row = rows[0];
   if (!row) return null;
 
+  const seasons = await getPlayerSeasons(id, db);
   const level = row.statusLevel ?? row.teamLevel;
   const detail: PlayerDetail = {
     playerId: row.playerId,
@@ -114,6 +118,7 @@ export async function getPlayerDetail(
       level,
     }),
     recentForm: row.recentForm ?? null,
+    seasons,
   };
 
   return PlayerDetailSchema.parse(detail);
