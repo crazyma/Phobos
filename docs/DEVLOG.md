@@ -7,6 +7,16 @@
 
 ## ✅ 已完成
 
+### 2026-07-28
+
+- [x] **球員個人頁 slice `player-detail-page`（4 票）完成——`/players/[id]` 五區全上**（`.scratch/player-detail-page/issues/`，分支 `feat/player-detail-page`，spec-02 §2.3）。名冊卡片可點入；頁面與 `/api/players/:id` 共用 `lib/services` 一組資料，Zod schema 即對外合約；非白名單→404、錯誤→500。
+  - **票 01 骨架 + zone 1**：`getPlayerDetail(id)` 回 base 形狀（基本資料含慣用手/生日、目前隊伍、狀態一句、近況一句話），`/players/[id]` Server Component（ISR 1800）＋ `/api/players/:id`。`archived` 只顯 zone 1＋標「已離開美職體系」。
+  - **票 02 zone 2 球季數據**：`stats.ts` 純函式由計數欄推導標準比率（打 AVG/OBP/SLG/OPS/ISO/BB%/K%/BABIP、投 ERA/WHIP/K9/BB9/HR9/K%/BB%，分母 0→null）；`buildSeasons` 依球季→層級→（每隊列＋**層級合計列**，合計由**加總計數再推導**、非平均比率，spec-01 C.7）。低階（1A 以下）標「僅供參考」；archived 呈現為「生涯總成績」。進階數據（打/投各 7）依 spec-04 §D「名詞頁先行」留待名詞庫批。
+  - **票 03 zone 3+4**：`getPlayerGameLog` 回最近 `RECENT_GAMES_N=10` 場打/投分表（二刀流兩表並列、對手/主客解析、單場 OPS/ERA/WHIP 沿用票 02 推導）；`getPlayerTimeline` 回 `transaction_events` 倒序＋中文類型徽章。archived 隱藏此二區。
+  - **票 04 zone 5**：`getPlayerUpcoming` 回出賽預告標籤（`probable_starter`＝投手且命中 `probable_*_pitcher_id`／`possible`＝其他健康在隊者／`il`，規則同 spec-02 §2.1 第 3 區）＋下一系列賽（對手/`venue_name`/`series_game_number`/`games_in_series`）＋球隊近期戰績（比分/勝敗）；無現隊→null。archived 隱藏。
+  - **測試**：Node 全 76 綠（純比率推導對照手算值＋分母 0→null、層級合計重算、gameLog 二刀流兩表/空狀態、timeline 倒序+標籤、upcoming 三分支+無隊 null、各 zone 元件 smoke；service 皆 seed DB）、`pnpm typecheck` 過。真連線驗證：`/players/[id]` 五區皆 render、`/api/players/:id` 回完整形狀、404 分支正確。
+  - **未跑正式 `/code-review`**（使用者觸發、計費，我無法代跑）；以逐檔自審＋全測試＋真連線把關代之。
+
 ### 2026-07-27
 
 - [x] **修正下放小聯盟球員顯示錯隊 — 新增 `assign` 事件型別 + B.3 投影規則**（2026-07-27，票 `.scratch/projection-assign-fix/issues/01`）。小聯盟「assigned to [隊]」異動（typeCode ASG）原被歸 `other`、投影不動隊，導致被下放者卡在上一個 MLB 事件。作法：(1) Drizzle enum 加 `assign`（migration `0002_aberrant_doorman.sql`，`ADD VALUE 'assign' BEFORE 'il_on'`）；(2) 分類以 **description 的「assigned to」片語** 判定（非 typeDesc-前綴 haystack——避免「Assigned 」+「To…」如 Toledo 誤命中），與 invited-non-roster（春訓邀請、to_team 常為 MLB，不設 rostered）、rehab（「assignment to」）、國家隊 activate（SC）區分；(3) 投影 `assign`→rostered 取 to_team 隊/層級，**to_team 無法解析（冬季/秋季聯盟、alt-site）→ no-op 不清隊**，最後一筆可解析者勝。重投影後費爾柴德(656413)→Tacoma(529/3A)、林昱珉(801179)→Reno(2310/3A) 修正，evening 對帳對這兩位不再告警。測試 etl 122／node 41／typecheck 綠。spec-01 B.3/C.3 早前已更新。
