@@ -142,7 +142,7 @@ export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Seas
   const battingRows = await db
     .select({
       season: b.season, level: b.level,
-      teamId: teams.mlbTeamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
+      teamId: b.teamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
       g: b.g, pa: b.pa, ab: b.ab, h: b.h, doubles: b.doubles, triples: b.triples, hr: b.hr,
       rbi: b.rbi, r: b.r, sb: b.sb, cs: b.cs, bb: b.bb, so: b.so, hbp: b.hbp, sf: b.sf,
     })
@@ -154,7 +154,7 @@ export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Seas
   const pitchingRows = await db
     .select({
       season: p.season, level: p.level,
-      teamId: teams.mlbTeamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
+      teamId: p.teamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
       g: p.g, gs: p.gs, ipOuts: p.ipOuts, bf: p.bf, h: p.h, r: p.r, er: p.er, hr: p.hr,
       bb: p.bb, so: p.so, w: p.w, l: p.l, sv: p.sv, hld: p.hld,
     })

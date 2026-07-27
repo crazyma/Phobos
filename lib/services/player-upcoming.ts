@@ -1,7 +1,7 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, gte, or } from "drizzle-orm";
 import { z } from "zod";
 import { db as defaultDb } from "../db/client.ts";
-import { games, playerCurrentStatus, players, teams } from "../db/schema/index.ts";
+import { games, playerCurrentStatus, teams } from "../db/schema/index.ts";
 
 const OpponentSchema = z
   .object({ abbrev: z.string().nullable(), name: z.string() })
@@ -54,20 +54,26 @@ function sideOf(teamId: number, homeId: number | null, awayId: number | null, te
 }
 
 /**
+ * Today's US game day (YYYY-MM-DD). Uses US-Pacific — the westmost US zone — so a
+ * game still being played out west is never prematurely treated as past.
+ */
+function usToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
+}
+
+/**
  * Zone 5 (spec-02 §2.3 / §2.1 rule 3): the player's next-game prediction tag +
  * next scheduled game (series context) + their team's recent results. Returns
  * null when the player has no current team. Data comes from the `games`
  * preview rows (schedule + probable pitcher).
  */
-export async function getPlayerUpcoming(id: number, db = defaultDb): Promise<Upcoming> {
+export async function getPlayerUpcoming(id: number, db = defaultDb, today: string = usToday()): Promise<Upcoming> {
   const [status] = await db
     .select({
       teamId: playerCurrentStatus.teamId,
       health: playerCurrentStatus.health,
-      position: players.primaryPosition,
     })
     .from(playerCurrentStatus)
-    .innerJoin(players, eq(players.mlbPlayerId, playerCurrentStatus.playerId))
     .where(eq(playerCurrentStatus.playerId, id))
     .limit(1);
 
@@ -84,7 +90,7 @@ export async function getPlayerUpcoming(id: number, db = defaultDb): Promise<Upc
       probableHome: games.probableHomePitcherId, probableAway: games.probableAwayPitcherId,
     })
     .from(games)
-    .where(and(onTeam, eq(games.status, "scheduled")))
+    .where(and(onTeam, eq(games.status, "scheduled"), gte(games.gameDateUs, today)))
     .orderBy(games.gameDateUs, games.gamePk)
     .limit(1);
 
@@ -115,17 +121,14 @@ export async function getPlayerUpcoming(id: number, db = defaultDb): Promise<Upc
       })()
     : null;
 
-  // Tag: IL players get "傷兵中" (no prediction); a probable starter is only a
-  // pitcher whose id matches the game's probable pitcher; everyone else healthy
-  // and on a team is "可能出賽" (spec-02 §2.1 rule 3).
+  // Tag: IL players get "傷兵中" (no prediction); a probable starter is anyone
+  // named as the game's probable pitcher — keyed off the id match, not the
+  // position string, so two-way players are covered; everyone else healthy and
+  // on a team is "可能出賽" (spec-02 §2.1 rule 3).
   let tag: "probable_starter" | "possible" | "il";
   if (status.health === "il") {
     tag = "il";
-  } else if (
-    status.position === "P" &&
-    next &&
-    (next.probableHome === id || next.probableAway === id)
-  ) {
+  } else if (next && (next.probableHome === id || next.probableAway === id)) {
     tag = "probable_starter";
   } else {
     tag = "possible";
