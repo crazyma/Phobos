@@ -119,3 +119,5 @@ etl/.cache/
 # === Claude Code ===
 # Personal local settings (permissions etc.) — keep .claude/settings.json (if any) tracked
 .claude/settings.local.json
+# Ephemeral subagent git worktrees
+.claude/worktrees/
