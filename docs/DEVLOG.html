@@ -355,6 +355,14 @@
     <li class="done">~~<strong>票 07 兩批編排 + CLI 工具</strong>~~（2026-07-27 完成，見已完成區）。<strong>spec-03 ETL slice 全 7 票完成</strong> 🎉</li>
     </ul></li>
     </ul>
+    <ul class="todo">
+    <li class=""><strong>etl-gamelog-refactor slice（2026-07-27 定案，2 票，<code>.scratch/etl-gamelog-refactor/issues/</code>）</strong>——ETL slice 驗收時抓到的來源策略修正：
+    <ul>
+    <li><strong>診斷</strong>：<code>/players</code> 近況全 fallback，根因是 <code>game_*_lines</code> 幾乎空（2 筆）。查 <code>raw_payloads</code>（存了 120 份 boxscore）發現逐場走「掃全賽程 boxscore」——120 場橫跨全層級、5 名球員只真出現 ~2 場（掛名先發預告會誤判），整季會爆量。<strong>狀態投影另查為正確</strong>（transactions 已 2020+ 全量，Cheng 6/26 recall 到 BOS、Lee 6/13 到 DET 皆真事件）。近況引擎經驗證<strong>已讀全歷史</strong>、不需改。</li>
+    <li><strong>決策（球員中心）</strong>：逐場改走<strong>人員 gameLog</strong>（只抓關注球員自己的比賽）；整場 boxscore 不落庫、raw 停存 boxscore；<strong>schedule 前瞻（先發預告/今日/即將）保留</strong>；<code>games</code> 只留 gameLog（打過的）＋schedule（即將）兩來源；game-中心查詢刻意取捨。已更新 spec-03 §3。</li>
+    <li>票 01：逐場改 gameLog、退役 boxscore 全掃。票 02：初始 backfill 2020~今（補 <code>game_*_lines</code>，讓 career_high 誠實）＋收尾 reproject/重算近況。</li>
+    </ul></li>
+    </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
     <ul class="todo">
     <li class="done">~~重建 spec~~（2026-07-23 完成，見已完成區）</li>
