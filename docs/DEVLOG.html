@@ -163,6 +163,15 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-27</h3>
     <ul class="todo">
+    <li class="done"><strong>票 03/04/06 並行開發 + 整合（consolidation）完成</strong>。03/04/06 三個獨立 vertical 以 subagent 於各自 git worktree 並行實作（off 票 02），再由主線合併：03（無獨立 commit，工作落在共用 checkout）+04 併為一個 commit、06 以 cherry-pick 併入，解 <code>sources/__init__.py</code>／DEVLOG 衝突。<strong>跑真實批次做整合驗證，抓到並修好兩個單元測試（各票以 fixture 隔離）測不到的跨票 FK bug</strong>：
+    <ul>
+    <li><strong>transactions</strong>：球員生涯異動含<strong>六個 ingested sportId 以外</strong>的球隊（外/冬季/大學聯盟、春訓、已解散隊，5 人共 15 個 id 如 3296）→ <code>to/from_team_id</code> FK 炸掉整個 source。修法 <code>sanitize_team_refs</code>：把無法解析的 team ref 設 NULL（兩欄皆可空）、保留事件本身（type/date/il_detail 才是投影所需）。</li>
+    <li><strong>season_stats</strong>：即使 hydrate 指定 sportId，StatsAPI 仍回傳 ingested 範圍外球隊的球季 split（5579、6038）→ <code>team_id</code> FK 炸。因 <code>team_id</code> 屬 NOT NULL grain 不能設 NULL，改用 <code>filter_known_teams</code> <strong>整列丟棄</strong>（那些聯盟本就在追蹤範疇外，spec-01）。</li>
+    <li><strong>驗證</strong>：manual/evening/morning 三批皆跑通真連線→ <code>player_current_status</code> 五名球員全上真隊伍/層級/健康（Fairchild IL-60、Cheng BOS、Lee DET、Lin AZ、Teng SUG-AAA）、<code>games</code> 120、<code>season_*_stats</code> 跨 2020~2026 入庫；<code>/players</code> 狀態一句由「同步中」變真值。Node 41 測綠、typecheck 過。</li>
+    <li><strong>回報上游決策的兩個觀察（非本 slice 職責，待 spec owner 定）</strong>：(1) <code>affiliation</code> enum 的 <code>free_agent</code> <strong>目前不可達</strong>——spec-01 B.3 無事件產生它（<code>Declared Free Agency</code> 現歸 <code>other</code>）；(2) 票 06 的 <code>lob_pct</code> 目前只在有 sabermetrics block（＝MLB）時算，是否應「所有層級都由計數自算」待確認。詳見 §待決問題。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>ETL slice 票 03（狀態 vertical：transactions → transaction_events → 投影 → player_current_status）完成</strong>（<code>.scratch/etl-pipeline/issues/03</code>，同分支）。沿用票 02 來源模組慣例：
     <ul>
     <li><strong>transactions source</strong>（<code>sources/transactions.py</code>）：每位 tracked 球員打 StatsAPI <code>transactions</code>（<code>playerId</code> + <code>startDate=2020-01-01</code>~今天）→ upsert <code>transaction_events</code> by <code>source_tx_id</code>（<code>ON CONFLICT DO UPDATE</code>）。<code>event source=&#x27;statsapi&#x27;</code>；<code>effective_date</code> 取 <code>effectiveDate</code>（缺→<code>date</code>），<code>announced_at</code> 存公告 <code>date</code>（StatsAPI 無 wall-clock，當 <code>effective_date</code> 之後的穩定 tie-break）。</li>
@@ -322,8 +331,9 @@
     <li class=""><strong>進行中：ETL slice（spec-03）</strong>——已用 /to-tickets 拆成 <strong>7 票</strong>（<code>.scratch/etl-pipeline/issues/</code>）：01 ETL 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影 player_current_status★、04 逐場 game_*_lines、06 季數據 season_*_stats 可並行} → 05 近況 player_recent_form★（接 04+03）→ 07 兩批編排+CLI 收尾。★＝點亮 <code>/players</code>。frontier＝票 01。語言 Python（uv）、psycopg 存取、把 Drizzle schema 當合約不自行 migrate。
     <ul class="todo">
     <li class="done">~~<strong>票 01 ETL 骨架</strong>~~（2026-07-27 完成，見已完成區；分支 <code>feat/spec-03-etl-skeleton</code>）。</li>
-    <li class="done">~~<strong>票 02 參考資料 teams/bio</strong>~~（2026-07-27 完成，見已完成區）。<strong>下一步：票 03/04/06 並行</strong>（各為獨立 vertical，off 票 02）→ 05（接 03+04）→ 07 收尾。</li>
-    <li class="done">~~<strong>票 03 狀態投影 player_current_status</strong>~~（2026-07-27 完成，見已完成區）。</li>
+    <li class="done">~~<strong>票 02 參考資料 teams/bio</strong>~~（2026-07-27 完成，見已完成區）。</li>
+    <li class="done">~~<strong>票 03/04/06 並行 vertical + 整合</strong>~~（2026-07-27 完成，見已完成區；含兩個跨票 FK 整合修正）。</li>
+    <li class=""><strong>下一步：票 05 近況一句話 <code>player_recent_form</code>★</strong>（接 03+04）→ <strong>票 07 兩批編排 + CLI 工具（resync/add-event/reproject）收尾</strong>。註：兩批職責已在 <code>sources/__init__.py</code> 編排完成，07 主要剩 CLI 手動工具。</li>
     </ul></li>
     </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
@@ -342,8 +352,10 @@
     <li class="done">~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋<code>game_date_us</code> 錨定比賽日（spec-01 C.5、spec-02 §6）</li>
     <li class="done">~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）</li>
     <li class="">小聯盟成績資料源細節：StatsAPI <code>sportId=11/12</code> 端點回傳欄位與 pybaseball 欄位對齊表（→ spec-03 §9）</li>
-    <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）</li>
+    <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。<strong>部分回填（2026-07-27 票 03 實作）</strong>：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。</li>
     <li class="done">~~實測 StatsAPI <code>stats=sabermetrics</code> 端點~~ → 已實測（2026-07-23）：<strong>命中、維持原清單、預案封存</strong>（結果見 spec-03 §9）</li>
+    <li class=""><strong>（2026-07-27 ETL 整合浮現）<code>affiliation</code> enum 的 <code>free_agent</code> 目前不可達</strong>：spec-01 B.3 無任何事件對應產生它，StatsAPI「Declared Free Agency」現歸 <code>other</code>。待定：補一條事件對照（如 <code>Declared Free Agency</code>→<code>free_agent</code>）或自 enum 移除該值。</li>
+    <li class=""><strong>（2026-07-27 ETL 整合浮現）<code>season_pitching_stats.lob_pct</code> 的層級範圍</strong>：票 06 目前只在有 sabermetrics block（＝MLB）時自算 LOB%，但它其實可由計數欄在<strong>任何層級</strong>自算。待定原意是「僅 MLB 進階」還是「所有層級皆算」。</li>
     </ul>
   </section>
   <section>
