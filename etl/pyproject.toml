@@ -11,9 +11,10 @@ dependencies = [
 ]
 
 [project.scripts]
-# `python -m etl.sync <kind>` is the primary entrypoint (spec-03 §7); this
-# console script is a convenience alias for the installed venv.
+# `python -m etl.sync <kind>` is the primary batch entrypoint; these console
+# scripts are convenience aliases for the installed venv.
 etl-sync = "etl.sync:main"
+etl = "etl.cli:main"
 
 [dependency-groups]
 dev = [

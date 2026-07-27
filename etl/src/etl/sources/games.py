@@ -232,34 +232,42 @@ def _schedule_window(today: date, kind: str) -> tuple[date, date]:
     return today - timedelta(days=1), today
 
 
+def ingest_schedule(
+    client: StatsApiClient, conn: psycopg.Connection, start: date, end: date
+) -> int:
+    """Fetch + upsert every sportId's schedule for [start, end]. Returns rows
+    upserted. Reused by the batch source and the `resync --gamelog` CLI."""
+    all_rows: list[GameRow] = []
+    for sport_id in INGEST_SPORT_IDS:
+        level = level_for_sport_id(sport_id)
+        if level is None:
+            continue
+        payload = client.get(
+            "schedule",
+            {
+                "sportId": sport_id,
+                "startDate": start.isoformat(),
+                "endDate": end.isoformat(),
+                "hydrate": "probablePitcher",
+            },
+        )
+        all_rows.extend(transform_schedule(payload, default_level=level))
+    cleaned, dropped = sanitize_team_refs(all_rows, _known_team_ids(conn))
+    if dropped:
+        logger.warning(
+            "games: nulled %d team ref(s) not in teams (exhibition/out-of-scope "
+            "opponents): %s",
+            len(dropped),
+            sorted(dropped),
+        )
+    return upsert_games(conn, cleaned)
+
+
 def make_games_source(
     client: StatsApiClient, conn: psycopg.Connection, *, kind: str = "evening"
 ) -> Source:
     def run() -> None:
         start, end = _schedule_window(datetime.now(timezone.utc).date(), kind)
-        all_rows: list[GameRow] = []
-        for sport_id in INGEST_SPORT_IDS:
-            level = level_for_sport_id(sport_id)
-            if level is None:
-                continue
-            payload = client.get(
-                "schedule",
-                {
-                    "sportId": sport_id,
-                    "startDate": start.isoformat(),
-                    "endDate": end.isoformat(),
-                    "hydrate": "probablePitcher",
-                },
-            )
-            all_rows.extend(transform_schedule(payload, default_level=level))
-        cleaned, dropped = sanitize_team_refs(all_rows, _known_team_ids(conn))
-        if dropped:
-            logger.warning(
-                "games: nulled %d team ref(s) not in teams (exhibition/out-of-scope "
-                "opponents): %s",
-                len(dropped),
-                sorted(dropped),
-            )
-        upsert_games(conn, cleaned)
+        ingest_schedule(client, conn, start, end)
 
     return Source("games", run)

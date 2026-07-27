@@ -274,6 +274,49 @@ def upsert_transaction_events(conn: psycopg.Connection, rows: list[TxRow]) -> in
     return count
 
 
+def insert_manual_event(
+    conn: psycopg.Connection,
+    *,
+    player_id: int,
+    type: str,
+    effective_date: str,
+    to_team_id: Optional[int] = None,
+    from_team_id: Optional[int] = None,
+    il_detail: Optional[str] = None,
+    description: Optional[str] = None,
+    announced_at: Optional[str] = None,
+) -> int:
+    """Insert a manually-added event (source='manual', no source_tx_id).
+
+    For human corrections when upstream and the projection disagree (spec-03
+    §6/§7) — the fix is a manual event, never editing the projection directly.
+    Returns the new event id. Does not commit.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            insert into transaction_events
+                (source_tx_id, player_id, type, effective_date, announced_at,
+                 from_team_id, to_team_id, il_detail, description, source)
+            values (null, %s, %s, %s, %s, %s, %s, %s, %s, 'manual')
+            returning id
+            """,
+            (
+                player_id,
+                type,
+                effective_date,
+                announced_at,
+                from_team_id,
+                to_team_id,
+                il_detail,
+                description,
+            ),
+        )
+        row = cur.fetchone()
+    assert row is not None
+    return int(row[0])
+
+
 def _tracked_player_ids(conn: psycopg.Connection) -> list[int]:
     with conn.cursor() as cur:
         cur.execute(

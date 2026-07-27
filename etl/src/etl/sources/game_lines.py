@@ -305,26 +305,35 @@ def _sweep_window(kind: str, today: date) -> tuple[date, date]:
     return today - timedelta(days=1), today
 
 
+def ingest_gamelog(
+    client: StatsApiClient, conn: psycopg.Connection, start: date, end: date
+) -> tuple[int, int]:
+    """Sweep box scores for every game in [start, end] (from the games table),
+    upserting tracked players' lines. Returns (batting, pitching) row counts.
+    Reused by the batch source and the `resync --gamelog --from DATE` CLI."""
+    tracked = _tracked_player_ids(conn)
+    if not tracked:
+        return (0, 0)
+    batting_all: list[BattingLineRow] = []
+    pitching_all: list[PitchingLineRow] = []
+    for game_pk, level in _games_in_window(conn, start, end):
+        payload = client.get(f"game/{game_pk}/boxscore")
+        batting, pitching = transform_boxscore(
+            payload, game_pk=game_pk, level=level, tracked_ids=tracked
+        )
+        batting_all.extend(batting)
+        pitching_all.extend(pitching)
+    return (
+        upsert_batting_lines(conn, batting_all),
+        upsert_pitching_lines(conn, pitching_all),
+    )
+
+
 def make_game_lines_source(
     client: StatsApiClient, conn: psycopg.Connection, *, kind: str
 ) -> Source:
     def run() -> None:
-        tracked = _tracked_player_ids(conn)
-        if not tracked:
-            return
-
         start, end = _sweep_window(kind, datetime.now(timezone.utc).date())
-        batting_all: list[BattingLineRow] = []
-        pitching_all: list[PitchingLineRow] = []
-        for game_pk, level in _games_in_window(conn, start, end):
-            payload = client.get(f"game/{game_pk}/boxscore")
-            batting, pitching = transform_boxscore(
-                payload, game_pk=game_pk, level=level, tracked_ids=tracked
-            )
-            batting_all.extend(batting)
-            pitching_all.extend(pitching)
-
-        upsert_batting_lines(conn, batting_all)
-        upsert_pitching_lines(conn, pitching_all)
+        ingest_gamelog(client, conn, start, end)
 
     return Source(f"game_lines_{kind}", run)

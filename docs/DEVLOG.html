@@ -163,6 +163,15 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-27</h3>
     <ul class="todo">
+    <li class="done"><strong>ETL slice 票 07（兩批編排 + CLI 手動工具）完成 — spec-03 ETL slice 全 7 票收尾</strong>（<code>.scratch/etl-pipeline/issues/07</code>，同分支）。
+    <ul>
+    <li><strong>兩批編排</strong>：morning（昨日～10 天結算逐場＋球季整季重拉＋投影＋近況重算）／evening（前瞻當日賽程＋掃尾結算＋transactions＋roster/IL 對帳）＋ manual，已於 <code>sources/__init__.py</code> 依相依序編排（games→game_lines、transactions→projection→recent_form、reconciliation 收尾）。cron 建議 morning 09:00／evening 17:30 台灣時間（spec-03 §2，上線後微調）。</li>
+    <li><strong>CLI <code>etl &lt;cmd&gt;</code>（<code>cli.py</code>，argparse）</strong>：<code>resync --season</code>（整季重拉）、<code>resync --gamelog --from DATE</code>（回補早於 lookback 的逐場，接著 reproject）、<code>add-event</code>（補錄 <code>source=&#x27;manual&#x27;</code> 事件——投影與現實不符時的正解，不直接改投影，spec-03 §6/§7）、<code>reproject</code>（重放投影＋重算近況）。為複用，把 games/game_lines 的抓取抽成 <code>ingest_schedule</code>／<code>ingest_gamelog</code> 公用函式。console script <code>etl</code> 已註冊。</li>
+    <li>測試：pytest +6（arg 解析 4：需 command／resync 目標互斥／type 白名單／完整參數;DB 2：<code>insert_manual_event</code> 為 source=manual、add-event→reproject 點亮 status＋寫近況）。etl <strong>全 116 綠</strong>。CLI 真跑驗證：<code>etl reproject</code> 重投影 5 名球員、usage 錯誤正確報錯。</li>
+    <li>薄殼韌性（來源失敗不中斷整批、sync_runs 正確落帳）由 <code>test_batch.py</code> 既有 partial 語意測試涵蓋。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>ETL slice 票 05（近況一句話引擎 → <code>player_recent_form</code>）完成</strong>（<code>.scratch/etl-pipeline/issues/05</code>，同分支）。純規則引擎 <code>recent_form.py</code>，優先序取第一個命中、fallback 必中、句子永不為空、≤20 字裁切（spec-03 §5）：
     <ul>
     <li><strong>五層 pattern</strong>：① <code>career_high</code>/<code>season_high</code>（上一場單場計數欄創 2020 起新高，如「上一場敲生涯最多 3 轟」「投出生涯最多 9 次三振」）→ ② <code>streak</code>（連續有安打/連續無失分 ≥3，跨層級延續）→ ③ <code>single_game</code>（上一場亮點：3+ 安、開轟、優質先發、飆 K）→ ④ <code>recent_agg</code>（近 5 場打擊率/防禦率）→ ⑤ <code>status_fallback</code>（傷兵/休賽期/近兩週無出賽，接投影狀態）。門檻與句式常數維護在程式頂部、回填 spec-03 §5。</li>
@@ -337,13 +346,13 @@
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
     <li class="done">~~<strong>frontend-shell-and-roster slice</strong>（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。</li>
-    <li class=""><strong>進行中：ETL slice（spec-03）</strong>——已用 /to-tickets 拆成 <strong>7 票</strong>（<code>.scratch/etl-pipeline/issues/</code>）：01 ETL 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影 player_current_status★、04 逐場 game_*_lines、06 季數據 season_*_stats 可並行} → 05 近況 player_recent_form★（接 04+03）→ 07 兩批編排+CLI 收尾。★＝點亮 <code>/players</code>。frontier＝票 01。語言 Python（uv）、psycopg 存取、把 Drizzle schema 當合約不自行 migrate。
+    <li class="done">~~<strong>ETL slice（spec-03）全 7 票完成</strong>~~（2026-07-27，分支 <code>feat/spec-03-etl-skeleton</code>）——01 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影★、04 逐場、06 季數據 並行} → 05 近況★ → 07 兩批編排+CLI。★＝點亮 <code>/players</code>。語言 Python（uv）、psycopg、把 Drizzle schema 當合約不自行 migrate。三批（morning/evening/manual）真連線跑通、<code>/players</code> 狀態＋近況上真值。詳見已完成區各票。
     <ul class="todo">
     <li class="done">~~<strong>票 01 ETL 骨架</strong>~~（2026-07-27 完成，見已完成區；分支 <code>feat/spec-03-etl-skeleton</code>）。</li>
     <li class="done">~~<strong>票 02 參考資料 teams/bio</strong>~~（2026-07-27 完成，見已完成區）。</li>
     <li class="done">~~<strong>票 03/04/06 並行 vertical + 整合</strong>~~（2026-07-27 完成，見已完成區；含兩個跨票 FK 整合修正）。</li>
     <li class="done">~~<strong>票 05 近況一句話 <code>player_recent_form</code>★</strong>~~（2026-07-27 完成，見已完成區）。</li>
-    <li class=""><strong>下一步：票 07 兩批編排 + CLI 工具（resync/add-event/reproject）收尾</strong>。註：兩批職責已在 <code>sources/__init__.py</code> 編排完成，07 主要剩 CLI 手動工具。</li>
+    <li class="done">~~<strong>票 07 兩批編排 + CLI 工具</strong>~~（2026-07-27 完成，見已完成區）。<strong>spec-03 ETL slice 全 7 票完成</strong> 🎉</li>
     </ul></li>
     </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
