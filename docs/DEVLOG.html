@@ -163,6 +163,14 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-27</h3>
     <ul class="todo">
+    <li class="done"><strong>spec-03 ETL slice 併回 <code>main</code>（merge <code>3aa1a08</code>, <code>--no-ff</code>）＋維運收尾</strong>（2026-07-27，batu）。review 通過（pytest 118／node 41／typecheck 綠；<code>game_*_lines</code> 1513/269、近況全轉真值、<code>/players</code> 點亮）後合併，遠端分支 <code>feat/spec-03-etl-skeleton</code> 已刪。收尾兩件：
+    <ul>
+    <li><strong>footer 轉真值</strong>：跑正規 <code>python -m etl.sync evening</code>（<code>sync_run #133 → success</code>）讓 <code>sync_runs</code> 落帳；<code>/players</code> footer 由占位「—」轉為「資料更新於 2026-07-27 21:16（台灣時間）」。</li>
+    <li><strong>清 raw boxscore</strong>：刪除 <code>raw_payloads</code> 重構前殘留的 120 筆 boxscore（<code>DELETE 120</code>，363→243）；新 gameLog 路徑本就不再存 boxscore。</li>
+    <li><strong>對帳觀察（signal-only、待追）</strong>：evening 對帳跳兩個 team mismatch（費爾柴德 656413 投影 136 vs 快照 529、林昱珉 801179 投影 109 vs 快照 2310）——事件流投影隊伍與 StatsAPI currentTeam 快照不一致（近期異動未被 transactions 抓到或需補 manual 事件）。詳見 §待決問題。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>修正 slice <code>etl-gamelog-refactor</code>（2 票）完成——逐場改走球員 gameLog、退役 boxscore 全掃 + 2020 backfill</strong>（<code>.scratch/etl-gamelog-refactor/issues/</code>，同分支）。
     <ul>
     <li><strong>票 01（gameLog 取代 boxscore 全掃）</strong>：逐場來源由「掃窗口內全賽程 boxscore、再翻找 tracked 球員（~1.6% 命中、且把先發預告誤判成出賽）」改成「每位 tracked 球員的 <code>people/{id}/stats?stats=gameLog</code>——只抓自己的比賽、~100% 命中」。<strong>必須逐一掃六個層級 sportId</strong>（gameLog 帶 sportId 只回該層級、省略只回 MLB；實測鄧愷威 status=AAA 但實際 MLB 投球）。gameLog 每筆順手 upsert <code>games</code> 表頭（<code>game_date_us</code>／主客/level，coalesce 保留 schedule 設的分數等欄）以滿足外鍵。<strong>schedule 前瞻來源保留</strong>（先發預告/今日/錨點）、raw 層<strong>停存 boxscore</strong>。近況引擎與 schema 皆不需改。順手把票 05 為餵舊 game_lines 而加寬的 morning schedule 窗口還原成昨天～今天。</li>
@@ -392,6 +400,7 @@
     <li class="done">~~實測 StatsAPI <code>stats=sabermetrics</code> 端點~~ → 已實測（2026-07-23）：<strong>命中、維持原清單、預案封存</strong>（結果見 spec-03 §9）</li>
     <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>affiliation</code> enum 的 <code>free_agent</code> 不可達</strong>~~ → <strong>已定：補對照</strong>（2026-07-27，batu）。新增 <code>transaction_type</code> enum 值 <code>declare_fa</code>（migration <code>0001</code>），StatsAPI「Declared Free Agency」/typeCode <code>DFA</code> → <code>declare_fa</code> → 投影 <code>free_agent</code>（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。</li>
     <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>season_pitching_stats.lob_pct</code> 的層級範圍</strong>~~ → <strong>已定：所有層級皆算</strong>（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 <code>hbp</code> 欄故 services 無法事後重算 → 必須 ETL 落庫。</li>
+    <li class=""><strong>（2026-07-27 evening 對帳浮現）狀態投影隊伍與 currentTeam 快照對不上</strong>：費爾柴德(656413) 投影 136 vs 快照 529、林昱珉(801179) 投影 109 vs 快照 2310。事件為真相（不自動改投影）；需查是 transactions 漏抓近期異動、還是該補 manual 事件。對帳為 signal-only（spec-03 §6），不影響資料層供給。</li>
     </ul>
   </section>
   <section>

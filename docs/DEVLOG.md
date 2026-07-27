@@ -9,6 +9,11 @@
 
 ### 2026-07-27
 
+- [x] **spec-03 ETL slice 併回 `main`（merge `3aa1a08`, `--no-ff`）＋維運收尾**（2026-07-27，batu）。review 通過（pytest 118／node 41／typecheck 綠；`game_*_lines` 1513/269、近況全轉真值、`/players` 點亮）後合併，遠端分支 `feat/spec-03-etl-skeleton` 已刪。收尾兩件：
+  - **footer 轉真值**：跑正規 `python -m etl.sync evening`（`sync_run #133 → success`）讓 `sync_runs` 落帳；`/players` footer 由占位「—」轉為「資料更新於 2026-07-27 21:16（台灣時間）」。
+  - **清 raw boxscore**：刪除 `raw_payloads` 重構前殘留的 120 筆 boxscore（`DELETE 120`，363→243）；新 gameLog 路徑本就不再存 boxscore。
+  - **對帳觀察（signal-only、待追）**：evening 對帳跳兩個 team mismatch（費爾柴德 656413 投影 136 vs 快照 529、林昱珉 801179 投影 109 vs 快照 2310）——事件流投影隊伍與 StatsAPI currentTeam 快照不一致（近期異動未被 transactions 抓到或需補 manual 事件）。詳見 §待決問題。
+
 - [x] **修正 slice `etl-gamelog-refactor`（2 票）完成——逐場改走球員 gameLog、退役 boxscore 全掃 + 2020 backfill**（`.scratch/etl-gamelog-refactor/issues/`，同分支）。
   - **票 01（gameLog 取代 boxscore 全掃）**：逐場來源由「掃窗口內全賽程 boxscore、再翻找 tracked 球員（~1.6% 命中、且把先發預告誤判成出賽）」改成「每位 tracked 球員的 `people/{id}/stats?stats=gameLog`——只抓自己的比賽、~100% 命中」。**必須逐一掃六個層級 sportId**（gameLog 帶 sportId 只回該層級、省略只回 MLB；實測鄧愷威 status=AAA 但實際 MLB 投球）。gameLog 每筆順手 upsert `games` 表頭（`game_date_us`／主客/level，coalesce 保留 schedule 設的分數等欄）以滿足外鍵。**schedule 前瞻來源保留**（先發預告/今日/錨點）、raw 層**停存 boxscore**。近況引擎與 schema 皆不需改。順手把票 05 為餵舊 game_lines 而加寬的 morning schedule 窗口還原成昨天～今天。
   - **票 02（初始 backfill）**：`etl backfill [--from DATE | --season YYYY]`（預設 2020→今）逐球員抓 gameLog → `game_*_lines`（＋補 `games`），**冪等、逐球員 commit 可中斷續跑**、保守 rate-limit（沿用 client delay/重試）、收尾自動 `reproject`＋近況重算。定位手動 CLI（不進兩批）。
@@ -189,6 +194,7 @@
 - [x] ~~實測 StatsAPI `stats=sabermetrics` 端點~~ → 已實測（2026-07-23）：**命中、維持原清單、預案封存**（結果見 spec-03 §9）
 - [x] ~~**（2026-07-27 ETL 整合浮現）`affiliation` enum 的 `free_agent` 不可達**~~ → **已定：補對照**（2026-07-27，batu）。新增 `transaction_type` enum 值 `declare_fa`（migration `0001`），StatsAPI「Declared Free Agency」/typeCode `DFA` → `declare_fa` → 投影 `free_agent`（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。
 - [x] ~~**（2026-07-27 ETL 整合浮現）`season_pitching_stats.lob_pct` 的層級範圍**~~ → **已定：所有層級皆算**（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 `hbp` 欄故 services 無法事後重算 → 必須 ETL 落庫。
+- [ ] **（2026-07-27 evening 對帳浮現）狀態投影隊伍與 currentTeam 快照對不上**：費爾柴德(656413) 投影 136 vs 快照 529、林昱珉(801179) 投影 109 vs 快照 2310。事件為真相（不自動改投影）；需查是 transactions 漏抓近期異動、還是該補 manual 事件。對帳為 signal-only（spec-03 §6），不影響資料層供給。
 
 ---
 
