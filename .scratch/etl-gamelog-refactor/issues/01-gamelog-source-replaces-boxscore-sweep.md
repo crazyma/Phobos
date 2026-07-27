@@ -8,7 +8,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] 逐場 source 改用 `people/{id}/stats?stats=gameLog`（按季、hitting/pitching 群組、必要時分 sportId）→ `game_batting_lines`／`game_pitching_lines`；grain `(player_id, game_pk)` 不變、二刀流兩表並存、只收 `lifecycle='tracked'`
+- [ ] 逐場 source 改用 `people/{id}/stats?stats=gameLog`（按季、hitting/pitching 群組）→ `game_batting_lines`／`game_pitching_lines`；grain `(player_id, game_pk)` 不變、二刀流兩表並存、只收 `lifecycle='tracked'`
+- [ ] **必須逐一掃球員實際打過的所有層級 sportId（1/11/12/13/14/16），不可只照 current status 的層級**——gameLog 帶 sportId 只回該層級；省略 sportId 只回 MLB。實測：鄧愷威 status=AAA 但實際在 **MLB 投 25 場、AAA 0 場**，只查 AAA 會抓到 0、fallback 照樣不消
 - [ ] `games` 表頭改由 gameLog 每筆**順手 upsert**（`game_date_us`／對戰/主客/level 等 gameLog 有的欄）以滿足外鍵與逐場 context；缺欄留 NULL
 - [ ] **schedule 前瞻來源保留**（`schedule` + `hydrate=probablePitcher`，供先發預告/今日/即將出賽與「最新已結算比賽日」錨點）——僅退役「為餵 game_lines 而掃全場 boxscore」那條路徑
 - [ ] raw 層：存 gameLog 原檔、**停止存 boxscore**（`raw_payloads` 不再寫 `game/{pk}/boxscore`）
