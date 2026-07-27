@@ -10,3 +10,4 @@ export {
   type Health,
   type TeamLevel,
 } from "./player-status.ts";
+export { getLastSyncedAt } from "./sync.ts";

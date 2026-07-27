@@ -1,0 +1,36 @@
+[project]
+name = "phobos-etl"
+version = "0.0.0"
+description = "Phobos ETL — pure data layer that ingests StatsAPI into the Drizzle-owned curated Postgres schema."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "psycopg[binary]>=3.2",
+    "requests>=2.32",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+# `python -m etl.sync <kind>` is the primary entrypoint (spec-03 §7); this
+# console script is a convenience alias for the installed venv.
+etl-sync = "etl.sync:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/etl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# DB integration tests are opt-in via this marker so the pure suite stays
+# hermetic; run everything with `uv run pytest` when Postgres is up.
+markers = [
+    "db: integration test that needs a reachable Postgres (DATABASE_URL).",
+]

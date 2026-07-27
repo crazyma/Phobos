@@ -2,8 +2,9 @@ import { formatDateTimeTaipei } from "@/lib/format";
 
 /**
  * Global footer. Shows the data-freshness stamp「資料更新於 {台灣時間}」.
- * `lastSyncedAt` will come from the latest successful `sync_runs` row once the
- * ETL slice lands; until then it is null and renders a placeholder dash.
+ * `lastSyncedAt` comes from the latest completed (non-failed) `sync_runs` row
+ * via `getLastSyncedAt` (wired in the root layout); it is null before the ETL
+ * has ever finished a run, and then renders a placeholder dash.
  */
 export function SiteFooter({
   lastSyncedAt = null,
