@@ -11,3 +11,8 @@ export {
   type TeamLevel,
 } from "./player-status.ts";
 export { getLastSyncedAt } from "./sync.ts";
+export {
+  getPlayerDetail,
+  PlayerDetailSchema,
+  type PlayerDetail,
+} from "./player-detail.ts";

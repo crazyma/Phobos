@@ -25,6 +25,22 @@ function ilLabel(ilDetail: string | null | undefined): string {
   return digits ? `IL-${digits}` : "IL";
 }
 
+const HAND_LABELS: Record<string, string> = { L: "左", R: "右", S: "左右" };
+
+/**
+ * Bats/throws → "右打・左投" (spec-02 §2.3 bio). Either side may be missing;
+ * returns null when both are absent.
+ */
+export function batsThrowsLabel(
+  bats: string | null | undefined,
+  throws: string | null | undefined,
+): string | null {
+  const parts: string[] = [];
+  if (bats && HAND_LABELS[bats]) parts.push(`${HAND_LABELS[bats]}打`);
+  if (throws && HAND_LABELS[throws]) parts.push(`${HAND_LABELS[throws]}投`);
+  return parts.length ? parts.join("・") : null;
+}
+
 export type StatusInput = {
   affiliation: Affiliation | null | undefined;
   health: Health | null | undefined;

@@ -1,7 +1,9 @@
+import Link from "next/link";
 import type { PlayerSummary } from "@/lib/services";
 
 /**
- * One roster entry: 中英名 + 守位、目前隊伍/層級徽章、狀態一句、近況一句話。
+ * One roster entry: 中英名 + 守位、目前隊伍/層級徽章、狀態一句、近況一句話.
+ * The whole card links to the player's page `/players/[id]` (spec-02 §2.3).
  * No "use client" — a plain presentational component usable from both the
  * server page and the client roster view. `recentForm` null → placeholder.
  */
@@ -9,7 +11,10 @@ export function PlayerCard({ player }: { player: PlayerSummary }) {
   const displayName = player.nameZh ?? player.nameEn;
 
   return (
-    <article className="rounded-lg border border-border bg-card p-4 text-card-foreground">
+    <Link
+      href={`/players/${player.playerId}`}
+      className="block rounded-lg border border-border bg-card p-4 text-card-foreground transition-colors hover:border-foreground/30 hover:bg-muted/40"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-medium">{displayName}</h3>
@@ -28,6 +33,6 @@ export function PlayerCard({ player }: { player: PlayerSummary }) {
       <p className="mt-1 text-sm text-muted-foreground">
         {player.recentForm ?? "近況同步中"}
       </p>
-    </article>
+    </Link>
   );
 }
