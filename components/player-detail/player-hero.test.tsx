@@ -15,6 +15,9 @@ const base: PlayerDetail = {
   team: { id: 10, name: "波士頓紅襪", abbrev: "BOS", level: "mlb", levelLabel: "大聯盟" },
   statusSentence: "大聯盟",
   recentForm: "連續 5 場有安打",
+  seasons: [],
+  gameLog: { batting: [], pitching: [] },
+  timeline: [],
 };
 
 describe("PlayerHero", () => {

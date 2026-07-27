@@ -22,3 +22,12 @@ export {
   SeasonSchema,
   type Season,
 } from "./player-seasons.ts";
+export {
+  getPlayerGameLog,
+  getPlayerTimeline,
+  GameLogSchema,
+  TimelineSchema,
+  RECENT_GAMES_N,
+  type GameLog,
+  type Timeline,
+} from "./player-recent.ts";

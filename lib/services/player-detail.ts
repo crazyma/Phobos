@@ -10,6 +10,12 @@ import {
 import { handedness, playerLifecycle, teamLevel } from "../db/schema/enums.ts";
 import { buildStatusSentence, levelLabel } from "./player-status.ts";
 import { getPlayerSeasons, SeasonSchema } from "./player-seasons.ts";
+import {
+  getPlayerGameLog,
+  getPlayerTimeline,
+  GameLogSchema,
+  TimelineSchema,
+} from "./player-recent.ts";
 
 /** Current team block, shared with the roster summary shape. */
 const TeamSchema = z
@@ -45,6 +51,10 @@ export const PlayerDetailSchema = z.object({
   recentForm: z.string().nullable(),
   /** 球季數據，自 2020 起、依球季分組（spec-02 §2.3；ticket 02）。 */
   seasons: z.array(SeasonSchema),
+  /** 逐場成績（打/投分表，各 ≤10，最近優先；ticket 03）。 */
+  gameLog: GameLogSchema,
+  /** 異動時間軸，時間倒序（ticket 03）。 */
+  timeline: TimelineSchema,
 });
 
 export type PlayerDetail = z.infer<typeof PlayerDetailSchema>;
@@ -90,7 +100,11 @@ export async function getPlayerDetail(
   const row = rows[0];
   if (!row) return null;
 
-  const seasons = await getPlayerSeasons(id, db);
+  const [seasons, gameLog, timeline] = await Promise.all([
+    getPlayerSeasons(id, db),
+    getPlayerGameLog(id, db),
+    getPlayerTimeline(id, db),
+  ]);
   const level = row.statusLevel ?? row.teamLevel;
   const detail: PlayerDetail = {
     playerId: row.playerId,
@@ -119,6 +133,8 @@ export async function getPlayerDetail(
     }),
     recentForm: row.recentForm ?? null,
     seasons,
+    gameLog,
+    timeline,
   };
 
   return PlayerDetailSchema.parse(detail);
