@@ -25,6 +25,7 @@ from .game_lines import make_game_lines_source
 from .games import make_games_source
 from .players_bio import make_player_bio_source
 from .projection import make_projection_source, make_reconciliation_source
+from .season_stats import make_season_stats_source
 from .teams import make_teams_source
 from .transactions import make_transactions_source
 
@@ -52,6 +53,12 @@ def build_sources(
     if kind in ("morning", "evening"):
         sources.append(make_games_source(client, conn))
         sources.append(make_game_lines_source(client, conn, kind=kind))
+
+    # Season stats are a full re-pull every morning (spec-03 §3): the small
+    # tracked-player count makes 2020→current affordable. Independent of the
+    # event sources, so ordering among them doesn't matter.
+    if kind == "morning":
+        sources.append(make_season_stats_source(client, conn))
 
     # Transactions ingest: evening (primary) + morning (backfill) + manual
     # (spec-03 §2/§3). Runs before projection so the events it commits are
