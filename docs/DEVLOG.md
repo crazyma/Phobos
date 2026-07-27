@@ -89,7 +89,7 @@
 ## ▶️ 進行中 / 下一步
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
-- [ ] **下一步：ETL slice（spec-03）**——尚未拆票。灌 `transaction_events` 並實作 §B.3 狀態投影（寫 `player_current_status`）、季/逐場數據、`player_recent_form`、`sync_runs`。做完後 `/players` 的隊伍/層級/狀態/近況與 footer 更新時間即由占位轉真值。
+- [ ] **下一步：ETL slice（spec-03）**——已用 /to-tickets 拆成 **7 票**（`.scratch/etl-pipeline/issues/`）：01 ETL 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影 player_current_status★、04 逐場 game_*_lines、06 季數據 season_*_stats 可並行} → 05 近況 player_recent_form★（接 04+03）→ 07 兩批編排+CLI 收尾。★＝點亮 `/players`。frontier＝票 01。語言 Python（uv）、psycopg 存取、把 Drizzle schema 當合約不自行 migrate。
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
