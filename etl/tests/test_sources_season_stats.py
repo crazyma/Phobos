@@ -18,11 +18,37 @@ from etl.sources.season_stats import (
     _lob_pct,
     _outs,
     _season_range,
+    filter_known_teams,
     transform_season_batting,
     transform_season_pitching,
     upsert_season_batting,
     upsert_season_pitching,
 )
+
+
+def test_filter_known_teams_drops_out_of_scope_splits():
+    rows = [
+        BattingStatRow(player_id=1, season=2024, level="mlb", team_id=133, g=1, pa=1,
+                       ab=1, h=1, doubles=0, triples=0, hr=0, rbi=0, r=0, sb=0, cs=0,
+                       bb=0, so=0, hbp=0, sf=0),
+        BattingStatRow(player_id=1, season=2021, level="aaa", team_id=5579, g=1, pa=1,
+                       ab=1, h=1, doubles=0, triples=0, hr=0, rbi=0, r=0, sb=0, cs=0,
+                       bb=0, so=0, hbp=0, sf=0),  # winter-league team, not ingested
+    ]
+    kept, dropped = filter_known_teams(rows, {133, 137})
+    assert dropped == {5579}
+    assert [r.team_id for r in kept] == [133]
+
+
+def test_filter_known_teams_noop_when_all_known():
+    rows = [
+        PitchingStatRow(player_id=1, season=2024, level="mlb", team_id=137, g=1, gs=1,
+                        ip_outs=3, bf=3, h=0, r=0, er=0, hr=0, bb=0, so=1, w=0, l=0,
+                        sv=0, hld=0),
+    ]
+    kept, dropped = filter_known_teams(rows, {137})
+    assert dropped == set()
+    assert kept == rows
 
 
 # ---------------------------------------------------------------------------

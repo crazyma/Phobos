@@ -36,6 +36,7 @@ back to NULL on the next run.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Optional
@@ -45,6 +46,8 @@ import psycopg
 from ..batch import Source
 from ..constants import INGEST_SPORT_IDS, level_for_sport_id
 from ..statsapi import StatsApiClient
+
+logger = logging.getLogger(__name__)
 
 # StatsAPI season stats are queryable back to 2020 (spec-01 A.3 / spec-03 §3).
 START_SEASON = 2020
@@ -419,6 +422,26 @@ def _tracked_player_ids(conn: psycopg.Connection) -> list[int]:
         return [int(r[0]) for r in cur.fetchall()]
 
 
+def _known_team_ids(conn: psycopg.Connection) -> set[int]:
+    with conn.cursor() as cur:
+        cur.execute("select mlb_team_id from teams")
+        return {int(r[0]) for r in cur.fetchall()}
+
+
+def filter_known_teams(rows: list, known_team_ids: set[int]) -> tuple[list, set[int]]:
+    """Drop rows whose `team_id` isn't a team we have (out-of-scope splits).
+
+    Even when hydrated with a specific sportId, StatsAPI can return season
+    splits on teams outside the ingested sportIds (winter/foreign leagues, e.g.
+    team 5579). `team_id` is part of the NOT-NULL grain, so unlike transactions
+    these rows can't be nulled — they're dropped (those leagues are out of the
+    tracker's scope, spec-01). Returns (kept rows, dropped team ids).
+    """
+    kept = [r for r in rows if r.team_id in known_team_ids]
+    dropped = {r.team_id for r in rows if r.team_id not in known_team_ids}
+    return kept, dropped
+
+
 def _season_range(*, start: int = START_SEASON, today: Optional[date] = None) -> list[int]:
     """Seasons `start`..current year inclusive (spec-01 A.3: data starts 2020)."""
     current = (today or date.today()).year
@@ -465,6 +488,18 @@ def make_season_stats_source(client: StatsApiClient, conn: psycopg.Connection) -
                 )
                 batting_rows.extend(transform_season_batting(payload, level=level))
                 pitching_rows.extend(transform_season_pitching(payload, level=level))
+
+        known = _known_team_ids(conn)
+        batting_rows, dropped_b = filter_known_teams(batting_rows, known)
+        pitching_rows, dropped_p = filter_known_teams(pitching_rows, known)
+        dropped = dropped_b | dropped_p
+        if dropped:
+            logger.warning(
+                "season_stats: dropped rows for %d team(s) not in teams (outside "
+                "ingested sportIds): %s",
+                len(dropped),
+                sorted(dropped),
+            )
 
         upsert_season_batting(conn, batting_rows)
         upsert_season_pitching(conn, pitching_rows)
