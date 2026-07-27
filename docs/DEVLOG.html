@@ -404,7 +404,7 @@
     <li class="done">~~實測 StatsAPI <code>stats=sabermetrics</code> 端點~~ → 已實測（2026-07-23）：<strong>命中、維持原清單、預案封存</strong>（結果見 spec-03 §9）</li>
     <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>affiliation</code> enum 的 <code>free_agent</code> 不可達</strong>~~ → <strong>已定：補對照</strong>（2026-07-27，batu）。新增 <code>transaction_type</code> enum 值 <code>declare_fa</code>（migration <code>0001</code>），StatsAPI「Declared Free Agency」/typeCode <code>DFA</code> → <code>declare_fa</code> → 投影 <code>free_agent</code>（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。</li>
     <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>season_pitching_stats.lob_pct</code> 的層級範圍</strong>~~ → <strong>已定：所有層級皆算</strong>（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 <code>hbp</code> 欄故 services 無法事後重算 → 必須 ETL 落庫。</li>
-    <li class=""><strong>（2026-07-27 evening 對帳浮現）狀態投影隊伍與 currentTeam 快照對不上</strong>：費爾柴德(656413) 投影 136 vs 快照 529、林昱珉(801179) 投影 109 vs 快照 2310。事件為真相（不自動改投影）；需查是 transactions 漏抓近期異動、還是該補 manual 事件。對帳為 signal-only（spec-03 §6），不影響資料層供給。</li>
+    <li class=""><strong>（2026-07-27 evening 對帳浮現）下放小聯盟球員顯示錯隊 → 已診斷+決策+切票</strong>：費爾柴德(656413) 投影 SEA/MLB vs 實際 Tacoma/3A、林昱珉(801179) 投影 AZ/MLB vs 實際 Reno/3A。<strong>根因</strong>：小聯盟「assigned to [隊]」異動（typeCode ASG）被歸 <code>other</code>，投影狀態機（spec-01 B.3）不動隊 → 下放不跟、卡在上一個 MLB 事件。<strong>決策（正解，2026-07-27 batu）</strong>：新增 <code>assign</code> 型別 + B.3 規則（assign→rostered 於 to_team、無法解析則 no-op；須與 invited-non-roster/國家隊區分）。spec-01 B.3/C.3 已更新；修正票 <code>.scratch/projection-assign-fix/issues/01</code>（待實作）。</li>
     </ul>
   </section>
   <section>

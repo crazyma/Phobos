@@ -52,6 +52,7 @@ event（異動事件流）               ← 時間軸、狀態投影
 | 事件 type | 歸屬變化 | 健康變化 |
 |---|---|---|
 | `sign` / `trade` / `call_up` / `send_down` | → `rostered`（取 `to_team` 的隊/層級） | 不變 |
+| `assign` | → `rostered`（取 `to_team` 的隊/層級）；**`to_team` 無法解析（非追蹤隊，如冬季/秋季聯盟）→ 不變、不清隊** | 不變 |
 | `dfa` | → `dfa`（保留原隊參考） | 不變 |
 | `release` | → `released`（清隊） | 重設 `active` |
 | `declare_fa` | → `free_agent`（清隊） | 重設 `active` |
@@ -93,7 +94,7 @@ event（異動事件流）               ← 時間軸、狀態投影
 | `id` | bigserial **PK** | |
 | `source_tx_id` | text，可空 unique | 上游 transaction id |
 | `player_id` | int FK | |
-| `type` | enum `sign,call_up,send_down,trade,dfa,release,declare_fa,il_on,il_off,depart,other` | `declare_fa`＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 `free_agent` |
+| `type` | enum `sign,call_up,send_down,trade,dfa,release,declare_fa,assign,il_on,il_off,depart,other` | `declare_fa`＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 `free_agent`。`assign`＝小聯盟指派（StatsAPI「assigned to [隊]」/typeCode ASG）→ 投影 `rostered` 於該隊/層級；**須與「invited non-roster」（春訓邀請，非上 roster）、國家隊 activate 區分——後者仍歸 `other`** |
 | `effective_date` | date | 排序主鍵之一 |
 | `announced_at` | timestamptz，可空 | |
 | `from_team_id` / `to_team_id` | int FK，可空 | |

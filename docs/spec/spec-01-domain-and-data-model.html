@@ -201,6 +201,7 @@
     <thead><tr><th>事件 type</th><th>歸屬變化</th><th>健康變化</th></tr></thead>
     <tbody>
     <tr><td data-label="事件 type"><code>sign</code> / <code>trade</code> / <code>call_up</code> / <code>send_down</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）</td><td data-label="健康變化">不變</td></tr>
+    <tr><td data-label="事件 type"><code>assign</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）；<strong><code>to_team</code> 無法解析（非追蹤隊，如冬季/秋季聯盟）→ 不變、不清隊</strong></td><td data-label="健康變化">不變</td></tr>
     <tr><td data-label="事件 type"><code>dfa</code></td><td data-label="歸屬變化">→ <code>dfa</code>（保留原隊參考）</td><td data-label="健康變化">不變</td></tr>
     <tr><td data-label="事件 type"><code>release</code></td><td data-label="歸屬變化">→ <code>released</code>（清隊）</td><td data-label="健康變化">重設 <code>active</code></td></tr>
     <tr><td data-label="事件 type"><code>declare_fa</code></td><td data-label="歸屬變化">→ <code>free_agent</code>（清隊）</td><td data-label="健康變化">重設 <code>active</code></td></tr>
@@ -245,7 +246,7 @@
     <tr><td data-label="欄位"><code>id</code></td><td data-label="型別">bigserial <strong>PK</strong></td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>source_tx_id</code></td><td data-label="型別">text，可空 unique</td><td data-label="說明">上游 transaction id</td></tr>
     <tr><td data-label="欄位"><code>player_id</code></td><td data-label="型別">int FK</td><td data-label="說明"></td></tr>
-    <tr><td data-label="欄位"><code>type</code></td><td data-label="型別">enum <code>sign,call_up,send_down,trade,dfa,release,declare_fa,il_on,il_off,depart,other</code></td><td data-label="說明"><code>declare_fa</code>＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 <code>free_agent</code></td></tr>
+    <tr><td data-label="欄位"><code>type</code></td><td data-label="型別">enum <code>sign,call_up,send_down,trade,dfa,release,declare_fa,assign,il_on,il_off,depart,other</code></td><td data-label="說明"><code>declare_fa</code>＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 <code>free_agent</code>。<code>assign</code>＝小聯盟指派（StatsAPI「assigned to [隊]」/typeCode ASG）→ 投影 <code>rostered</code> 於該隊/層級；<strong>須與「invited non-roster」（春訓邀請，非上 roster）、國家隊 activate 區分——後者仍歸 <code>other</code></strong></td></tr>
     <tr><td data-label="欄位"><code>effective_date</code></td><td data-label="型別">date</td><td data-label="說明">排序主鍵之一</td></tr>
     <tr><td data-label="欄位"><code>announced_at</code></td><td data-label="型別">timestamptz，可空</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>from_team_id</code> / <code>to_team_id</code></td><td data-label="型別">int FK，可空</td><td data-label="說明"></td></tr>
