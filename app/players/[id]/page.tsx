@@ -5,6 +5,7 @@ import { PlayerHero } from "@/components/player-detail/player-hero";
 import { SeasonStats } from "@/components/player-detail/season-stats";
 import { GameLog } from "@/components/player-detail/game-log";
 import { Timeline } from "@/components/player-detail/timeline";
+import { Upcoming } from "@/components/player-detail/upcoming";
 
 // ISR: data refreshes twice a day (spec-03); a 30-min revalidate suffices
 // (spec-02 §2.3). On-demand revalidation on ETL completion is a v2 open item.
@@ -61,15 +62,14 @@ export default async function PlayerPage({
         heading={isArchived ? "生涯總成績" : "球季數據"}
       />
 
-      {/* zones 3–4 hidden for archived players (spec-02 §2.3) */}
+      {/* zones 3–5 hidden for archived players (spec-02 §2.3) */}
       {!isArchived && (
         <>
           <GameLog gameLog={player.gameLog} />
           <Timeline timeline={player.timeline} />
+          <Upcoming upcoming={player.upcoming} />
         </>
       )}
-
-      {/* zone 5 lands in ticket 04 */}
     </article>
   );
 }

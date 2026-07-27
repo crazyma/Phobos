@@ -31,3 +31,8 @@ export {
   type GameLog,
   type Timeline,
 } from "./player-recent.ts";
+export {
+  getPlayerUpcoming,
+  UpcomingSchema,
+  type Upcoming,
+} from "./player-upcoming.ts";

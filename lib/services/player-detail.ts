@@ -16,6 +16,7 @@ import {
   GameLogSchema,
   TimelineSchema,
 } from "./player-recent.ts";
+import { getPlayerUpcoming, UpcomingSchema } from "./player-upcoming.ts";
 
 /** Current team block, shared with the roster summary shape. */
 const TeamSchema = z
@@ -55,6 +56,8 @@ export const PlayerDetailSchema = z.object({
   gameLog: GameLogSchema,
   /** 異動時間軸，時間倒序（ticket 03）。 */
   timeline: TimelineSchema,
+  /** 出賽預告 + 下一系列賽（ticket 04）；無現隊時為 null。 */
+  upcoming: UpcomingSchema,
 });
 
 export type PlayerDetail = z.infer<typeof PlayerDetailSchema>;
@@ -100,10 +103,11 @@ export async function getPlayerDetail(
   const row = rows[0];
   if (!row) return null;
 
-  const [seasons, gameLog, timeline] = await Promise.all([
+  const [seasons, gameLog, timeline, upcoming] = await Promise.all([
     getPlayerSeasons(id, db),
     getPlayerGameLog(id, db),
     getPlayerTimeline(id, db),
+    getPlayerUpcoming(id, db),
   ]);
   const level = row.statusLevel ?? row.teamLevel;
   const detail: PlayerDetail = {
@@ -135,6 +139,7 @@ export async function getPlayerDetail(
     seasons,
     gameLog,
     timeline,
+    upcoming,
   };
 
   return PlayerDetailSchema.parse(detail);

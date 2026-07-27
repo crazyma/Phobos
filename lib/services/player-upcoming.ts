@@ -1,0 +1,152 @@
+import { and, desc, eq, or } from "drizzle-orm";
+import { z } from "zod";
+import { db as defaultDb } from "../db/client.ts";
+import { games, playerCurrentStatus, players, teams } from "../db/schema/index.ts";
+
+const OpponentSchema = z
+  .object({ abbrev: z.string().nullable(), name: z.string() })
+  .nullable();
+
+const NextGameSchema = z.object({
+  gamePk: z.number().int(),
+  gameDate: z.string(),
+  startTimeUtc: z.string().nullable(),
+  isHome: z.boolean().nullable(),
+  opponent: OpponentSchema,
+  venueName: z.string().nullable(),
+  seriesGameNumber: z.number().int().nullable(),
+  gamesInSeries: z.number().int().nullable(),
+});
+
+const RecentResultSchema = z.object({
+  gamePk: z.number().int(),
+  gameDate: z.string(),
+  isHome: z.boolean().nullable(),
+  opponent: OpponentSchema,
+  teamScore: z.number().int().nullable(),
+  opponentScore: z.number().int().nullable(),
+  win: z.boolean().nullable(),
+});
+
+export const UpcomingSchema = z
+  .object({
+    /** 出賽預告標籤（spec-02 §2.1 第 3 區規則）。 */
+    tag: z.enum(["probable_starter", "possible", "il"]),
+    nextGame: NextGameSchema.nullable(),
+    recentResults: z.array(RecentResultSchema),
+  })
+  .nullable();
+export type Upcoming = z.infer<typeof UpcomingSchema>;
+
+type Team = { abbrev: string | null; name: string };
+
+async function loadTeamMap(db: typeof defaultDb): Promise<Map<number, Team>> {
+  const rows = await db
+    .select({ id: teams.mlbTeamId, name: teams.nameEn, nameZh: teams.nameZh, abbrev: teams.abbrev })
+    .from(teams);
+  return new Map(rows.map((r) => [r.id, { abbrev: r.abbrev, name: r.nameZh ?? r.name }]));
+}
+
+function sideOf(teamId: number, homeId: number | null, awayId: number | null, teamMap: Map<number, Team>) {
+  if (homeId === null || awayId === null) return { opponent: null, isHome: null };
+  const isHome = homeId === teamId;
+  return { opponent: teamMap.get(isHome ? awayId : homeId) ?? null, isHome };
+}
+
+/**
+ * Zone 5 (spec-02 §2.3 / §2.1 rule 3): the player's next-game prediction tag +
+ * next scheduled game (series context) + their team's recent results. Returns
+ * null when the player has no current team. Data comes from the `games`
+ * preview rows (schedule + probable pitcher).
+ */
+export async function getPlayerUpcoming(id: number, db = defaultDb): Promise<Upcoming> {
+  const [status] = await db
+    .select({
+      teamId: playerCurrentStatus.teamId,
+      health: playerCurrentStatus.health,
+      position: players.primaryPosition,
+    })
+    .from(playerCurrentStatus)
+    .innerJoin(players, eq(players.mlbPlayerId, playerCurrentStatus.playerId))
+    .where(eq(playerCurrentStatus.playerId, id))
+    .limit(1);
+
+  if (!status || status.teamId === null) return null;
+  const teamId = status.teamId;
+  const teamMap = await loadTeamMap(db);
+  const onTeam = or(eq(games.homeTeamId, teamId), eq(games.awayTeamId, teamId));
+
+  const [next] = await db
+    .select({
+      gamePk: games.gamePk, gameDate: games.gameDateUs, startTimeUtc: games.startTimeUtc,
+      homeTeamId: games.homeTeamId, awayTeamId: games.awayTeamId, venueName: games.venueName,
+      seriesGameNumber: games.seriesGameNumber, gamesInSeries: games.gamesInSeries,
+      probableHome: games.probableHomePitcherId, probableAway: games.probableAwayPitcherId,
+    })
+    .from(games)
+    .where(and(onTeam, eq(games.status, "scheduled")))
+    .orderBy(games.gameDateUs, games.gamePk)
+    .limit(1);
+
+  const recentRows = await db
+    .select({
+      gamePk: games.gamePk, gameDate: games.gameDateUs,
+      homeTeamId: games.homeTeamId, awayTeamId: games.awayTeamId,
+      homeScore: games.homeScore, awayScore: games.awayScore,
+    })
+    .from(games)
+    .where(and(onTeam, eq(games.status, "final")))
+    .orderBy(desc(games.gameDateUs), desc(games.gamePk))
+    .limit(3);
+
+  const nextGame = next
+    ? (() => {
+        const { opponent, isHome } = sideOf(teamId, next.homeTeamId, next.awayTeamId, teamMap);
+        return {
+          gamePk: next.gamePk,
+          gameDate: String(next.gameDate),
+          startTimeUtc: next.startTimeUtc ? next.startTimeUtc.toISOString() : null,
+          isHome,
+          opponent,
+          venueName: next.venueName,
+          seriesGameNumber: next.seriesGameNumber,
+          gamesInSeries: next.gamesInSeries,
+        };
+      })()
+    : null;
+
+  // Tag: IL players get "傷兵中" (no prediction); a probable starter is only a
+  // pitcher whose id matches the game's probable pitcher; everyone else healthy
+  // and on a team is "可能出賽" (spec-02 §2.1 rule 3).
+  let tag: "probable_starter" | "possible" | "il";
+  if (status.health === "il") {
+    tag = "il";
+  } else if (
+    status.position === "P" &&
+    next &&
+    (next.probableHome === id || next.probableAway === id)
+  ) {
+    tag = "probable_starter";
+  } else {
+    tag = "possible";
+  }
+
+  const recentResults = recentRows.map((g) => {
+    const { opponent, isHome } = sideOf(teamId, g.homeTeamId, g.awayTeamId, teamMap);
+    const teamScore = isHome === null ? null : isHome ? g.homeScore : g.awayScore;
+    const opponentScore = isHome === null ? null : isHome ? g.awayScore : g.homeScore;
+    const win =
+      teamScore !== null && opponentScore !== null ? teamScore > opponentScore : null;
+    return {
+      gamePk: g.gamePk,
+      gameDate: String(g.gameDate),
+      isHome,
+      opponent,
+      teamScore,
+      opponentScore,
+      win,
+    };
+  });
+
+  return UpcomingSchema.parse({ tag, nextGame, recentResults });
+}

@@ -18,6 +18,7 @@ const base: PlayerDetail = {
   seasons: [],
   gameLog: { batting: [], pitching: [] },
   timeline: [],
+  upcoming: null,
 };
 
 describe("PlayerHero", () => {
