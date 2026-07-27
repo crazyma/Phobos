@@ -95,6 +95,7 @@ describe("curated schema (spec-01 §C)", () => {
       "dfa",
       "release",
       "declare_fa",
+      "assign",
       "il_on",
       "il_off",
       "depart",

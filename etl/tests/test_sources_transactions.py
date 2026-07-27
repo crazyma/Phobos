@@ -105,7 +105,42 @@ def test_classify_real_statsapi_desc_strings():
     # declare_fa, which the projection maps to the free_agent affiliation.
     assert classify("Declared Free Agency", "DFA", "elected free agency")[0] == "declare_fa"
     assert classify("", "DFA", "")[0] == "declare_fa"  # typeCode fallback
-    assert classify("Assigned", "ASG", "assigned to Triple-A")[0] == "other"
+
+
+def test_classify_minor_league_assignment_vs_lookalikes():
+    # typeCode ASG / typeDesc "Assigned" covers three distinct things that all
+    # carry the same typeDesc; only the description tells them apart.
+    #
+    # (1) A real minor-league assignment ("X assigned to [team]") → `assign`,
+    #     which the projection follows to the to_team's team/level (spec-01 B.3).
+    assert classify("Assigned", "ASG", "LHP Yu-Min Lin assigned to Reno Aces.")[0] == "assign"
+    assert (
+        classify("Assigned", "ASG", "CF Stuart Fairchild assigned to Tacoma Rainiers from ACL Mariners.")[0]
+        == "assign"
+    )
+    # (2) A spring-training invite ("invited non-roster … to spring training")
+    #     stays `other` — the player is NOT put on a roster, and its to_team is
+    #     often an MLB club, so it must never become `assign`.
+    assert (
+        classify("Assigned", "ASG", "Arizona Diamondbacks invited non-roster LHP Yu-Min Lin to spring training.")[0]
+        == "other"
+    )
+    # (3) A rehab assignment ("sent … on a rehab assignment to …") stays `other`
+    #     — the player remains on their real roster; note "assignment to" is not
+    #     the "assigned to" phrase.
+    assert (
+        classify("Assigned", "ASG", "Cincinnati Reds sent OF Stuart Fairchild on a rehab assignment to Louisville Bats.")[0]
+        == "other"
+    )
+    # (4) A national-team activation (typeCode SC) stays `other`.
+    assert classify("Status Change", "SC", "Chinese Taipei activated RF Stuart Fairchild.")[0] == "other"
+    # (5) Regression: a rehab assignment whose description starts with a "To…"
+    #     word ("Toledo") must NOT spuriously match — the phrase is checked
+    #     against the description alone, not the "Assigned "-prefixed haystack.
+    assert (
+        classify("Assigned", "ASG", "Toledo Mud Hens sent 2B Hao-Yu Lee on a rehab assignment to Lakeland Flying Tigers.")[0]
+        == "other"
+    )
 
 
 def test_transform_normal_record():

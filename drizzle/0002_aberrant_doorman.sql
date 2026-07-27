@@ -1,0 +1,1 @@
+ALTER TYPE "public"."transaction_type" ADD VALUE 'assign' BEFORE 'il_on';

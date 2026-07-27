@@ -96,6 +96,20 @@ def project_status(
             team_id = e.to_team_id
             level = team_levels.get(e.to_team_id) if e.to_team_id is not None else None
             as_of = e.id
+        elif t == "assign":
+            # Minor-league assignment (spec-01 B.3): follow to_team's team/level
+            # when it resolves to a tracked team; otherwise a NO-OP — do NOT
+            # clear the roster (untracked winter/fall-league teams, alt-sites).
+            # Last *resolvable* assign wins across the replay.
+            resolved_level = (
+                team_levels.get(e.to_team_id) if e.to_team_id is not None else None
+            )
+            if resolved_level is not None:
+                affiliation = "rostered"
+                team_id = e.to_team_id
+                level = resolved_level
+                as_of = e.id
+            # else: unresolvable → leave state untouched (like 'other')
         elif t == "dfa":
             affiliation = "dfa"  # keep prior team/level reference (spec-01 B.3)
             as_of = e.id

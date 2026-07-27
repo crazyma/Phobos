@@ -61,6 +61,7 @@ TRANSACTION_TYPES = (
     "dfa",
     "release",
     "declare_fa",
+    "assign",
     "il_on",
     "il_off",
     "depart",

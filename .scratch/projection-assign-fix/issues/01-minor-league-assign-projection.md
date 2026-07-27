@@ -6,11 +6,11 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done（2026-07-27）
 
-- [ ] 新增 `transaction_type` enum 值 `assign`（Drizzle schema + enum migration，比照先前 `declare_fa` 的做法）
-- [ ] **分類**：描述含「assigned to [隊]」／typeCode `ASG` → `assign`；**務必與下列區分、維持 `other`**：「invited non-roster」（春訓邀請，非上 roster；注意 to_team 可能是 MLB 隊、不可誤設 rostered）、國家隊 activate（如「Chinese Taipei activated」）
-- [ ] **投影規則**（spec-01 B.3）：`assign` → `rostered` 取 `to_team` 的隊/層級；**`to_team` 無法解析（非追蹤隊，如冬季/秋季聯盟）→ 不變、不清隊**；health 不變；更新 `as_of_event_id`。多筆 assign 依序重放、最後一筆可解析者勝
-- [ ] **重投影**（`etl reproject`）後：費爾柴德→Tacoma(3A)、林昱珉→Reno(3A) 修正；evening 對帳對這兩位不再告警（或減少）
-- [ ] 測試：分類（assigned vs invited-non-roster vs 國家隊 各一）、投影表驅動（assign 設隊、無法解析→no-op、與 send_down/call_up 混合重放最後者勝）
-- [ ] 驗收：`/players` 對下放球員顯示正確層級（3A 而非大聯盟）
+- [x] 新增 `transaction_type` enum 值 `assign`（Drizzle `enums.ts` + migration `0002_aberrant_doorman.sql`：`ADD VALUE 'assign' BEFORE 'il_on'`，比照先前 `declare_fa`）
+- [x] **分類**：以 description 的「assigned to [隊]」片語 → `assign`（typeDesc 恆為單字「Assigned」無法區辨，且刻意不用 typeDesc-前綴 haystack 以免「Assigned 」+「To…」如 Toledo 誤命中）；invited-non-roster（春訓邀請，to_team 常為 MLB、不設 rostered）、rehab（「assignment to」）、國家隊 activate（SC「Chinese Taipei activated」）均維持 `other`
+- [x] **投影規則**（spec-01 B.3）：`assign` → `rostered` 取 `to_team` 的隊/層級；`to_team` 無法解析 → no-op、不清隊、不推進 `as_of`；health 不變；最後一筆可解析者勝
+- [x] **重投影**後：費爾柴德(656413)→Tacoma(529/aaa)、林昱珉(801179)→Reno(2310/aaa) 修正；currentTeam 快照已與投影一致 → evening 對帳對這兩位不再告警
+- [x] 測試：分類（assigned／invited-non-roster／rehab／國家隊／Toledo 迴歸）、投影表驅動（assign 設隊、無法解析→no-op、與 send_down/call_up 混合重放最後可解析者勝）。etl 122／node 41／typecheck 綠
+- [x] 驗收：`player_current_status.level` 對兩位下放球員為 `aaa`（3A），`/players` 經 lib/format 顯示 3A

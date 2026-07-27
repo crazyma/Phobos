@@ -76,10 +76,13 @@ _TYPEDESC_RULES: tuple[tuple[str, str], ...] = (
 # typeCode fallbacks (StatsAPI short codes) for when typeDesc is empty/odd.
 # Codes confirmed against live 2024 data (see spec-03 §9 note in the report).
 # `DFA` is "Declared Free Agency" (NOT designation — that's `DES`).
-# Deliberately NOT mapped, so they fall through to 'other':
+# Deliberately NOT mapped, so they fall through to 'other' (or, for ASG, are
+# resolved earlier by the "assigned to" description check → 'assign'):
 #   SC  = "Status Change" (IL rows handled above by description; other SC = other)
-#   ASG = "Assigned"; CLW = "Claimed Off Waivers"; RTN = "Returned";
-#   NUM = "Number Change".
+#   ASG = "Assigned" (real minor-league assignments → 'assign' via the
+#         "assigned to [team]" phrase; spring-training invites / rehab
+#         assignments keep 'other'); CLW = "Claimed Off Waivers";
+#   RTN = "Returned"; NUM = "Number Change".
 _TYPECODE_RULES: dict[str, str] = {
     "SFA": "sign",
     "SGN": "sign",
@@ -139,6 +142,25 @@ def classify(type_desc: str, type_code: str, description: str) -> tuple[str, Opt
         return "il_off", None
     if _is_il_placement(haystack):
         return "il_on", _il_detail(haystack)
+
+    # Minor-league assignment (typeCode ASG, typeDesc "Assigned"): move the
+    # player to the to_team's team/level (spec-01 B.3). typeDesc alone can't
+    # decide this — spring-training invites and rehab assignments *also* carry
+    # ASG/"Assigned" — so we key on the "assigned to [team]" phrase in the
+    # description, which appears ONLY in real assignments:
+    #   • "invited non-roster … to spring training"  → no "assigned to" → other
+    #     (not put on a roster; its to_team is often an MLB club — never rostered)
+    #   • "sent … on a rehab assignment to …"        → "assignment to", not
+    #     "assigned to" → other (player stays on their real roster)
+    #   • national-team activations ("Chinese Taipei activated …") are typeCode
+    #     SC and carry no "assigned to" → other
+    #
+    # Match against `description` ONLY — never the typeDesc-prefixed haystack:
+    # typeDesc is the bare word "Assigned", so "Assigned " + a description
+    # starting with "To…" (e.g. "…Toledo Mud Hens sent … on a rehab assignment")
+    # would spuriously contain the substring "assigned to".
+    if "assigned to" in description.lower():
+        return "assign", None
 
     desc_l = type_desc.lower()
     for token, tx_type in _TYPEDESC_RULES:

@@ -109,6 +109,54 @@ def test_declare_fa_marks_free_agent_off_roster():
     assert s2.team_id == 147
 
 
+def test_assign_moves_to_resolvable_team_and_level():
+    # Optioned/assigned down to the AAA affiliate (spec-01 B.3): follow to_team.
+    events = [
+        _ev(1, "call_up", "2024-05-01", to_team_id=147),
+        _ev(2, "assign", "2024-06-01", to_team_id=235),
+    ]
+    s = project_status(1, events, LEVELS)
+    assert (s.affiliation, s.team_id, s.level) == ("rostered", 235, "aaa")
+    assert s.as_of_event_id == 2
+
+
+def test_assign_to_unresolvable_team_is_noop_and_does_not_clear_team():
+    # Assignment to an untracked team (winter/fall league, alt-site) must NOT
+    # clear the roster — leave the last known team/level intact (spec-01 B.3).
+    events = [
+        _ev(1, "send_down", "2024-06-01", to_team_id=235),
+        _ev(2, "assign", "2024-10-01", to_team_id=9999),  # 9999 not in LEVELS
+    ]
+    s = project_status(1, events, LEVELS)
+    assert (s.affiliation, s.team_id, s.level) == ("rostered", 235, "aaa")
+    assert s.as_of_event_id == 1  # unresolvable assign didn't advance state
+
+    # to_team nulled upstream (sanitized) is likewise a no-op.
+    events2 = [
+        _ev(1, "send_down", "2024-06-01", to_team_id=235),
+        _ev(2, "assign", "2024-10-01", to_team_id=None),
+    ]
+    s2 = project_status(1, events2, LEVELS)
+    assert (s2.affiliation, s2.team_id, s2.level) == ("rostered", 235, "aaa")
+
+
+def test_assign_last_resolvable_wins_across_mixed_replay():
+    # Ordered replay mixing call_up/send_down/assign: the final resolvable
+    # assign wins; an intervening unresolvable one doesn't disturb it.
+    events = [
+        _ev(1, "sign", "2024-01-01", to_team_id=235),
+        _ev(2, "call_up", "2024-05-01", to_team_id=147),
+        _ev(3, "assign", "2024-06-01", to_team_id=9999),  # unresolvable → no-op
+        _ev(4, "assign", "2024-07-01", to_team_id=235),  # resolvable → AAA
+    ]
+    s = project_status(1, events, LEVELS)
+    assert (s.affiliation, s.team_id, s.level) == ("rostered", 235, "aaa")
+    assert s.as_of_event_id == 4
+    # Order-independence holds with assign in the mix.
+    shuffled = [events[3], events[1], events[0], events[2]]
+    assert project_status(1, shuffled, LEVELS) == project_status(1, events, LEVELS)
+
+
 def test_other_is_timeline_only_and_does_not_advance_as_of():
     events = [
         _ev(1, "sign", "2024-01-01", to_team_id=147),
