@@ -59,6 +59,7 @@ class TxRow:
 _TYPEDESC_RULES: tuple[tuple[str, str], ...] = (
     ("designated for assignment", "dfa"),
     ("designated", "dfa"),
+    ("declared free agency", "declare_fa"),  # → affiliation free_agent (spec-01 B.3)
     ("released", "release"),
     ("recalled", "call_up"),
     ("selected", "call_up"),  # "Selected the contract of" → onto MLB roster
@@ -74,10 +75,11 @@ _TYPEDESC_RULES: tuple[tuple[str, str], ...] = (
 
 # typeCode fallbacks (StatsAPI short codes) for when typeDesc is empty/odd.
 # Codes confirmed against live 2024 data (see spec-03 §9 note in the report).
+# `DFA` is "Declared Free Agency" (NOT designation — that's `DES`).
 # Deliberately NOT mapped, so they fall through to 'other':
 #   SC  = "Status Change" (IL rows handled above by description; other SC = other)
-#   DFA = "Declared Free Agency" (NOT designation!); ASG = "Assigned";
-#   CLW = "Claimed Off Waivers"; RTN = "Returned"; NUM = "Number Change".
+#   ASG = "Assigned"; CLW = "Claimed Off Waivers"; RTN = "Returned";
+#   NUM = "Number Change".
 _TYPECODE_RULES: dict[str, str] = {
     "SFA": "sign",
     "SGN": "sign",
@@ -89,6 +91,7 @@ _TYPECODE_RULES: dict[str, str] = {
     "OUT": "send_down",  # Outrighted
     "DES": "dfa",  # Designated for Assignment
     "REL": "release",
+    "DFA": "declare_fa",  # Declared Free Agency → affiliation free_agent
     "RET": "depart",
 }
 

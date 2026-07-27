@@ -101,8 +101,10 @@ def test_classify_real_statsapi_desc_strings():
     assert classify("Outrighted", "OUT", "")[0] == "send_down"
     # 'Status Change' that is NOT an IL move must be timeline-only, never 'sign'.
     assert classify("Status Change", "SC", "Roster status changed")[0] == "other"
-    # typeCode 'DFA' is *Declared Free Agency*, not a designation → 'other'.
-    assert classify("Declared Free Agency", "DFA", "elected free agency")[0] == "other"
+    # typeCode 'DFA' is *Declared Free Agency* (not a designation, that's DES) →
+    # declare_fa, which the projection maps to the free_agent affiliation.
+    assert classify("Declared Free Agency", "DFA", "elected free agency")[0] == "declare_fa"
+    assert classify("", "DFA", "")[0] == "declare_fa"  # typeCode fallback
     assert classify("Assigned", "ASG", "assigned to Triple-A")[0] == "other"
 
 

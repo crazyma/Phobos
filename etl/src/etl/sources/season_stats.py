@@ -239,9 +239,7 @@ def transform_season_pitching(payload: dict[str, Any], *, level: str) -> list[Pi
         season_block = _find_block(stats, "season", "pitching")
         if season_block is None:
             continue
-        saber_block = _find_block(stats, "sabermetrics", "pitching")
-        saber_by_team = _index_saber_by_team(saber_block)
-        has_advanced = saber_block is not None
+        saber_by_team = _index_saber_by_team(_find_block(stats, "sabermetrics", "pitching"))
 
         for split in season_block.get("splits", []):
             team = split.get("team")
@@ -272,7 +270,12 @@ def transform_season_pitching(payload: dict[str, Any], *, level: str) -> list[Pi
                     sv=_int(stat.get("saves")),
                     hld=_int(stat.get("holds")),
                     fip=_flt(saber.get("fip")),
-                    lob_pct=_lob_pct(stat) if has_advanced else None,
+                    # LOB% is ETL-computed from counting stats (incl. hitBatsmen,
+                    # which is NOT a stored pitching column, so services can't
+                    # re-derive it). Its inputs exist at every level, so compute
+                    # it everywhere — unlike fip/war which only come from the
+                    # MLB-only sabermetrics block (decision 2026-07-27).
+                    lob_pct=_lob_pct(stat),
                     war=_flt(saber.get("war")),
                 )
             )

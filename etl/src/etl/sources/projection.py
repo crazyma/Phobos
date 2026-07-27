@@ -104,6 +104,11 @@ def project_status(
             team_id = level = il_detail = None
             health = "active"
             as_of = e.id
+        elif t == "declare_fa":
+            affiliation = "free_agent"  # off any roster (spec-01 B.3)
+            team_id = level = il_detail = None
+            health = "active"
+            as_of = e.id
         elif t == "depart":
             affiliation = "departed"
             team_id = level = il_detail = None

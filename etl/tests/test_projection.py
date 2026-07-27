@@ -92,6 +92,23 @@ def test_depart_marks_departed():
     assert (s.team_id, s.level) == (None, None)
 
 
+def test_declare_fa_marks_free_agent_off_roster():
+    events = [
+        _ev(1, "call_up", "2024-05-01", to_team_id=147),
+        _ev(2, "il_on", "2024-09-01", il_detail="il_10"),
+        _ev(3, "declare_fa", "2024-11-04"),  # elected free agency after the season
+    ]
+    s = project_status(1, events, LEVELS)
+    assert s.affiliation == "free_agent"
+    assert (s.team_id, s.level, s.health, s.il_detail) == (None, None, "active", None)
+
+    # A later signing puts them back on a roster.
+    events.append(_ev(4, "sign", "2025-01-15", to_team_id=147))
+    s2 = project_status(1, events, LEVELS)
+    assert s2.affiliation == "rostered"
+    assert s2.team_id == 147
+
+
 def test_other_is_timeline_only_and_does_not_advance_as_of():
     events = [
         _ev(1, "sign", "2024-01-01", to_team_id=147),

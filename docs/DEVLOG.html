@@ -354,8 +354,8 @@
     <li class="">小聯盟成績資料源細節：StatsAPI <code>sportId=11/12</code> 端點回傳欄位與 pybaseball 欄位對齊表（→ spec-03 §9）</li>
     <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。<strong>部分回填（2026-07-27 票 03 實作）</strong>：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。</li>
     <li class="done">~~實測 StatsAPI <code>stats=sabermetrics</code> 端點~~ → 已實測（2026-07-23）：<strong>命中、維持原清單、預案封存</strong>（結果見 spec-03 §9）</li>
-    <li class=""><strong>（2026-07-27 ETL 整合浮現）<code>affiliation</code> enum 的 <code>free_agent</code> 目前不可達</strong>：spec-01 B.3 無任何事件對應產生它，StatsAPI「Declared Free Agency」現歸 <code>other</code>。待定：補一條事件對照（如 <code>Declared Free Agency</code>→<code>free_agent</code>）或自 enum 移除該值。</li>
-    <li class=""><strong>（2026-07-27 ETL 整合浮現）<code>season_pitching_stats.lob_pct</code> 的層級範圍</strong>：票 06 目前只在有 sabermetrics block（＝MLB）時自算 LOB%，但它其實可由計數欄在<strong>任何層級</strong>自算。待定原意是「僅 MLB 進階」還是「所有層級皆算」。</li>
+    <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>affiliation</code> enum 的 <code>free_agent</code> 不可達</strong>~~ → <strong>已定：補對照</strong>（2026-07-27，batu）。新增 <code>transaction_type</code> enum 值 <code>declare_fa</code>（migration <code>0001</code>），StatsAPI「Declared Free Agency」/typeCode <code>DFA</code> → <code>declare_fa</code> → 投影 <code>free_agent</code>（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。</li>
+    <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>season_pitching_stats.lob_pct</code> 的層級範圍</strong>~~ → <strong>已定：所有層級皆算</strong>（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 <code>hbp</code> 欄故 services 無法事後重算 → 必須 ETL 落庫。</li>
     </ul>
   </section>
   <section>

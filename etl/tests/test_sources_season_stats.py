@@ -243,7 +243,8 @@ def _mlb_pitching_payload() -> dict:
 
 
 def _minor_league_pitching_payload() -> dict:
-    """Minor-league pitcher: no `sabermetrics` block → fip/war/lob_pct all None."""
+    """Minor-league pitcher: no `sabermetrics` block → fip/war None, but lob_pct
+    is still ETL-computed from the counting stats present here."""
     return {
         "people": [
             {
@@ -346,11 +347,15 @@ def test_transform_pitching_maps_counting_and_advanced_fields_including_lob_pct(
     assert row.lob_pct == pytest.approx(expected)
 
 
-def test_transform_pitching_without_sabermetrics_advanced_all_none():
+def test_transform_pitching_without_sabermetrics_still_computes_lob_pct():
+    # fip/war come from the MLB-only sabermetrics block → None at minor levels,
+    # but lob_pct is ETL-computed from counting stats present at every level
+    # (decision 2026-07-27: compute it everywhere, not gated on sabermetrics).
     (row,) = transform_season_pitching(_minor_league_pitching_payload(), level="aaa")
     assert row.fip is None
     assert row.war is None
-    assert row.lob_pct is None  # gated on sabermetrics presence, not just computable
+    expected = (40 + 15 + 2 - 20) / (40 + 15 + 2 - 1.4 * 4)
+    assert row.lob_pct == pytest.approx(expected)
 
 
 def test_transform_pitching_ignores_person_without_season_block():
