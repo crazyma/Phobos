@@ -1,33 +1,40 @@
-"""Per-game box lines: StatsAPI boxscore → `game_batting_lines` /
-`game_pitching_lines` (spec-01 C.6).
+"""Per-game box lines from each tracked player's own **gameLog**.
 
-Role is decided by behaviour, not position: a player gets a batting row when
-the boxscore shows them with a batting appearance that game, a pitching row
-when it shows a pitching appearance — a two-way player can get both rows for
-the same `game_pk` (spec-03 §04). Only tracked players are ingested (spec-03
-§1), and lookback differs by batch (spec-03 §3): `morning` re-sweeps the last
-`GAMELOG_LOOKBACK_DAYS` days (upstream box scores get corrected after the
-fact, ADR §6.1), `evening` only sweeps yesterday..today (catching box scores
-that finished after the morning run, e.g. late west-coast games).
+Player-centric by design (spec-03 §3, 2026-07-27): instead of sweeping every
+game's full boxscore and fishing out the handful of tracked players (~1.6% hit
+rate, and it mistook probable-pitcher listings for appearances), we pull each
+tracked player's `people/{id}/stats?stats=gameLog` — only their own games, ~100%
+useful. Full boxscores are no longer fetched or stored in the raw layer.
 
-Minor-league boxscores can omit stat keys entirely. Every counting column in
-`game_batting_lines`/`game_pitching_lines` is `NOT NULL DEFAULT 0` (a fixed
-Drizzle contract — see games.ts), so "missing → best-effort NULL" per spec-03
-§04 is implemented as "missing key → 0", the only value that satisfies the
-column. `team_id` is the one nullable column here and is set to None when the
-boxscore's team side can't be resolved.
+`gameLog` must be queried per level sportId (1/11/12/13/14/16): passing a sportId
+returns only that level's games, omitting it returns only MLB — and a player's
+level isn't knowable up front (e.g. a AAA-status player who actually threw all
+his games in MLB). So we sweep every sportId per player.
+
+Each gameLog split is one game the player actually appeared in, carrying the
+game context (gamePk, date, team, opponent, isHome, sport) plus the stat line.
+We also upsert a minimal `games` header per split (to satisfy the line FKs and
+give the game context), preserving any richer columns the schedule source set.
+Role is by group: the hitting block yields batting rows, the pitching block
+pitching rows; a two-way player gets both for the same `game_pk`. Only
+`lifecycle='tracked'` players are ingested.
+
+Minor-league gameLogs can omit stat keys; every counting column in the line
+tables is `NOT NULL DEFAULT 0` (a fixed Drizzle contract), so "missing → 0".
+`team_id` (the one nullable line column) and the header team refs are nulled
+when they point outside the ingested teams.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Iterable, Optional
+from dataclasses import dataclass, replace
+from datetime import date
+from typing import Any, Optional
 
 import psycopg
 
 from ..batch import Source
-from ..config import GAMELOG_LOOKBACK_DAYS
+from ..constants import INGEST_SPORT_IDS, level_for_sport_id
 from ..statsapi import StatsApiClient
 
 
@@ -66,6 +73,17 @@ class PitchingLineRow:
     hr: int
 
 
+@dataclass(frozen=True)
+class GameHeaderRow:
+    """The minimal `games` row a gameLog split can supply (spec-03 §3)."""
+
+    game_pk: int
+    level: str
+    game_date_us: str
+    home_team_id: Optional[int]
+    away_team_id: Optional[int]
+
+
 def _int(value: Any) -> int:
     """Best-effort int: missing/unparseable → 0 (see module docstring)."""
     if value is None:
@@ -74,17 +92,6 @@ def _int(value: Any) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
-
-
-def _played(stats_node: dict[str, Any]) -> bool:
-    """A stat category counts as "played" this game when gamesPlayed >= 1.
-
-    Minor-league (and some MLB) boxscores include a zeroed-out stats object
-    for categories a player didn't participate in — this is how a two-way
-    player's batting-only or pitching-only appearances are told apart from a
-    real dual appearance.
-    """
-    return _int(stats_node.get("gamesPlayed")) > 0
 
 
 def _ip_outs(pitching: dict[str, Any]) -> int:
@@ -108,80 +115,122 @@ def _ip_outs(pitching: dict[str, Any]) -> int:
     return whole * 3 + frac
 
 
-def transform_boxscore(
-    payload: dict[str, Any],
-    *,
-    game_pk: int,
-    level: str,
-    tracked_ids: Iterable[int],
-) -> tuple[list[BattingLineRow], list[PitchingLineRow]]:
-    """Map a StatsAPI `/game/{gamePk}/boxscore` payload to line rows.
+def transform_gamelog(
+    payload: dict[str, Any], *, player_id: int, default_level: str
+) -> tuple[list[BattingLineRow], list[PitchingLineRow], list[GameHeaderRow]]:
+    """Map a `people/{id}/stats?stats=gameLog` payload (hitting+pitching groups)
+    to (batting rows, pitching rows, game headers).
 
-    Only players in `tracked_ids` are emitted. A player can appear in both
-    returned lists (two-way behaviour) or neither (didn't play, e.g. a
-    healthy scratch still listed on the roster).
+    Each split is a real appearance, so no zero-filtering is needed. Level comes
+    from the split's own `sport.id` (falling back to the queried level). Game
+    headers are de-duplicated by `game_pk` (both groups can see the same game).
     """
-    tracked = set(int(pid) for pid in tracked_ids)
-    batting_rows: list[BattingLineRow] = []
-    pitching_rows: list[PitchingLineRow] = []
+    batting: list[BattingLineRow] = []
+    pitching: list[PitchingLineRow] = []
+    headers: dict[int, GameHeaderRow] = {}
 
-    teams_node = payload.get("teams") or {}
-    for side_key in ("home", "away"):
-        side = teams_node.get(side_key) or {}
-        team_id = (side.get("team") or {}).get("id")
-        team_id = int(team_id) if team_id is not None else None
-
-        players = side.get("players") or {}
-        for pdata in players.values():
-            person = pdata.get("person") or {}
-            pid = person.get("id")
-            if pid is None or int(pid) not in tracked:
+    for block in payload.get("stats") or []:
+        group = (block.get("group") or {}).get("displayName")
+        for split in block.get("splits") or []:
+            game = split.get("game") or {}
+            game_pk = game.get("gamePk")
+            if game_pk is None:
                 continue
-            pid = int(pid)
+            game_pk = int(game_pk)
 
-            stats = pdata.get("stats") or {}
-            batting = stats.get("batting") or {}
-            pitching = stats.get("pitching") or {}
+            sport_id = (split.get("sport") or {}).get("id")
+            level = level_for_sport_id(sport_id) if sport_id is not None else None
+            level = level or default_level
+            if level is None:
+                continue
 
-            if _played(batting):
-                batting_rows.append(
+            team_id = (split.get("team") or {}).get("id")
+            team_id = int(team_id) if team_id is not None else None
+            opp_id = (split.get("opponent") or {}).get("id")
+            opp_id = int(opp_id) if opp_id is not None else None
+            game_date = split.get("date")
+
+            if game_pk not in headers and game_date:
+                home, away = (team_id, opp_id) if split.get("isHome") else (opp_id, team_id)
+                headers[game_pk] = GameHeaderRow(
+                    game_pk=game_pk,
+                    level=level,
+                    game_date_us=str(game_date),
+                    home_team_id=home,
+                    away_team_id=away,
+                )
+
+            stat = split.get("stat") or {}
+            if group == "hitting":
+                batting.append(
                     BattingLineRow(
-                        player_id=pid,
+                        player_id=player_id,
                         game_pk=game_pk,
                         team_id=team_id,
                         level=level,
-                        pa=_int(batting.get("plateAppearances")),
-                        ab=_int(batting.get("atBats")),
-                        h=_int(batting.get("hits")),
-                        doubles=_int(batting.get("doubles")),
-                        triples=_int(batting.get("triples")),
-                        hr=_int(batting.get("homeRuns")),
-                        rbi=_int(batting.get("rbi")),
-                        r=_int(batting.get("runs")),
-                        bb=_int(batting.get("baseOnBalls")),
-                        so=_int(batting.get("strikeOuts")),
-                        sb=_int(batting.get("stolenBases")),
+                        pa=_int(stat.get("plateAppearances")),
+                        ab=_int(stat.get("atBats")),
+                        h=_int(stat.get("hits")),
+                        doubles=_int(stat.get("doubles")),
+                        triples=_int(stat.get("triples")),
+                        hr=_int(stat.get("homeRuns")),
+                        rbi=_int(stat.get("rbi")),
+                        r=_int(stat.get("runs")),
+                        bb=_int(stat.get("baseOnBalls")),
+                        so=_int(stat.get("strikeOuts")),
+                        sb=_int(stat.get("stolenBases")),
                     )
                 )
-            if _played(pitching):
-                pitching_rows.append(
+            elif group == "pitching":
+                pitching.append(
                     PitchingLineRow(
-                        player_id=pid,
+                        player_id=player_id,
                         game_pk=game_pk,
                         team_id=team_id,
                         level=level,
-                        started=_int(pitching.get("gamesStarted")) > 0,
-                        ip_outs=_ip_outs(pitching),
-                        h=_int(pitching.get("hits")),
-                        r=_int(pitching.get("runs")),
-                        er=_int(pitching.get("earnedRuns")),
-                        bb=_int(pitching.get("baseOnBalls")),
-                        so=_int(pitching.get("strikeOuts")),
-                        hr=_int(pitching.get("homeRuns")),
+                        started=_int(stat.get("gamesStarted")) > 0,
+                        ip_outs=_ip_outs(stat),
+                        h=_int(stat.get("hits")),
+                        r=_int(stat.get("runs")),
+                        er=_int(stat.get("earnedRuns")),
+                        bb=_int(stat.get("baseOnBalls")),
+                        so=_int(stat.get("strikeOuts")),
+                        hr=_int(stat.get("homeRuns")),
                     )
                 )
 
-    return batting_rows, pitching_rows
+    return batting, pitching, list(headers.values())
+
+
+def upsert_game_headers(conn: psycopg.Connection, rows: list[GameHeaderRow]) -> int:
+    """Upsert minimal `games` headers from gameLog. Preserves columns the
+    schedule source owns (scores, venue, probable pitchers, series) — only fills
+    them when this is the game's first sighting. Does not commit."""
+    count = 0
+    with conn.cursor() as cur:
+        for row in rows:
+            cur.execute(
+                """
+                insert into games
+                    (game_pk, level, game_date_us, home_team_id, away_team_id, status)
+                values (%s, %s, %s, %s, %s, 'final')
+                on conflict (game_pk) do update set
+                    game_date_us = excluded.game_date_us,
+                    level = excluded.level,
+                    home_team_id = coalesce(games.home_team_id, excluded.home_team_id),
+                    away_team_id = coalesce(games.away_team_id, excluded.away_team_id),
+                    status = 'final'
+                """,
+                (
+                    row.game_pk,
+                    row.level,
+                    row.game_date_us,
+                    row.home_team_id,
+                    row.away_team_id,
+                ),
+            )
+            count += 1
+    return count
 
 
 def upsert_batting_lines(conn: psycopg.Connection, rows: list[BattingLineRow]) -> int:
@@ -282,47 +331,75 @@ def _tracked_player_ids(conn: psycopg.Connection) -> list[int]:
         return [int(r[0]) for r in cur.fetchall()]
 
 
-def _games_in_window(
-    conn: psycopg.Connection, start: date, end: date
-) -> list[tuple[int, str]]:
+def _known_team_ids(conn: psycopg.Connection) -> set[int]:
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            select game_pk, level from games
-            where game_date_us between %s and %s
-            order by game_pk
-            """,
-            (start, end),
-        )
-        return [(int(r[0]), str(r[1])) for r in cur.fetchall()]
+        cur.execute("select mlb_team_id from teams")
+        return {int(r[0]) for r in cur.fetchall()}
 
 
-def _sweep_window(kind: str, today: date) -> tuple[date, date]:
-    if kind == "morning":
-        return today - timedelta(days=GAMELOG_LOOKBACK_DAYS), today - timedelta(days=1)
-    # evening (and manual, best-effort default): catch yesterday's stragglers
-    # plus anything that finished today.
-    return today - timedelta(days=1), today
+def _sanitize_line(row, known: set[int]):
+    if row.team_id is None or row.team_id in known:
+        return row
+    return replace(row, team_id=None)
 
 
-def ingest_gamelog(
-    client: StatsApiClient, conn: psycopg.Connection, start: date, end: date
+def _sanitize_header(row: GameHeaderRow, known: set[int]) -> GameHeaderRow:
+    home = row.home_team_id if row.home_team_id in known else None
+    away = row.away_team_id if row.away_team_id in known else None
+    if home == row.home_team_id and away == row.away_team_id:
+        return row
+    return replace(row, home_team_id=home, away_team_id=away)
+
+
+def current_season(today: Optional[date] = None) -> int:
+    return (today or date.today()).year
+
+
+def ingest_player_gamelogs(
+    client: StatsApiClient,
+    conn: psycopg.Connection,
+    player_ids: list[int],
+    seasons: list[int],
 ) -> tuple[int, int]:
-    """Sweep box scores for every game in [start, end] (from the games table),
-    upserting tracked players' lines. Returns (batting, pitching) row counts.
-    Reused by the batch source and the `resync --gamelog --from DATE` CLI."""
-    tracked = _tracked_player_ids(conn)
-    if not tracked:
+    """Fetch each (player, season, sportId) gameLog → upsert game headers + lines.
+
+    Team refs outside the ingested teams are nulled (best-effort, spec-03 §7).
+    Headers are upserted before lines so the line FKs resolve in-transaction.
+    Returns (batting, pitching) row counts. Does not commit.
+    """
+    if not player_ids:
         return (0, 0)
+    known = _known_team_ids(conn)
     batting_all: list[BattingLineRow] = []
     pitching_all: list[PitchingLineRow] = []
-    for game_pk, level in _games_in_window(conn, start, end):
-        payload = client.get(f"game/{game_pk}/boxscore")
-        batting, pitching = transform_boxscore(
-            payload, game_pk=game_pk, level=level, tracked_ids=tracked
-        )
-        batting_all.extend(batting)
-        pitching_all.extend(pitching)
+    headers: dict[int, GameHeaderRow] = {}
+
+    for pid in player_ids:
+        for season in seasons:
+            for sport_id in INGEST_SPORT_IDS:
+                level = level_for_sport_id(sport_id)
+                if level is None:
+                    continue
+                payload = client.get(
+                    f"people/{pid}/stats",
+                    {
+                        "stats": "gameLog",
+                        "group": "hitting,pitching",
+                        "season": season,
+                        "sportId": sport_id,
+                    },
+                )
+                b, p, h = transform_gamelog(payload, player_id=pid, default_level=level)
+                batting_all.extend(b)
+                pitching_all.extend(p)
+                for hdr in h:
+                    headers[hdr.game_pk] = hdr
+
+    header_rows = [_sanitize_header(h, known) for h in headers.values()]
+    batting_all = [_sanitize_line(r, known) for r in batting_all]
+    pitching_all = [_sanitize_line(r, known) for r in pitching_all]
+
+    upsert_game_headers(conn, header_rows)  # before lines (FK)
     return (
         upsert_batting_lines(conn, batting_all),
         upsert_pitching_lines(conn, pitching_all),
@@ -332,8 +409,14 @@ def ingest_gamelog(
 def make_game_lines_source(
     client: StatsApiClient, conn: psycopg.Connection, *, kind: str
 ) -> Source:
+    """Batch box-line ingest: the current season's gameLog for every tracked
+    player (idempotent; evening re-runs catch games that finished after morning).
+    Historical seasons are backfilled once via the `etl backfill` CLI."""
+
     def run() -> None:
-        start, end = _sweep_window(kind, datetime.now(timezone.utc).date())
-        ingest_gamelog(client, conn, start, end)
+        tracked = _tracked_player_ids(conn)
+        if not tracked:
+            return
+        ingest_player_gamelogs(client, conn, tracked, [current_season()])
 
     return Source(f"game_lines_{kind}", run)

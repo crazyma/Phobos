@@ -20,8 +20,13 @@ scheduled batches:
       Replay the event stream into player_current_status and recompute
       player_recent_form (no upstream calls).
 
-Each command manages its own transaction; `resync` also opens a StatsAPI client
-exactly like the batch runner (local cache + raw recording).
+  etl backfill [--from YYYY-MM-DD | --season YYYY]
+      One-time historical gameLog backfill (default 2020→now) so career/season
+      highs have a real base. Idempotent, interruption-safe (commits per
+      player), then reprojects.
+
+Each command manages its own transaction; commands that hit upstream open a
+StatsAPI client exactly like the batch runner (local cache + raw recording).
 """
 
 from __future__ import annotations
@@ -34,8 +39,11 @@ from datetime import date
 import psycopg
 
 from .db import connect
-from .sources.game_lines import ingest_gamelog
-from .sources.games import ingest_schedule
+from .sources.game_lines import (
+    _tracked_player_ids,
+    current_season,
+    ingest_player_gamelogs,
+)
 from .sources.projection import project_all_tracked
 from .sources.recent_form import recompute_all_tracked
 from .sources.season_stats import make_season_stats_source
@@ -80,15 +88,44 @@ def cmd_resync(args: argparse.Namespace, conn: psycopg.Connection) -> int:
         conn.commit()
         print("season stats resynced (2020→current)")
         return 0
-    # --gamelog
+    # --gamelog: re-pull each tracked player's gameLog for the affected seasons
     start = date.fromisoformat(args.from_date)
-    end = date.today()
-    ingest_schedule(client, conn, start, end)
+    seasons = list(range(start.year, current_season() + 1))
+    tracked = _tracked_player_ids(conn)
+    batting, pitching = ingest_player_gamelogs(client, conn, tracked, seasons)
     conn.commit()
-    batting, pitching = ingest_gamelog(client, conn, start, end)
-    conn.commit()
-    print(f"gamelog resynced {start}→{end}: {batting} batting, {pitching} pitching lines")
+    print(f"gamelog resynced seasons {seasons[0]}–{seasons[-1]}: {batting} batting, {pitching} pitching lines")
     _reproject(conn)  # new box lines feed recent-form
+    return 0
+
+
+def cmd_backfill(args: argparse.Namespace, conn: psycopg.Connection) -> int:
+    """One-time historical gameLog backfill so career/season highs have a base.
+
+    Idempotent (upsert) and interruption-safe: commits after each player, so a
+    re-run only redoes players not yet finished. Manual tool, not a batch.
+    """
+    client = _build_client(conn)
+    tracked = _tracked_player_ids(conn)
+    if args.season is not None:
+        seasons = [args.season]
+    elif args.from_date:
+        seasons = list(range(date.fromisoformat(args.from_date).year, current_season() + 1))
+    else:
+        seasons = list(range(2020, current_season() + 1))  # default: full history
+
+    total_b = total_p = 0
+    for pid in tracked:
+        batting, pitching = ingest_player_gamelogs(client, conn, [pid], seasons)
+        conn.commit()  # persist this player's backfill before moving on
+        total_b += batting
+        total_p += pitching
+        print(f"  player {pid}: {batting} batting, {pitching} pitching lines")
+    print(
+        f"backfill complete: seasons {seasons[0]}–{seasons[-1]}, "
+        f"{total_b} batting, {total_p} pitching lines"
+    )
+    _reproject(conn)
     return 0
 
 
@@ -134,6 +171,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_reproj = sub.add_parser("reproject", help="replay projection + recompute recent-form")
     p_reproj.set_defaults(func=cmd_reproject)
+
+    p_back = sub.add_parser(
+        "backfill", help="one-time historical gameLog backfill (default 2020→now)"
+    )
+    when = p_back.add_mutually_exclusive_group()
+    when.add_argument("--from", dest="from_date", help="start date YYYY-MM-DD")
+    when.add_argument("--season", type=int, help="a single season YYYY")
+    p_back.set_defaults(func=cmd_backfill)
 
     return parser
 

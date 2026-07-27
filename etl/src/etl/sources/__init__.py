@@ -47,12 +47,12 @@ def build_sources(
         sources.append(make_teams_source(client, conn))
         sources.append(make_player_bio_source(client, conn))
 
-    # Schedule/results run in both batches; box lines run in both too but with
-    # different lookback windows (morning: GAMELOG_LOOKBACK_DAYS re-sweep;
-    # evening: yesterday..today sweep) — spec-03 §3/§04. `games` must run
-    # before `game_lines_*` so the latter can see freshly-upserted game rows.
+    # Schedule (previews + settled-day anchor) and box lines both run in both
+    # batches. Box lines now come from each tracked player's own gameLog
+    # (spec-03 §3), so they no longer depend on the schedule source's rows;
+    # order between them is immaterial.
     if kind in ("morning", "evening"):
-        sources.append(make_games_source(client, conn, kind=kind))
+        sources.append(make_games_source(client, conn))
         sources.append(make_game_lines_source(client, conn, kind=kind))
 
     # Season stats are a full re-pull every morning (spec-03 §3): the small

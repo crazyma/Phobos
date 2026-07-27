@@ -19,7 +19,6 @@ from typing import Any, Optional
 import psycopg
 
 from ..batch import Source
-from ..config import GAMELOG_LOOKBACK_DAYS
 from ..constants import INGEST_SPORT_IDS, level_for_sport_id
 from ..statsapi import StatsApiClient
 
@@ -220,15 +219,10 @@ def upsert_games(conn: psycopg.Connection, rows: list[GameRow]) -> int:
     return count
 
 
-def _schedule_window(today: date, kind: str) -> tuple[date, date]:
-    """Schedule window per batch, ending today (so probable pitchers preview).
-
-    `morning` spans the same `GAMELOG_LOOKBACK_DAYS` lookback as the box-line
-    sweep, so those games exist in the `games` table for game_lines to settle
-    (they read game_pks from it); `evening` only needs yesterday..today.
-    """
-    if kind == "morning":
-        return today - timedelta(days=GAMELOG_LOOKBACK_DAYS), today
+def _schedule_window(today: date) -> tuple[date, date]:
+    """Yesterday..today — enough to preview today's probable pitchers and anchor
+    the latest settled game day. Box lines come from player gameLogs, not from
+    sweeping this window (spec-03 §3), so it stays narrow."""
     return today - timedelta(days=1), today
 
 
@@ -263,11 +257,9 @@ def ingest_schedule(
     return upsert_games(conn, cleaned)
 
 
-def make_games_source(
-    client: StatsApiClient, conn: psycopg.Connection, *, kind: str = "evening"
-) -> Source:
+def make_games_source(client: StatsApiClient, conn: psycopg.Connection) -> Source:
     def run() -> None:
-        start, end = _schedule_window(datetime.now(timezone.utc).date(), kind)
+        start, end = _schedule_window(datetime.now(timezone.utc).date())
         ingest_schedule(client, conn, start, end)
 
     return Source("games", run)

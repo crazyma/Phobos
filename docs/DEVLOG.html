@@ -163,6 +163,15 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-27</h3>
     <ul class="todo">
+    <li class="done"><strong>修正 slice <code>etl-gamelog-refactor</code>（2 票）完成——逐場改走球員 gameLog、退役 boxscore 全掃 + 2020 backfill</strong>（<code>.scratch/etl-gamelog-refactor/issues/</code>，同分支）。
+    <ul>
+    <li><strong>票 01（gameLog 取代 boxscore 全掃）</strong>：逐場來源由「掃窗口內全賽程 boxscore、再翻找 tracked 球員（~1.6% 命中、且把先發預告誤判成出賽）」改成「每位 tracked 球員的 <code>people/{id}/stats?stats=gameLog</code>——只抓自己的比賽、~100% 命中」。<strong>必須逐一掃六個層級 sportId</strong>（gameLog 帶 sportId 只回該層級、省略只回 MLB；實測鄧愷威 status=AAA 但實際 MLB 投球）。gameLog 每筆順手 upsert <code>games</code> 表頭（<code>game_date_us</code>／主客/level，coalesce 保留 schedule 設的分數等欄）以滿足外鍵。<strong>schedule 前瞻來源保留</strong>（先發預告/今日/錨點）、raw 層<strong>停存 boxscore</strong>。近況引擎與 schema 皆不需改。順手把票 05 為餵舊 game_lines 而加寬的 morning schedule 窗口還原成昨天～今天。</li>
+    <li><strong>票 02（初始 backfill）</strong>：<code>etl backfill [--from DATE | --season YYYY]</code>（預設 2020→今）逐球員抓 gameLog → <code>game_*_lines</code>（＋補 <code>games</code>），<strong>冪等、逐球員 commit 可中斷續跑</strong>、保守 rate-limit（沿用 client delay/重試）、收尾自動 <code>reproject</code>＋近況重算。定位手動 CLI（不進兩批）。</li>
+    <li><strong>實跑驗證</strong>：evening（當季 gameLog、~30 呼叫）→ <code>game_batting_lines</code> 2→224、pitching 0→46，<strong><code>/players</code> 近況由全 fallback 轉為真數據句</strong>（李灝宇「連續 11 場有安打」、費爾柴德「近 5 場打擊率 .412」、鄧愷威「近 5 場防禦率 4.91」…）。backfill（2020→2026）→ 1513 打擊＋269 投球逐場列入庫、跨 2021~2026（這批球員 2020 尚未登錄），career/season high 自此有正確歷史基準。</li>
+    <li>測試：pytest 118 綠（game_lines 測改寫為 gameLog fixture：打者/投手客場/二刀流一場兩列/小聯盟缺欄→0＋<code>inningsPitched</code> 解析/缺 gamePk 跳過;DB：header upsert 保留 schedule 欄、lines 幂等）。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>ETL slice 票 07（兩批編排 + CLI 手動工具）完成 — spec-03 ETL slice 全 7 票收尾</strong>（<code>.scratch/etl-pipeline/issues/07</code>，同分支）。
     <ul>
     <li><strong>兩批編排</strong>：morning（昨日～10 天結算逐場＋球季整季重拉＋投影＋近況重算）／evening（前瞻當日賽程＋掃尾結算＋transactions＋roster/IL 對帳）＋ manual，已於 <code>sources/__init__.py</code> 依相依序編排（games→game_lines、transactions→projection→recent_form、reconciliation 收尾）。cron 建議 morning 09:00／evening 17:30 台灣時間（spec-03 §2，上線後微調）。</li>

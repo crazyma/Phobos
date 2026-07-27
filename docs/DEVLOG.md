@@ -9,6 +9,12 @@
 
 ### 2026-07-27
 
+- [x] **修正 slice `etl-gamelog-refactor`（2 票）完成——逐場改走球員 gameLog、退役 boxscore 全掃 + 2020 backfill**（`.scratch/etl-gamelog-refactor/issues/`，同分支）。
+  - **票 01（gameLog 取代 boxscore 全掃）**：逐場來源由「掃窗口內全賽程 boxscore、再翻找 tracked 球員（~1.6% 命中、且把先發預告誤判成出賽）」改成「每位 tracked 球員的 `people/{id}/stats?stats=gameLog`——只抓自己的比賽、~100% 命中」。**必須逐一掃六個層級 sportId**（gameLog 帶 sportId 只回該層級、省略只回 MLB；實測鄧愷威 status=AAA 但實際 MLB 投球）。gameLog 每筆順手 upsert `games` 表頭（`game_date_us`／主客/level，coalesce 保留 schedule 設的分數等欄）以滿足外鍵。**schedule 前瞻來源保留**（先發預告/今日/錨點）、raw 層**停存 boxscore**。近況引擎與 schema 皆不需改。順手把票 05 為餵舊 game_lines 而加寬的 morning schedule 窗口還原成昨天～今天。
+  - **票 02（初始 backfill）**：`etl backfill [--from DATE | --season YYYY]`（預設 2020→今）逐球員抓 gameLog → `game_*_lines`（＋補 `games`），**冪等、逐球員 commit 可中斷續跑**、保守 rate-limit（沿用 client delay/重試）、收尾自動 `reproject`＋近況重算。定位手動 CLI（不進兩批）。
+  - **實跑驗證**：evening（當季 gameLog、~30 呼叫）→ `game_batting_lines` 2→224、pitching 0→46，**`/players` 近況由全 fallback 轉為真數據句**（李灝宇「連續 11 場有安打」、費爾柴德「近 5 場打擊率 .412」、鄧愷威「近 5 場防禦率 4.91」…）。backfill（2020→2026）→ 1513 打擊＋269 投球逐場列入庫、跨 2021~2026（這批球員 2020 尚未登錄），career/season high 自此有正確歷史基準。
+  - 測試：pytest 118 綠（game_lines 測改寫為 gameLog fixture：打者/投手客場/二刀流一場兩列/小聯盟缺欄→0＋`inningsPitched` 解析/缺 gamePk 跳過;DB：header upsert 保留 schedule 欄、lines 幂等）。
+
 - [x] **ETL slice 票 07（兩批編排 + CLI 手動工具）完成 — spec-03 ETL slice 全 7 票收尾**（`.scratch/etl-pipeline/issues/07`，同分支）。
   - **兩批編排**：morning（昨日～10 天結算逐場＋球季整季重拉＋投影＋近況重算）／evening（前瞻當日賽程＋掃尾結算＋transactions＋roster/IL 對帳）＋ manual，已於 `sources/__init__.py` 依相依序編排（games→game_lines、transactions→projection→recent_form、reconciliation 收尾）。cron 建議 morning 09:00／evening 17:30 台灣時間（spec-03 §2，上線後微調）。
   - **CLI `etl <cmd>`（`cli.py`，argparse）**：`resync --season`（整季重拉）、`resync --gamelog --from DATE`（回補早於 lookback 的逐場，接著 reproject）、`add-event`（補錄 `source='manual'` 事件——投影與現實不符時的正解，不直接改投影，spec-03 §6/§7）、`reproject`（重放投影＋重算近況）。為複用，把 games/game_lines 的抓取抽成 `ingest_schedule`／`ingest_gamelog` 公用函式。console script `etl` 已註冊。
