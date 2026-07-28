@@ -144,4 +144,13 @@ describe("getPlayerUpcoming", () => {
     expect(up!.nextGame).toBeNull();
     expect(up!.tag).toBe("possible");
   });
+
+  it("skips recent-results computation when asked, keeping tag + next game intact", async () => {
+    const up = await getPlayerUpcoming(PITCHER, db, TODAY, undefined, true);
+    expect(() => UpcomingSchema.parse(up)).not.toThrow();
+    expect(up!.tag).toBe("probable_starter");
+    expect(up!.nextGame?.gamePk).toBe(NEXT_GAME);
+    // Recent results are not needed by the homepage, so they are not computed.
+    expect(up!.recentResults).toEqual([]);
+  });
 });

@@ -163,6 +163,14 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-28</h3>
     <ul class="todo">
+    <li class="done"><strong>首頁 polish 票 <code>homepage-digest/05</code> 完成——digest 錨定改 wall-clock + 即將出賽效率</strong>（<code>.scratch/homepage-digest/issues/05</code>，分支 <code>feat/homepage-digest-05</code>；接 homepage slice code-review 兩項低嚴重度觀察）。皆為首頁 service 內部修正，<code>/api/home</code> 對外 Zod 合約不變：
+    <ul>
+    <li><strong>① digest 改 wall-clock</strong>：<code>getDigestDate</code> 不再從 line 反推 <code>status</code>／不查 <code>games</code>／不偵測 live；digest date＝有 tracked 球員 line 且 <code>game_date_us</code> <strong>早於當前美西（America/Los_Angeles）日期</strong>（整天已過 → 保證該日賽事全數打完）的最新比賽日。美西「今天」以純函式算、<code>getHome</code> 的 <code>_today</code> 注入得到（重用 <code>player-upcoming</code> 導出的 <code>usToday</code>）。代價（設計上可接受）：首頁最新賽況常態落後約一天。</li>
+    <li><strong>② upcoming 效率</strong>：首頁 upcoming 單次 <code>loadTeamMap</code> 往下傳給每次 <code>getPlayerUpcoming</code>（消掉每位球員全表掃 <code>teams</code>），並讓 <code>getPlayerUpcoming</code> 新增 <code>skipRecentResults</code> 略過首頁用不到的近期戰績查詢；維持 reuse <code>getPlayerUpcoming</code> 使 tag 判定與個人頁一致、結果不變。</li>
+    <li><strong>測試（TDD、注入 <code>today</code> 不用 live fixture）</strong>：digest 選「早於美西今天」最新有-line 日、美西當日即使有 line 也不選、wall-clock 忽略 status、空資料→null；upcoming 新增 skip 分支斷言、既有三分支/過期排除續綠。Node 全 <strong>140 綠</strong>（+3），<code>pnpm typecheck</code>／<code>pnpm build</code> 均過。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>名詞庫 standard/roster slice（2 票）完成——v1 26 則名詞全數到位</strong>（<code>.scratch/glossary-standard-roster/issues/</code>，spec-04 §A／§E）。
     <ul>
     <li><strong>票 01 Standard 8 則</strong>：schema 將 <code>standard</code> 正式區分為「帶級距、無 <code>metric_keys</code>」與「純解說」兩型；進階類仍強制 <code>metric_keys</code>＋<code>bands</code>，registry build-fail 覆蓋不變。新增 AVG／OBP／SLG／OPS／ERA／WHIP 三層級距頁（3A／2A 均明示待校訂）與 IP、SV/HLD 純解說頁；不擴充個人頁指標或 standard 範例回連。</li>
