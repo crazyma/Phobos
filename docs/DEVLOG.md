@@ -221,7 +221,10 @@
 - [x] ~~**首頁動態導向 slice（4 票，`.scratch/homepage-digest/issues/`）**~~（2026-07-28 完成，見已完成區）——`/` 四區與單一 `/api/home` 合約已上線。
 - [x] ~~**SEO slice（2 票，`.scratch/seo/issues/`）**~~（2026-07-28 完成，見已完成區）——sitemap／robots、metadataBase 與 Open Graph／Twitter 分享卡已上線。
 - [x] ~~**名詞庫 standard/roster slice（2 票，`.scratch/glossary-standard-roster/issues/`）**~~（2026-07-28 完成，見已完成區）。
-- [ ] **後續：首頁 polish 票 `homepage-digest/05`、spec-04 §G 3A/2A 級距校訂、waiver 對照**（尚未動工；盤點見 2026-07-28 對話）。
+- [x] ~~**首頁 polish 票 `homepage-digest/05`**~~（2026-07-28 完成、merge 回 main，見已完成區）——digest 錨定改 wall-clock + upcoming 效率。
+- [ ] **剩餘可做（非上線阻斷，已決策未動工）**：① spec-04 §G — 3A/2A 各指標**級距首版數值校訂**（目前 MLB 慣例值佔位、正文標「待校訂」）；② spec-03 §2/§9 — cron 時刻上線後依實際結算延遲**微調**（目前為建議值）。其餘 open items 見下方「待決問題」與「未來 Phase」。
+
+> **v1 里程碑（2026-07-28）**：spec-02 頁面（首頁四區＋polish／名冊／個人頁五區＋進階／名詞索引＋名詞頁）、spec-04 名詞庫 26 則、SEO（sitemap/robots/OG）全數上線並 merge 進 main。剩餘皆為內容校訂債、上線後微調或未來 phase。
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
@@ -239,7 +242,8 @@
 - [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
 - [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
 - [ ] 小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表（→ spec-03 §9）
-- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。
+- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。**仍待定**：waiver claim 歸 `trade` 或 `other`（spec-03 §9）。
+- [ ] `name_zh` 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。
 - [x] ~~實測 StatsAPI `stats=sabermetrics` 端點~~ → 已實測（2026-07-23）：**命中、維持原清單、預案封存**（結果見 spec-03 §9）
 - [x] ~~**（2026-07-27 ETL 整合浮現）`affiliation` enum 的 `free_agent` 不可達**~~ → **已定：補對照**（2026-07-27，batu）。新增 `transaction_type` enum 值 `declare_fa`（migration `0001`），StatsAPI「Declared Free Agency」/typeCode `DFA` → `declare_fa` → 投影 `free_agent`（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。
 - [x] ~~**（2026-07-27 ETL 整合浮現）`season_pitching_stats.lob_pct` 的層級範圍**~~ → **已定：所有層級皆算**（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 `hbp` 欄故 services 無法事後重算 → 必須 ETL 落庫。
@@ -254,6 +258,8 @@
 - [ ] 功能 3：爬取官網 / 社群新聞（DB 已預留 `news` domain 邊界）
 - [ ] 功能 4：專欄 / 寫手（DB 已預留 `articles` + `authors` domain 邊界）
 - [ ] 視需要把 `lib/services` 抽成獨立後端服務
+- [ ] ISR 升級為 ETL 完成後 on-demand revalidate（spec-02 §8 v2；需 ETL 呼叫 revalidate endpoint）
+- [ ] Open Graph 動態合成圖（spec-02 §8 v2；v1 用球隊 logo／站台預設圖）
 
 ---
 

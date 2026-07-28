@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done（2026-07-27，spec-03 ETL slice 併回 main；補標）
 
 - [ ] `uv` 管理的 Python 專案（`etl/` 套件）與既有 Node/資料層共存於同 repo，不破壞既有 `pnpm test`／`db:*`／`typecheck`
 - [ ] 共用 `.env` 的 `DATABASE_URL`；以 **psycopg** 讀寫既有 curated 表（不定義/不 migrate schema——Drizzle 單一擁有）
