@@ -1,0 +1,37 @@
+---
+slug: era
+name_zh: 防禦率
+name_en: ERA
+category: standard
+applies_to: [pitcher]
+metric_keys: []
+higher_is_better: false
+blurb: 投手平均每投九局要承擔幾分責失；越低代表越少讓對手得分。
+formula: ERA = ER × 9 / IP
+bands:
+  pitcher:
+    mlb:
+      - {max: 3.00, label: 優秀}
+      - {max: 3.75, label: 不錯}
+      - {max: 4.50, label: 普通}
+      - {max: 5.25, label: 偏高}
+      - {label: 偏弱}
+    aaa:
+      - {max: 3.00, label: 優秀（待校訂）}
+      - {max: 3.75, label: 不錯（待校訂）}
+      - {max: 4.50, label: 普通（待校訂）}
+      - {max: 5.25, label: 偏高（待校訂）}
+      - {label: 偏弱（待校訂）}
+    aa:
+      - {max: 3.00, label: 優秀（待校訂）}
+      - {max: 3.75, label: 不錯（待校訂）}
+      - {max: 4.50, label: 普通（待校訂）}
+      - {max: 5.25, label: 偏高（待校訂）}
+      - {label: 偏弱（待校訂）}
+sources:
+  - {label: MLB Glossary — Earned Run Average, url: https://www.mlb.com/glossary/standard-stats/earned-run-average}
+---
+
+ERA 是最常見的投手失分結果：只計責失分，換算成每九局的平均值。它會受守備、場地與殘壘情況影響；想更聚焦投手可控制的結果，可一併查看 FIP。
+
+**3A／2A 級距是首版佔位，待依各聯盟近季得分環境校訂。**

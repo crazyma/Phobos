@@ -1,0 +1,15 @@
+---
+slug: ip
+name_zh: 投球局數表示法
+name_en: IP
+category: standard
+applies_to: [pitcher]
+metric_keys: []
+higher_is_better: false
+blurb: 棒球以出局數記錄投球工作量；小數點後的 1、2 分別是多抓一、兩個出局數。
+formula: 1 IP = 3 outs；0.1 IP = 1 out；0.2 IP = 2 outs
+sources:
+  - {label: MLB Glossary — Innings Pitched, url: https://www.mlb.com/glossary/standard-stats/innings-pitched}
+---
+
+IP 是投手完成的局數，但記號不是十進位。**5.1 局**表示 5 局再加 1 個出局數，也就是 16 個出局數；**5.2 局**則是 17 個出局數，不是 5 又 2/10 局。本站在計算 ERA、WHIP 等比率時以出局數為準，避免小數誤算。

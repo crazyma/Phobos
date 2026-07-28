@@ -9,6 +9,11 @@
 
 ### 2026-07-28
 
+- [x] **名詞庫 standard/roster slice（2 票）完成——v1 26 則名詞全數到位**（`.scratch/glossary-standard-roster/issues/`，spec-04 §A／§E）。
+  - **票 01 Standard 8 則**：schema 將 `standard` 正式區分為「帶級距、無 `metric_keys`」與「純解說」兩型；進階類仍強制 `metric_keys`＋`bands`，registry build-fail 覆蓋不變。新增 AVG／OBP／SLG／OPS／ERA／WHIP 三層級距頁（3A／2A 均明示待校訂）與 IP、SV/HLD 純解說頁；不擴充個人頁指標或 standard 範例回連。
+  - **票 02 Roster 6 則 + 回連**：新增 IL、DFA、waiver、option、40-man roster、Rule 5 draft；frontmatter 的 `roster_event_types` 宣告對應異動類型。名詞頁透過 `getRosterExamples` 取得最近的 tracked 球員事件，顯示日期與中文異動標籤；waiver／40-man／Rule 5 未宣告可對應事件時整塊隱藏。
+  - **測試**：新增 schema、全部 14 則 content 分組、IL／DFA roster loader、空狀態與 UI smoke 覆蓋；`pnpm typecheck`、Node 全測試、`pnpm build` 均過。
+
 - [x] **SEO slice（2 票）完成——sitemap/robots + 跨頁 Open Graph／Twitter 分享卡**（`.scratch/seo/issues/`，spec-02 §4）。
   - **票 01 爬取面**：Next metadata routes `sitemap.xml`／`robots.txt`；sitemap 包含首頁、名冊、名詞索引、全部球員（**含 archived**）與所有 MDX 名詞頁。站台 canonical origin 讀 `NEXT_PUBLIC_SITE_URL`（缺省 `https://phobos.tw`），同時作 root `metadataBase`。
   - **票 02 分享面**：站台預設 OG／Twitter 卡採新生成的 `public/og-default.png`；球員頁 title 含目前隊伍、description 用近況、圖片優先 MLB static team logo（無隊 fallback 預設圖）；名詞頁 title／description 取中英文名與 blurb。`/players`、`/glossary` index 繼承站台預設。
@@ -210,7 +215,8 @@
 - [x] ~~**順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，`.scratch/glossary-and-advanced-metrics/issues/`）**~~（2026-07-28 完成，見已完成區；實作為 10 則 MDX——打投共用 4 則各含雙段級距即覆蓋打/投各 7）——**01** 名詞庫管線 + registry + 缺頁 build-fail + `/glossary`、`/glossary/[slug]` 三層模板（wRC+ 打穿，frontier）→ **02** 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ **03** 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；**04** 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。**首頁動態導向 → SEO 屬後續 phase、本批不含。**
 - [x] ~~**首頁動態導向 slice（4 票，`.scratch/homepage-digest/issues/`）**~~（2026-07-28 完成，見已完成區）——`/` 四區與單一 `/api/home` 合約已上線。
 - [x] ~~**SEO slice（2 票，`.scratch/seo/issues/`）**~~（2026-07-28 完成，見已完成區）——sitemap／robots、metadataBase 與 Open Graph／Twitter 分享卡已上線。
-- [ ] **後續：③ 名詞庫 standard/roster 兩批（14 則）、首頁 polish 票 `homepage-digest/05`**（尚未動工；盤點見 2026-07-28 對話）。
+- [x] ~~**名詞庫 standard/roster slice（2 票，`.scratch/glossary-standard-roster/issues/`）**~~（2026-07-28 完成，見已完成區）。
+- [ ] **後續：首頁 polish 票 `homepage-digest/05`、spec-04 §G 3A/2A 級距校訂、waiver 對照**（尚未動工；盤點見 2026-07-28 對話）。
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 

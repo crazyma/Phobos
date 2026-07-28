@@ -1,0 +1,37 @@
+---
+slug: whip
+name_zh: 每局被上壘率
+name_en: WHIP
+category: standard
+applies_to: [pitcher]
+metric_keys: []
+higher_is_better: false
+blurb: 每投一局平均讓多少名打者因安打或保送上壘；越低越能減少危機。
+formula: WHIP = (BB + H) / IP
+bands:
+  pitcher:
+    mlb:
+      - {max: 1.10, label: 優秀}
+      - {max: 1.25, label: 不錯}
+      - {max: 1.40, label: 普通}
+      - {max: 1.55, label: 偏高}
+      - {label: 偏弱}
+    aaa:
+      - {max: 1.10, label: 優秀（待校訂）}
+      - {max: 1.25, label: 不錯（待校訂）}
+      - {max: 1.40, label: 普通（待校訂）}
+      - {max: 1.55, label: 偏高（待校訂）}
+      - {label: 偏弱（待校訂）}
+    aa:
+      - {max: 1.10, label: 優秀（待校訂）}
+      - {max: 1.25, label: 不錯（待校訂）}
+      - {max: 1.40, label: 普通（待校訂）}
+      - {max: 1.55, label: 偏高（待校訂）}
+      - {label: 偏弱（待校訂）}
+sources:
+  - {label: MLB Glossary — WHIP, url: https://www.mlb.com/glossary/standard-stats/whip}
+---
+
+WHIP 只看安打與保送造成的上壘，因此能很快看出投手是否不斷把跑者送上壘。它不計觸身球與失誤，也不直接等於失分；仍要和 ERA、三振與保送率一起判讀。
+
+**3A／2A 級距是首版佔位，待依各聯盟近季得分環境校訂。**

@@ -2,8 +2,8 @@
  * Glossary term frontmatter contract (spec-04 §B). The MDX file is the single
  * source of truth; this Zod schema validates every term at load/build time —
  * fields complete, `bands` only mlb/aaa/aa, each band range ascending, and the
- * band perspectives matching `applies_to`. Roster terms carry no metric_keys
- * and no bands.
+ * band perspectives matching `applies_to`. Advanced terms drive the metrics
+ * registry; standard and roster explainers intentionally need not do so.
  */
 import { z } from "zod";
 
@@ -16,6 +16,22 @@ export const GLOSSARY_CATEGORIES = [
 ] as const;
 
 export const PERSPECTIVES = ["batter", "pitcher"] as const;
+
+/** Curated transaction types a roster term may use for its recent-event links. */
+export const ROSTER_EVENT_TYPES = [
+  "sign",
+  "call_up",
+  "send_down",
+  "trade",
+  "dfa",
+  "release",
+  "declare_fa",
+  "assign",
+  "il_on",
+  "il_off",
+  "depart",
+  "other",
+] as const;
 
 /** One band: an upper bound (inclusive) + label; the last band omits `max`. */
 const BandSchema = z.object({
@@ -86,16 +102,46 @@ export const FrontmatterSchema = z
     /** Definition/formula small-text (spec-04 §B layer 2); roster omits. */
     formula: z.string().optional(),
     bands: BandsSchema.optional(),
+    /** Roster-only event types used by the recent-transaction backlink. */
+    roster_event_types: z.array(z.enum(ROSTER_EVENT_TYPES)).default([]),
     sources: z.array(SourceSchema).min(1),
   })
   .superRefine((fm, ctx) => {
     const isRoster = fm.category === "roster";
+    const isStandard = fm.category === "standard";
     if (isRoster) {
       if (fm.metric_keys.length > 0) {
         ctx.addIssue({ code: "custom", path: ["metric_keys"], message: "roster terms have no metric_keys" });
       }
       if (fm.bands) {
         ctx.addIssue({ code: "custom", path: ["bands"], message: "roster terms have no bands" });
+      }
+      return;
+    }
+    if (fm.roster_event_types.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["roster_event_types"],
+        message: "roster event types are only valid on roster terms",
+      });
+    }
+    // Standard terms are explanatory only in v1: the graded six display a
+    // table, while IP and SV/HLD are prose-only. Neither participates in the
+    // player-page metric registry or example picker.
+    if (isStandard) {
+      if (fm.metric_keys.length > 0) {
+        ctx.addIssue({ code: "custom", path: ["metric_keys"], message: "standard terms have no metric_keys" });
+      }
+      if (fm.bands) {
+        const bandPerspectives = Object.keys(fm.bands).sort();
+        const applies = [...fm.applies_to].sort();
+        if (bandPerspectives.join(",") !== applies.join(",")) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["bands"],
+            message: `bands perspectives (${bandPerspectives.join(",")}) must match applies_to (${applies.join(",")})`,
+          });
+        }
       }
       return;
     }

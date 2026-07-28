@@ -1,0 +1,37 @@
+---
+slug: avg
+name_zh: 打擊率
+name_en: AVG
+category: standard
+applies_to: [batter]
+metric_keys: []
+higher_is_better: true
+blurb: 安打數除以打數，最直觀地描述打者把球打成安打的頻率。
+formula: AVG = H / AB
+bands:
+  batter:
+    mlb:
+      - {max: 0.220, label: 偏弱}
+      - {max: 0.250, label: 普通}
+      - {max: 0.280, label: 不錯}
+      - {max: 0.310, label: 優秀}
+      - {label: 頂尖}
+    aaa:
+      - {max: 0.220, label: 偏弱（待校訂）}
+      - {max: 0.250, label: 普通（待校訂）}
+      - {max: 0.280, label: 不錯（待校訂）}
+      - {max: 0.310, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+    aa:
+      - {max: 0.220, label: 偏弱（待校訂）}
+      - {max: 0.250, label: 普通（待校訂）}
+      - {max: 0.280, label: 不錯（待校訂）}
+      - {max: 0.310, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+sources:
+  - {label: MLB Glossary — Batting Average, url: https://www.mlb.com/glossary/standard-stats/batting-average}
+---
+
+AVG 回答的是「每個打數有多常敲出安打」。它好懂、歷史悠久，但不計保送，也把一壘安打與全壘打看成同一支安打；讀完整攻擊能力時，最好再搭配 OBP、SLG 或 OPS。
+
+**3A／2A 級距是首版佔位，待依各聯盟近季得分環境校訂。**
