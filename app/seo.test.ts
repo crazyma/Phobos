@@ -74,7 +74,8 @@ describe("SEO metadata routes", () => {
     expect(openGraph.title).toContain("SEO 追蹤");
     expect(openGraph.title).toContain("搜尋隊");
     expect(openGraph.description).toBe("近 5 場打擊率 .400");
-    expect(openGraph.images).toContain(`https://www.mlbstatic.com/team-logos/${TEAM_ID}.svg`);
+    // Raster PNG endpoint — SVG og:image isn't rendered by social scrapers.
+    expect(openGraph.images).toContain(`https://midfield.mlbstatic.com/v1/team/${TEAM_ID}/spots/96`);
   });
 
   it("falls back to the site image when a player has no team", async () => {

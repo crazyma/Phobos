@@ -22,9 +22,14 @@ export const siteTwitter = {
   images: [DEFAULT_OG_IMAGE],
 };
 
-/** MLB's static logo endpoint is stable and requires no image proxying in v1. */
+/**
+ * MLB's raster team-spot endpoint (PNG). We deliberately avoid the
+ * `team-logos/{id}.svg` endpoint because Facebook/X/LINE and most social
+ * scrapers don't render SVG `og:image`s — this PNG variant covers both MLB and
+ * minor-league team ids and needs no image proxying in v1.
+ */
 export function teamLogoUrl(teamId: number): string {
-  return `https://www.mlbstatic.com/team-logos/${teamId}.svg`;
+  return `https://midfield.mlbstatic.com/v1/team/${teamId}/spots/96`;
 }
 
 export function playerShareMetadata(player: PlayerDetail) {
