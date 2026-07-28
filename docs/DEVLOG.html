@@ -163,6 +163,16 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-28</h3>
     <ul class="todo">
+    <li class="done"><strong>首頁動態導向 slice <code>homepage-digest</code>（4 票）完成——<code>/</code> 改為四區動態首頁 + 單一 <code>/api/home</code> 合約</strong>（<code>.scratch/homepage-digest/issues/</code>，spec-02 §2.1）。首頁以 ISR 1800 秒讀 curated DB，<code>HomeSchema</code> 同時是 service／頁面／API 的合約：
+    <ul>
+    <li><strong>票 01 最新賽況</strong>：由 tracked 球員的 game line 找「所有相關賽事皆 final」的最新美國比賽日；打／投各自組單場精簡 line，二刀流可有兩張卡，近況取 <code>player_recent_form</code>，<code>dataUpdatedAt</code> 與 footer 共用最近完成同步批次。</li>
+    <li><strong>票 02 球員動態</strong>：digest date 後的 tracked-player <code>transaction_events</code> 跨球員倒序顯示，沿用 <code>transactionTypeLabel</code> 中文徽章與個人頁連結。</li>
+    <li><strong>票 03 即將出賽</strong>：首頁重用 <code>getPlayerUpcoming</code>，保證與個人頁一致的 probable／possible／IL 判定；IL 只顯「傷兵中」，其餘以台灣時間顯示下一戰。</li>
+    <li><strong>票 04 空狀態</strong>：無快訊卡時回每位 tracked 球員的本季、無則上季摘要與近況；名詞入口採 content frontmatter 的穩定靜態三則，不做動畫。</li>
+    <li><strong>測試</strong>：Node 全 <strong>123 綠</strong>（+7：digest date／角色 line／二刀流、異動倒序、預告三分支、空狀態本季/上季 fallback、<code>/api/home</code> Zod、首頁四區 smoke），<code>pnpm typecheck</code> 綠。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>名詞庫 + 進階數據 slice <code>glossary-and-advanced-metrics</code>（4 票）完成</strong>（<code>.scratch/glossary-and-advanced-metrics/issues/</code>，分支 <code>feat/glossary-and-advanced-metrics</code>，spec-04 全，spec-02 §2.4-2.5）。名詞庫從無到有跑通：<code>/glossary</code> 主題分類索引 → <code>/glossary/[slug]</code> 三層模板（判讀＋級距表 → 定義算法小字 → 延伸連結 → 範例球員回連）；個人頁球季區補進階數據（打/投各 7、可展開、缺值不顯示、名詞雙向連結）。
     <ul>
     <li><strong>票 01 管線 + registry + build-fail</strong>：接上 <code>@next/mdx</code>（Turbopack 需 remark plugin 以字串名指定）＋ <code>remark-frontmatter</code> 剝除 YAML；名詞內容 = <code>content/glossary/*.mdx</code>（frontmatter 單一事實來源，gray-matter 讀取、Zod 驗證：欄位齊全／bands 僅 mlb/aaa/aa／區間遞增／band 視角對齊 applies_to／roster 無 metric_keys 與 bands）。build-time <strong>registry</strong>（<code>metric_key→slug</code>）由全部 frontmatter 生成；<code>assertMetricsCovered</code> 對「球員頁顯示指標清單」缺頁即 throw——SSG 的 <code>/glossary/[slug]</code> 於 build 觸發 → <strong>缺頁 build fail</strong>（spec-04 §D）。wRC+ 打穿。</li>
@@ -407,7 +417,7 @@
     <ul class="todo">
     <li class="done">~~<strong>player-detail-page slice（順位 1：球員個人頁第一階段，4 票）</strong>~~（2026-07-28 完成、merge 回 main，見已完成區）。<strong>進階數據（打/投各7）+名詞連結留順位 2</strong>（受 spec-04 §D「名詞頁先行、缺頁 build fail」約束）。</li>
     <li class="done">~~<strong>順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，<code>.scratch/glossary-and-advanced-metrics/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區；實作為 10 則 MDX——打投共用 4 則各含雙段級距即覆蓋打/投各 7）——<strong>01</strong> 名詞庫管線 + registry + 缺頁 build-fail + <code>/glossary</code>、<code>/glossary/[slug]</code> 三層模板（wRC+ 打穿，frontier）→ <strong>02</strong> 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ <strong>03</strong> 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；<strong>04</strong> 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。<strong>首頁動態導向 → SEO 屬後續 phase、本批不含。</strong></li>
-    <li class=""><strong>首頁動態導向 slice（4 票，<code>.scratch/homepage-digest/issues/</code>）</strong>——把 <code>/</code> 從靜態 placeholder 換成 spec-02 §2.1 四區＋單一 <code>/api/home</code> 合約（逐票長大）。<strong>01</strong> 錨點（最新已結算美國比賽日）+ 最新賽況卡（zone 1）+ <code>/api/home</code> 骨架 + 頁面外殼（frontier）→ {<strong>02</strong> 球員動態 zone 2、<strong>03</strong> 即將出賽 zone 3、<strong>04</strong> 空狀態 zone 4（本季回顧卡＋名詞入口，輪播 v1 靜態隨機）並行}。frontier＝票 01。</li>
+    <li class="done">~~<strong>首頁動態導向 slice（4 票，<code>.scratch/homepage-digest/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區）——<code>/</code> 四區與單一 <code>/api/home</code> 合約已上線。</li>
     <li class=""><strong>後續：② SEO（sitemap/robots/OG）、③ 名詞庫 standard/roster 兩批（14 則）</strong>（尚未切票；盤點見 2026-07-28 對話）。</li>
     </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>

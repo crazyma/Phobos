@@ -9,6 +9,13 @@
 
 ### 2026-07-28
 
+- [x] **首頁動態導向 slice `homepage-digest`（4 票）完成——`/` 改為四區動態首頁 + 單一 `/api/home` 合約**（`.scratch/homepage-digest/issues/`，spec-02 §2.1）。首頁以 ISR 1800 秒讀 curated DB，`HomeSchema` 同時是 service／頁面／API 的合約：
+  - **票 01 最新賽況**：由 tracked 球員的 game line 找「所有相關賽事皆 final」的最新美國比賽日；打／投各自組單場精簡 line，二刀流可有兩張卡，近況取 `player_recent_form`，`dataUpdatedAt` 與 footer 共用最近完成同步批次。
+  - **票 02 球員動態**：digest date 後的 tracked-player `transaction_events` 跨球員倒序顯示，沿用 `transactionTypeLabel` 中文徽章與個人頁連結。
+  - **票 03 即將出賽**：首頁重用 `getPlayerUpcoming`，保證與個人頁一致的 probable／possible／IL 判定；IL 只顯「傷兵中」，其餘以台灣時間顯示下一戰。
+  - **票 04 空狀態**：無快訊卡時回每位 tracked 球員的本季、無則上季摘要與近況；名詞入口採 content frontmatter 的穩定靜態三則，不做動畫。
+  - **測試**：Node 全 **123 綠**（+7：digest date／角色 line／二刀流、異動倒序、預告三分支、空狀態本季/上季 fallback、`/api/home` Zod、首頁四區 smoke），`pnpm typecheck` 綠。
+
 - [x] **名詞庫 + 進階數據 slice `glossary-and-advanced-metrics`（4 票）完成**（`.scratch/glossary-and-advanced-metrics/issues/`，分支 `feat/glossary-and-advanced-metrics`，spec-04 全，spec-02 §2.4-2.5）。名詞庫從無到有跑通：`/glossary` 主題分類索引 → `/glossary/[slug]` 三層模板（判讀＋級距表 → 定義算法小字 → 延伸連結 → 範例球員回連）；個人頁球季區補進階數據（打/投各 7、可展開、缺值不顯示、名詞雙向連結）。
   - **票 01 管線 + registry + build-fail**：接上 `@next/mdx`（Turbopack 需 remark plugin 以字串名指定）＋ `remark-frontmatter` 剝除 YAML；名詞內容 = `content/glossary/*.mdx`（frontmatter 單一事實來源，gray-matter 讀取、Zod 驗證：欄位齊全／bands 僅 mlb/aaa/aa／區間遞增／band 視角對齊 applies_to／roster 無 metric_keys 與 bands）。build-time **registry**（`metric_key→slug`）由全部 frontmatter 生成；`assertMetricsCovered` 對「球員頁顯示指標清單」缺頁即 throw——SSG 的 `/glossary/[slug]` 於 build 觸發 → **缺頁 build fail**（spec-04 §D）。wRC+ 打穿。
   - **票 02 其餘進階名詞**：共 **10 則** MDX（打 wRC+/wOBA/ISO、投 FIP/HR9/LOB%、打投共用 BB%/K%/WAR/BABIP 各含打者/投手兩段級距），完整覆蓋球員頁打/投各 7。MLB 用公開慣例值；**3A/2A 首版佔位、正文標「待校訂」**（spec-04 §C／§G）。
@@ -195,7 +202,7 @@
 
 - [x] ~~**player-detail-page slice（順位 1：球員個人頁第一階段，4 票）**~~（2026-07-28 完成、merge 回 main，見已完成區）。**進階數據（打/投各7）+名詞連結留順位 2**（受 spec-04 §D「名詞頁先行、缺頁 build fail」約束）。
 - [x] ~~**順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，`.scratch/glossary-and-advanced-metrics/issues/`）**~~（2026-07-28 完成，見已完成區；實作為 10 則 MDX——打投共用 4 則各含雙段級距即覆蓋打/投各 7）——**01** 名詞庫管線 + registry + 缺頁 build-fail + `/glossary`、`/glossary/[slug]` 三層模板（wRC+ 打穿，frontier）→ **02** 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ **03** 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；**04** 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。**首頁動態導向 → SEO 屬後續 phase、本批不含。**
-- [ ] **首頁動態導向 slice（4 票，`.scratch/homepage-digest/issues/`）**——把 `/` 從靜態 placeholder 換成 spec-02 §2.1 四區＋單一 `/api/home` 合約（逐票長大）。**01** 錨點（最新已結算美國比賽日）+ 最新賽況卡（zone 1）+ `/api/home` 骨架 + 頁面外殼（frontier）→ {**02** 球員動態 zone 2、**03** 即將出賽 zone 3、**04** 空狀態 zone 4（本季回顧卡＋名詞入口，輪播 v1 靜態隨機）並行}。frontier＝票 01。
+- [x] ~~**首頁動態導向 slice（4 票，`.scratch/homepage-digest/issues/`）**~~（2026-07-28 完成，見已完成區）——`/` 四區與單一 `/api/home` 合約已上線。
 - [ ] **後續：② SEO（sitemap/robots/OG）、③ 名詞庫 standard/roster 兩批（14 則）**（尚未切票；盤點見 2026-07-28 對話）。
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。

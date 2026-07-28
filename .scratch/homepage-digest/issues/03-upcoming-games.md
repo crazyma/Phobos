@@ -4,10 +4,14 @@
 
 **Blocked by:** 01（頁面外殼 + `/api/home`）。可與 02 並行。
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] service 回 **upcoming**：每位 tracked 球員的下一場＝`playerId, nameZh, opponent, startTimeUtc, tag('probable_starter'|'possible'|'il')`；沿用票組 player-detail 的 upcoming 判定與 `gameDateUs >= today` 下界（不撈過期場）；無現隊/無排定→不列
-- [ ] `il` 者標「傷兵中」不列預告；台灣時間顯示沿用 `formatDateTimeTaipei`
-- [ ] `/api/home` 擴充 `upcoming` 欄位（併入既有 Zod 合約）
-- [ ] 首頁即將出賽區渲染（對手、台灣時間、標籤徽章；球員名可連個人頁）
-- [ ] 測試：service（seed DB，probable/possible/il 三分支、過期場排除、無賽事空）；首頁 smoke 預告列出現
+- [x] service 回 **upcoming**：每位 tracked 球員的下一場＝`playerId, nameZh, opponent, startTimeUtc, tag('probable_starter'|'possible'|'il')`；沿用票組 player-detail 的 upcoming 判定與 `gameDateUs >= today` 下界（不撈過期場）；無現隊/無排定→不列
+- [x] `il` 者標「傷兵中」不列預告；台灣時間顯示沿用 `formatDateTimeTaipei`
+- [x] `/api/home` 擴充 `upcoming` 欄位（併入既有 Zod 合約）
+- [x] 首頁即將出賽區渲染（對手、台灣時間、標籤徽章；球員名可連個人頁）
+- [x] 測試：service（seed DB，probable/possible/il 三分支、過期場排除、無賽事空）；首頁 smoke 預告列出現
+
+## Comments
+
+- 2026-07-28：完成；首頁直接重用 `getPlayerUpcoming` 的判定規則。
