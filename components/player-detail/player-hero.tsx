@@ -4,12 +4,15 @@ import { batsThrowsLabel } from "@/lib/services/player-status";
 /** Birthdate "YYYY-MM-DD" → "YYYY-MM-DD（xx 歲）", or the date alone if unparseable. */
 function birthLabel(birthdate: string | null): string | null {
   if (!birthdate) return null;
-  const born = new Date(birthdate);
-  if (Number.isNaN(born.getTime())) return birthdate;
+  // Parse the Y/M/D components directly — `new Date("YYYY-MM-DD")` is UTC
+  // midnight, which off-by-ones the age around the birthday on non-UTC servers.
+  const parts = birthdate.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return birthdate;
+  const [by, bm, bd] = parts;
   const now = new Date();
-  let age = now.getFullYear() - born.getFullYear();
-  const m = now.getMonth() - born.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < born.getDate())) age--;
+  let age = now.getFullYear() - by;
+  const m = now.getMonth() + 1 - bm;
+  if (m < 0 || (m === 0 && now.getDate() < bd)) age--;
   return `${birthdate}（${age} 歲）`;
 }
 

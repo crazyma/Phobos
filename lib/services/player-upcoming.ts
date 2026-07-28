@@ -1,7 +1,8 @@
 import { and, desc, eq, gte, or } from "drizzle-orm";
 import { z } from "zod";
 import { db as defaultDb } from "../db/client.ts";
-import { games, playerCurrentStatus, teams } from "../db/schema/index.ts";
+import { games, playerCurrentStatus } from "../db/schema/index.ts";
+import { loadTeamMap, opponentOf, type TeamMap } from "./team-map.ts";
 
 const OpponentSchema = z
   .object({ abbrev: z.string().nullable(), name: z.string() })
@@ -38,21 +39,6 @@ export const UpcomingSchema = z
   .nullable();
 export type Upcoming = z.infer<typeof UpcomingSchema>;
 
-type Team = { abbrev: string | null; name: string };
-
-async function loadTeamMap(db: typeof defaultDb): Promise<Map<number, Team>> {
-  const rows = await db
-    .select({ id: teams.mlbTeamId, name: teams.nameEn, nameZh: teams.nameZh, abbrev: teams.abbrev })
-    .from(teams);
-  return new Map(rows.map((r) => [r.id, { abbrev: r.abbrev, name: r.nameZh ?? r.name }]));
-}
-
-function sideOf(teamId: number, homeId: number | null, awayId: number | null, teamMap: Map<number, Team>) {
-  if (homeId === null || awayId === null) return { opponent: null, isHome: null };
-  const isHome = homeId === teamId;
-  return { opponent: teamMap.get(isHome ? awayId : homeId) ?? null, isHome };
-}
-
 /**
  * Today's US game day (YYYY-MM-DD). Uses US-Pacific — the westmost US zone — so a
  * game still being played out west is never prematurely treated as past.
@@ -67,7 +53,12 @@ function usToday(): string {
  * null when the player has no current team. Data comes from the `games`
  * preview rows (schedule + probable pitcher).
  */
-export async function getPlayerUpcoming(id: number, db = defaultDb, today: string = usToday()): Promise<Upcoming> {
+export async function getPlayerUpcoming(
+  id: number,
+  db = defaultDb,
+  today: string = usToday(),
+  teamMap?: TeamMap,
+): Promise<Upcoming> {
   const [status] = await db
     .select({
       teamId: playerCurrentStatus.teamId,
@@ -79,7 +70,7 @@ export async function getPlayerUpcoming(id: number, db = defaultDb, today: strin
 
   if (!status || status.teamId === null) return null;
   const teamId = status.teamId;
-  const teamMap = await loadTeamMap(db);
+  const map = teamMap ?? (await loadTeamMap(db));
   const onTeam = or(eq(games.homeTeamId, teamId), eq(games.awayTeamId, teamId));
 
   const [next] = await db
@@ -107,7 +98,7 @@ export async function getPlayerUpcoming(id: number, db = defaultDb, today: strin
 
   const nextGame = next
     ? (() => {
-        const { opponent, isHome } = sideOf(teamId, next.homeTeamId, next.awayTeamId, teamMap);
+        const { opponent, isHome } = opponentOf(teamId, next.homeTeamId, next.awayTeamId, map);
         return {
           gamePk: next.gamePk,
           gameDate: String(next.gameDate),
@@ -135,7 +126,7 @@ export async function getPlayerUpcoming(id: number, db = defaultDb, today: strin
   }
 
   const recentResults = recentRows.map((g) => {
-    const { opponent, isHome } = sideOf(teamId, g.homeTeamId, g.awayTeamId, teamMap);
+    const { opponent, isHome } = opponentOf(teamId, g.homeTeamId, g.awayTeamId, map);
     const teamScore = isHome === null ? null : isHome ? g.homeScore : g.awayScore;
     const opponentScore = isHome === null ? null : isHome ? g.awayScore : g.homeScore;
     const win =

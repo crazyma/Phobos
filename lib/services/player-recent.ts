@@ -5,11 +5,11 @@ import {
   gameBattingLines,
   gamePitchingLines,
   games,
-  teams,
   transactionEvents,
 } from "../db/schema/index.ts";
 import { teamLevel, transactionType } from "../db/schema/enums.ts";
 import { levelLabel, transactionTypeLabel } from "./player-status.ts";
+import { loadTeamMap, opponentOf, type TeamMap } from "./team-map.ts";
 import { deriveBatting, derivePitching } from "./stats.ts";
 
 /** Most recent games shown per table on the player page (spec-02 §2.3). */
@@ -75,39 +75,14 @@ export const TimelineEntrySchema = z.object({
 export const TimelineSchema = z.array(TimelineEntrySchema);
 export type Timeline = z.infer<typeof TimelineSchema>;
 
-type Team = { abbrev: string | null; name: string };
-
-async function loadTeamMap(db: typeof defaultDb): Promise<Map<number, Team>> {
-  const rows = await db
-    .select({ id: teams.mlbTeamId, name: teams.nameEn, nameZh: teams.nameZh, abbrev: teams.abbrev })
-    .from(teams);
-  return new Map(
-    rows.map((r) => [r.id, { abbrev: r.abbrev, name: r.nameZh ?? r.name }]),
-  );
-}
-
-/** Resolve the opponent + home flag for a game line, given the player's team. */
-function opponentOf(
-  teamId: number | null,
-  homeTeamId: number | null,
-  awayTeamId: number | null,
-  teamMap: Map<number, Team>,
-): { opponent: Team | null; isHome: boolean | null } {
-  if (teamId === null || homeTeamId === null || awayTeamId === null) {
-    return { opponent: null, isHome: null };
-  }
-  const isHome = homeTeamId === teamId;
-  const oppId = isHome ? awayTeamId : homeTeamId;
-  return { opponent: teamMap.get(oppId) ?? null, isHome };
-}
-
 /** A player's recent game log — batting and pitching split, ≤ N each, newest first. */
 export async function getPlayerGameLog(
   id: number,
   db = defaultDb,
   limit = RECENT_GAMES_N,
+  teamMap?: TeamMap,
 ): Promise<GameLog> {
-  const teamMap = await loadTeamMap(db);
+  const map = teamMap ?? (await loadTeamMap(db));
   const b = gameBattingLines;
   const p = gamePitchingLines;
 
@@ -138,7 +113,7 @@ export async function getPlayerGameLog(
     .limit(limit);
 
   const batting = battingRows.map((row) => {
-    const { opponent, isHome } = opponentOf(row.teamId, row.homeTeamId, row.awayTeamId, teamMap);
+    const { opponent, isHome } = opponentOf(row.teamId, row.homeTeamId, row.awayTeamId, map);
     const rates = deriveBatting({
       ...row, pa: 0, cs: 0, hbp: 0, sf: 0, g: 0,
     });
@@ -152,7 +127,7 @@ export async function getPlayerGameLog(
   });
 
   const pitching = pitchingRows.map((row) => {
-    const { opponent, isHome } = opponentOf(row.teamId, row.homeTeamId, row.awayTeamId, teamMap);
+    const { opponent, isHome } = opponentOf(row.teamId, row.homeTeamId, row.awayTeamId, map);
     const rates = derivePitching({
       ...row, g: 0, gs: 0, bf: 0, w: 0, l: 0, sv: 0, hld: 0,
     });

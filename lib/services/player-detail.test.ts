@@ -100,7 +100,8 @@ describe("getPlayerDetail", () => {
     expect(player).not.toBeNull();
     expect(player!.lifecycle).toBe("archived");
     expect(player!.team).toBeNull();
-    expect(player!.statusSentence).toBe("狀態同步中");
+    // archived players surface「已離開美職」, not the empty-state「狀態同步中」
+    expect(player!.statusSentence).toBe("已離開美職");
     expect(player!.recentForm).toBeNull();
   });
 });

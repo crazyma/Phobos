@@ -17,6 +17,7 @@ import {
   TimelineSchema,
 } from "./player-recent.ts";
 import { getPlayerUpcoming, UpcomingSchema } from "./player-upcoming.ts";
+import { loadTeamMap } from "./team-map.ts";
 
 /** Current team block, shared with the roster summary shape. */
 const TeamSchema = z
@@ -103,13 +104,20 @@ export async function getPlayerDetail(
   const row = rows[0];
   if (!row) return null;
 
+  // Load the team map once and share it with the game-log + upcoming resolvers
+  // instead of each scanning the (small) teams table on its own.
+  const teamMap = await loadTeamMap(db);
   const [seasons, gameLog, timeline, upcoming] = await Promise.all([
     getPlayerSeasons(id, db),
-    getPlayerGameLog(id, db),
+    getPlayerGameLog(id, db, undefined, teamMap),
     getPlayerTimeline(id, db),
-    getPlayerUpcoming(id, db),
+    getPlayerUpcoming(id, db, undefined, teamMap),
   ]);
   const level = row.statusLevel ?? row.teamLevel;
+  // Archived players have no projected status row; surface「已離開美職」rather
+  // than the empty-state「狀態同步中」so the hero matches the archived banner.
+  const affiliation =
+    row.affiliation ?? (row.lifecycle === "archived" ? "departed" : row.affiliation);
   const detail: PlayerDetail = {
     playerId: row.playerId,
     nameEn: row.nameEn,
@@ -130,7 +138,7 @@ export async function getPlayerDetail(
           }
         : null,
     statusSentence: buildStatusSentence({
-      affiliation: row.affiliation,
+      affiliation,
       health: row.health,
       ilDetail: row.statusIlDetail,
       level,

@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import { db as defaultDb } from "../db/client.ts";
 import {
@@ -16,6 +16,9 @@ import {
   type BattingCounting,
   type PitchingCounting,
 } from "./stats.ts";
+
+/** Season stats start at 2020 (spec-01 A.3); guard here, don't trust the ETL. */
+const SEASON_FLOOR = 2020;
 
 // Highest → lowest; also the display order within a season.
 const LEVEL_ORDER = teamLevel.enumValues;
@@ -148,7 +151,7 @@ export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Seas
     })
     .from(b)
     .leftJoin(teams, eq(teams.mlbTeamId, b.teamId))
-    .where(eq(b.playerId, id))
+    .where(and(eq(b.playerId, id), gte(b.season, SEASON_FLOOR)))
     .orderBy(desc(b.season));
 
   const pitchingRows = await db
@@ -160,7 +163,7 @@ export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Seas
     })
     .from(p)
     .leftJoin(teams, eq(teams.mlbTeamId, p.teamId))
-    .where(eq(p.playerId, id))
+    .where(and(eq(p.playerId, id), gte(p.season, SEASON_FLOOR)))
     .orderBy(desc(p.season));
 
   const batting: BattingDbRow[] = battingRows.map(({ teamId, teamNameEn, teamNameZh, teamAbbrev, ...c }) => ({

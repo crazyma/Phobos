@@ -38,8 +38,8 @@ export function Upcoming({ upcoming }: { upcoming: Upcoming }) {
           <span className="text-sm text-muted-foreground">
             {nextGame.isHome === false ? "客場 @ " : "主場 vs "}
             {opponentName(nextGame.opponent)}
-            {nextGame.gamesInSeries
-              ? `（系列賽第 ${nextGame.seriesGameNumber ?? "?"}/${nextGame.gamesInSeries} 戰）`
+            {nextGame.gamesInSeries && nextGame.seriesGameNumber
+              ? `（系列賽第 ${nextGame.seriesGameNumber}/${nextGame.gamesInSeries} 戰）`
               : ""}
           </span>
         )}
