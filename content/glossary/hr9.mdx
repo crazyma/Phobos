@@ -1,0 +1,37 @@
+---
+slug: hr9
+name_zh: 每九局被全壘打
+name_en: HR/9
+category: pitching_adv
+applies_to: [pitcher]
+metric_keys: [hr9]
+higher_is_better: false
+blurb: 投手平均每九局被打出幾支全壘打，衡量壓制長打的能力。
+formula: HR/9 = 被全壘打數 × 9 / IP
+bands:
+  pitcher:
+    mlb:
+      - {max: 0.80, label: 優異}
+      - {max: 1.10, label: 普通}
+      - {max: 1.40, label: 偏高}
+      - {label: 易被長打}
+    aaa:
+      - {max: 0.80, label: 優異}
+      - {max: 1.10, label: 普通}
+      - {max: 1.40, label: 偏高}
+      - {label: 易被長打}
+    aa:
+      - {max: 0.80, label: 優異}
+      - {max: 1.10, label: 普通}
+      - {max: 1.40, label: 偏高}
+      - {label: 易被長打}
+sources:
+  - {label: FanGraphs Library — HR/9, url: https://library.fangraphs.com/pitching/rate-stats/}
+  - {label: MLB Glossary — HR/9, url: https://www.mlb.com/glossary/advanced-stats/home-runs-per-nine-innings}
+---
+
+HR/9 把「被全壘打數」換算成每九局的頻率，是最直接的長打壓制指標——全壘打往往是失分的關鍵，壓低 HR/9 通常也代表更穩定的防禦率。它同時受投球內容（滾地／飛球傾向）與球場、環境影響。
+
+聯盟平均約 1.1–1.3；能長期壓在 1.0 以下的投手，抑制長打的能力相當出色（數字越低越好）。
+
+**3A／2A 級距為首版佔位，待依小聯盟環境校訂。**

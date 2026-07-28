@@ -1,0 +1,40 @@
+---
+slug: wrc-plus
+name_zh: 加權得分創造值
+name_en: wRC+
+category: batting_adv
+applies_to: [batter]
+metric_keys: [wrc_plus]
+higher_is_better: true
+blurb: 把打者的整體攻擊產能校正聯盟與球場後，換算成「100 為聯盟平均」的指數。
+formula: wRC+ =（（wRAA/PA + 聯盟 R/PA）+（聯盟 R/PA − 球場因子×聯盟 R/PA））/（聯盟 wRC/PA）× 100
+bands:
+  batter:
+    mlb:
+      - {max: 80, label: 明顯低於平均}
+      - {max: 100, label: 及格}
+      - {max: 125, label: 不錯}
+      - {max: 145, label: 厲害}
+      - {label: MVP 等級}
+    aaa:
+      - {max: 80, label: 明顯低於平均}
+      - {max: 100, label: 及格}
+      - {max: 125, label: 不錯}
+      - {max: 145, label: 厲害}
+      - {label: MVP 等級}
+    aa:
+      - {max: 80, label: 明顯低於平均}
+      - {max: 100, label: 及格}
+      - {max: 125, label: 不錯}
+      - {max: 145, label: 厲害}
+      - {label: MVP 等級}
+sources:
+  - {label: FanGraphs Library — wRC+, url: https://library.fangraphs.com/offense/wrc/}
+  - {label: MLB Glossary — wRC+, url: https://www.mlb.com/glossary/advanced-stats/weighted-runs-created-plus}
+---
+
+wRC+ 是「一眼看懂打者整體攻擊有多強」的最佳單一指標。它把安打、保送、長打等各種上壘與推進，依實際得分價值加權，再校正**聯盟環境**與**主場球場**，最後換算成以 100 為平均的指數：120 代表比聯盟平均好 20%，80 代表差 20%。
+
+因為已做聯盟校正，wRC+ 特別適合跨年代、跨球場比較打者。分布上，長期站穩先發的強打多落在 120 以上，頂級球星球季常見 150、甚至 170 以上。
+
+由於 wRC+ 本身即以「100 = 該層級平均」定義，三個層級的級距標籤相同；但小聯盟樣本與環境噪音較大，2A 的單季數字宜保守解讀（**3A／2A 級距為首版，待依小聯盟環境校訂**）。

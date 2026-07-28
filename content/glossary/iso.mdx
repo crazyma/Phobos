@@ -1,0 +1,40 @@
+---
+slug: iso
+name_zh: 純長打率
+name_en: ISO
+category: batting_adv
+applies_to: [batter]
+metric_keys: [iso]
+higher_is_better: true
+blurb: 長打率減打擊率，衡量打者「一支安打平均多打出幾個壘包」的純長打能力。
+formula: ISO = SLG − AVG
+bands:
+  batter:
+    mlb:
+      - {max: 0.100, label: 貧打}
+      - {max: 0.140, label: 普通}
+      - {max: 0.180, label: 不錯}
+      - {max: 0.250, label: 強打}
+      - {label: 頂尖火力}
+    aaa:
+      - {max: 0.100, label: 貧打}
+      - {max: 0.140, label: 普通}
+      - {max: 0.180, label: 不錯}
+      - {max: 0.250, label: 強打}
+      - {label: 頂尖火力}
+    aa:
+      - {max: 0.100, label: 貧打}
+      - {max: 0.140, label: 普通}
+      - {max: 0.180, label: 不錯}
+      - {max: 0.250, label: 強打}
+      - {label: 頂尖火力}
+sources:
+  - {label: FanGraphs Library — ISO, url: https://library.fangraphs.com/offense/iso/}
+  - {label: MLB Glossary — ISO, url: https://www.mlb.com/glossary/advanced-stats/isolated-power}
+---
+
+ISO（Isolated Power，純長打率）把打擊率從長打率中扣掉，只留下「額外壘包」的部分——換句話說，它衡量一支安打**平均多帶來幾個壘包**，是最直覺的長打力指標。全是一壘安打的打者 ISO 為 0；ISO 越高，代表二壘打、三壘打、全壘打的比重越大。
+
+分布上，聯盟平均約 .140–.160，重砲型打者常在 .250 以上。
+
+**3A／2A 級距為首版佔位，待依小聯盟環境校訂。**

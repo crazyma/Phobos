@@ -163,6 +163,17 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-28</h3>
     <ul class="todo">
+    <li class="done"><strong>名詞庫 + 進階數據 slice <code>glossary-and-advanced-metrics</code>（4 票）完成</strong>（<code>.scratch/glossary-and-advanced-metrics/issues/</code>，分支 <code>feat/glossary-and-advanced-metrics</code>，spec-04 全，spec-02 §2.4-2.5）。名詞庫從無到有跑通：<code>/glossary</code> 主題分類索引 → <code>/glossary/[slug]</code> 三層模板（判讀＋級距表 → 定義算法小字 → 延伸連結 → 範例球員回連）；個人頁球季區補進階數據（打/投各 7、可展開、缺值不顯示、名詞雙向連結）。
+    <ul>
+    <li><strong>票 01 管線 + registry + build-fail</strong>：接上 <code>@next/mdx</code>（Turbopack 需 remark plugin 以字串名指定）＋ <code>remark-frontmatter</code> 剝除 YAML；名詞內容 = <code>content/glossary/*.mdx</code>（frontmatter 單一事實來源，gray-matter 讀取、Zod 驗證：欄位齊全／bands 僅 mlb/aaa/aa／區間遞增／band 視角對齊 applies_to／roster 無 metric_keys 與 bands）。build-time <strong>registry</strong>（<code>metric_key→slug</code>）由全部 frontmatter 生成；<code>assertMetricsCovered</code> 對「球員頁顯示指標清單」缺頁即 throw——SSG 的 <code>/glossary/[slug]</code> 於 build 觸發 → <strong>缺頁 build fail</strong>（spec-04 §D）。wRC+ 打穿。</li>
+    <li><strong>票 02 其餘進階名詞</strong>：共 <strong>10 則</strong> MDX（打 wRC+/wOBA/ISO、投 FIP/HR9/LOB%、打投共用 BB%/K%/WAR/BABIP 各含打者/投手兩段級距），完整覆蓋球員頁打/投各 7。MLB 用公開慣例值；<strong>3A/2A 首版佔位、正文標「待校訂」</strong>（spec-04 §C／§G）。</li>
+    <li><strong>票 03 個人頁進階區</strong>：<code>player-seasons</code> service 讀出已存進階欄（打 <code>woba/wrc_plus/war</code>、投 <code>fip/lob_pct/war</code>）＋新增投手 BABIP 衍生（分母 <code>BF−BB−K−HR</code> 近似、缺 HBP/SF），併入既有衍生湊齊打/投各 7；形狀入 Zod 合約（合計列因加總無法還原 stored 進階 → 留 null，衍生進階照重算）。個人頁球季區加<strong>可展開進階區塊</strong>（<code>&lt;details&gt;</code>、缺值不顯示、每指標名連向 <code>/glossary/[slug]</code>，slug 取自 build-time registry → 同時是球員頁側的 build-fail 觸點）。</li>
+    <li><strong>票 04 範例球員回連</strong>：純函式 <code>selectMetricExamples</code>（候選＝<code>tracked</code>＋本季該指標有值；門檻打者 PA≥50／投手 IP≥20；層級 MLB&gt;3A&gt;2A、1A 以下排除；取 1~2、依方向挑最具代表值；無人→隱藏）＋ <code>selectRosterExamples</code>（roster 類走最近異動分支）；DB loader 取本季（資料中最新季）候選餵入。名詞頁底渲染「範例：{球員} 本季 {值}（{層級}，{級距標籤}）」。</li>
+    <li><strong>測試</strong>：Node 全 <strong>114 綠</strong>（+34：frontmatter Zod、registry 完整性/缺頁 fail、band 標籤查找、範例挑選表驅動、投手 BABIP 手算、service 讀出進階欄、進階 UI 區塊/名詞連結 smoke、bands-table/examples/index 元件 smoke、examples-db 自備 fixture 整合）、<code>pnpm typecheck</code> 過、<code>pnpm build</code> 過（10 則名詞頁 SSG + 30m ISR、build-fail check 通過、實測 wRC+ 頁渲染 body/級距/範例李灝宇連結）。</li>
+    <li><strong><code>/code-review</code> 已跑（batu 觸發）＋修正 5 findings</strong>（commit <code>6e0d285</code>）：#1 範例排序方向改<strong>逐視角</strong>（shared 指標打投好壞相反——新增 frontmatter <code>higher_is_better_pitcher</code>，設在 bb-pct/k-pct/babip，兩視角各自排序＋交錯挑選）；#2 <code>examples-db</code> 改<strong>每 player×level 加總計數</strong>（衍生指標值與樣本門檻＝球員頁層級合計，季中換隊者不再被單段門檻誤剔；stored 進階不可加總→保留最大樣本隊值）；#3 <code>loadAllFrontmatter</code> 對 live 目錄 memoize；#4 <code>Perspective</code> 型別單一來源（改 import schema）。#5（多隊季 stored 進階在合計列消失）判為刻意、維持「缺值不顯示」，未改；如需顯示主隊列值另切 UX 票。修正後 Node <strong>116 綠</strong>、typecheck 清、build 過。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>球員個人頁 slice <code>player-detail-page</code>（4 票）完成——<code>/players/[id]</code> 五區全上</strong>（<code>.scratch/player-detail-page/issues/</code>，分支 <code>feat/player-detail-page</code>，spec-02 §2.3）。名冊卡片可點入；頁面與 <code>/api/players/:id</code> 共用 <code>lib/services</code> 一組資料，Zod schema 即對外合約；非白名單→404、錯誤→500。
     <ul>
     <li><strong>票 01 骨架 + zone 1</strong>：<code>getPlayerDetail(id)</code> 回 base 形狀（基本資料含慣用手/生日、目前隊伍、狀態一句、近況一句話），<code>/players/[id]</code> Server Component（ISR 1800）＋ <code>/api/players/:id</code>。<code>archived</code> 只顯 zone 1＋標「已離開美職體系」。</li>
@@ -395,7 +406,7 @@
     </ul>
     <ul class="todo">
     <li class="done">~~<strong>player-detail-page slice（順位 1：球員個人頁第一階段，4 票）</strong>~~（2026-07-28 完成、merge 回 main，見已完成區）。<strong>進階數據（打/投各7）+名詞連結留順位 2</strong>（受 spec-04 §D「名詞頁先行、缺頁 build fail」約束）。</li>
-    <li class=""><strong>順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，<code>.scratch/glossary-and-advanced-metrics/issues/</code>）</strong>——<strong>01</strong> 名詞庫管線 + registry + 缺頁 build-fail + <code>/glossary</code>、<code>/glossary/[slug]</code> 三層模板（wRC+ 打穿，frontier）→ <strong>02</strong> 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ <strong>03</strong> 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；<strong>04</strong> 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。<strong>首頁動態導向 → SEO 屬後續 phase、本批不含。</strong></li>
+    <li class="done">~~<strong>順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，<code>.scratch/glossary-and-advanced-metrics/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區；實作為 10 則 MDX——打投共用 4 則各含雙段級距即覆蓋打/投各 7）——<strong>01</strong> 名詞庫管線 + registry + 缺頁 build-fail + <code>/glossary</code>、<code>/glossary/[slug]</code> 三層模板（wRC+ 打穿，frontier）→ <strong>02</strong> 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ <strong>03</strong> 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；<strong>04</strong> 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。<strong>首頁動態導向 → SEO 屬後續 phase、本批不含。</strong></li>
     </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
     <ul class="todo">
@@ -403,7 +414,7 @@
     <li class="done">~~<strong>schema + seed slice</strong>（3 票）~~（2026-07-24 完成，見已完成區）</li>
     <li class="done">~~Next.js 端把 <code>lib/services</code> → Route Handler → 頁面串起來~~（2026-07-24 完成；用<strong>真實 seed 資料</strong>而非假資料——白名單已入 DB，故直接串真資料）</li>
     <li class="done">~~導入 shadcn/ui + Tailwind，建立基礎「笨元件」~~（2026-07-24 完成，票 01/04）</li>
-    <li class="">spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）</li>
+    <li class="done">~~spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）~~（2026-07-28 完成，10 則 MDX；standard/roster 兩批留後續 phase）</li>
     </ul>
   </section>
   <section>

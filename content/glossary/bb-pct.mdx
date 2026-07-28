@@ -1,0 +1,62 @@
+---
+slug: bb-pct
+name_zh: 保送率
+name_en: BB%
+category: shared_adv
+applies_to: [batter, pitcher]
+metric_keys: [bb_pct]
+higher_is_better: true
+higher_is_better_pitcher: false
+blurb: 保送佔上場面對次數的比例；打者越高越好，投手越低越好。
+formula: BB% = BB / PA（打者）；BB / BF（投手）
+bands:
+  batter:
+    mlb:
+      - {max: 0.060, label: 偏低}
+      - {max: 0.080, label: 普通}
+      - {max: 0.100, label: 不錯}
+      - {max: 0.140, label: 優異}
+      - {label: 頂級選球}
+    aaa:
+      - {max: 0.060, label: 偏低}
+      - {max: 0.080, label: 普通}
+      - {max: 0.100, label: 不錯}
+      - {max: 0.140, label: 優異}
+      - {label: 頂級選球}
+    aa:
+      - {max: 0.060, label: 偏低}
+      - {max: 0.080, label: 普通}
+      - {max: 0.100, label: 不錯}
+      - {max: 0.140, label: 優異}
+      - {label: 頂級選球}
+  pitcher:
+    mlb:
+      - {max: 0.060, label: 優異}
+      - {max: 0.080, label: 不錯}
+      - {max: 0.100, label: 普通}
+      - {max: 0.120, label: 偏高}
+      - {label: 控球不穩}
+    aaa:
+      - {max: 0.060, label: 優異}
+      - {max: 0.080, label: 不錯}
+      - {max: 0.100, label: 普通}
+      - {max: 0.120, label: 偏高}
+      - {label: 控球不穩}
+    aa:
+      - {max: 0.060, label: 優異}
+      - {max: 0.080, label: 不錯}
+      - {max: 0.100, label: 普通}
+      - {max: 0.120, label: 偏高}
+      - {label: 控球不穩}
+sources:
+  - {label: FanGraphs Library — BB% and K%, url: https://library.fangraphs.com/offense/rate-stats/}
+  - {label: MLB Glossary — Walk Rate, url: https://www.mlb.com/glossary/advanced-stats/walk-rate}
+---
+
+BB% 是保送佔全部上場面對次數的比例，同一個名詞在打者與投手身上意義相反。
+
+**打者視角**：選球耐心與逼出保送的能力，越高越好。聯盟平均約 8%，10% 以上代表選球出色，頂級好手可達 15% 以上。
+
+**投手視角**：控球穩定度，越低越好。優秀先發多能壓在 6–7% 以下；偏高則代表容易自亂陣腳、送出免費壘包。
+
+**3A／2A 級距為首版佔位，待依小聯盟環境校訂。**
