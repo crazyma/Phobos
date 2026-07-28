@@ -3,11 +3,11 @@
  * curated candidate rows for a metric term and hand them to the pure selector.
  * "This season" = the latest season present in the data. Server-only.
  */
-import { and, eq, inArray, max } from "drizzle-orm";
+import { and, desc, eq, inArray, max } from "drizzle-orm";
 import { db as defaultDb } from "../db/client.ts";
-import { players, seasonBattingStats, seasonPitchingStats } from "../db/schema/index.ts";
+import { players, seasonBattingStats, seasonPitchingStats, transactionEvents } from "../db/schema/index.ts";
 import { deriveBatting, derivePitching, sumBatting, sumPitching } from "../services/stats.ts";
-import { selectMetricExamples, type ExamplePick, type MetricCandidate } from "./examples.ts";
+import { selectMetricExamples, selectRosterExamples, type ExamplePick, type MetricCandidate, type RosterPick } from "./examples.ts";
 import { metricValue, type MetricKey } from "./metrics.ts";
 import { GRADED_LEVELS, type Frontmatter } from "./schema.ts";
 
@@ -107,4 +107,40 @@ export async function getMetricExamples(
   }
 
   return selectMetricExamples(term, candidates);
+}
+
+/**
+ * Fetch tracked players' newest matching transactions for a roster term. A
+ * term without declared event types (such as waiver or Rule 5) deliberately
+ * returns no picks, keeping its optional backlink block hidden.
+ */
+export async function getRosterExamples(
+  term: Frontmatter,
+  db = defaultDb,
+): Promise<RosterPick[]> {
+  if (term.category !== "roster" || term.roster_event_types.length === 0) return [];
+
+  const event = transactionEvents;
+  const rows = await db
+    .select({
+      playerId: event.playerId,
+      nameZh: players.nameZh,
+      nameEn: players.nameEn,
+      lifecycle: players.lifecycle,
+      date: event.effectiveDate,
+      type: event.type,
+    })
+    .from(event)
+    .innerJoin(players, eq(players.mlbPlayerId, event.playerId))
+    .where(and(inArray(event.type, term.roster_event_types), eq(players.lifecycle, "tracked")))
+    .orderBy(desc(event.effectiveDate), desc(event.id));
+
+  const { transactionTypeLabel } = await import("../services/player-status.ts");
+  return selectRosterExamples(rows.map((row) => ({
+    playerId: row.playerId,
+    nameZh: row.nameZh ?? row.nameEn,
+    lifecycle: row.lifecycle,
+    date: row.date,
+    typeLabel: transactionTypeLabel(row.type),
+  })));
 }

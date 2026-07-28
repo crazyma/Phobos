@@ -2,19 +2,22 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db, pool } from "../db/client.ts";
-import { players, seasonBattingStats, teams } from "../db/schema/index.ts";
+import { players, seasonBattingStats, teams, transactionEvents } from "../db/schema/index.ts";
 import { loadFrontmatter } from "./content.ts";
-import { getMetricExamples } from "./examples-db.ts";
+import { getMetricExamples, getRosterExamples } from "./examples-db.ts";
 
 const TEAM = 990401;
 const TEAM2 = 990402;
 const STAR = 900401; // extreme wOBA → should sort first
 const THIN = 900402; // below the PA threshold → excluded
 const SPLIT = 900403; // traded mid-season: two 30-PA stints, 60 combined
+const IL_PLAYER = 900404;
+const DFA_PLAYER = 900405;
 const CUR = new Date().getUTCFullYear();
-const PLAYER_IDS = [STAR, THIN, SPLIT];
+const PLAYER_IDS = [STAR, THIN, SPLIT, IL_PLAYER, DFA_PLAYER];
 
 async function cleanup() {
+  await db.delete(transactionEvents).where(inArray(transactionEvents.playerId, PLAYER_IDS));
   await db.delete(seasonBattingStats).where(inArray(seasonBattingStats.playerId, PLAYER_IDS));
   await db.delete(players).where(inArray(players.mlbPlayerId, PLAYER_IDS));
   await db.delete(teams).where(inArray(teams.mlbTeamId, [TEAM, TEAM2]));
@@ -31,6 +34,12 @@ beforeAll(async () => {
     { mlbPlayerId: STAR, nameEn: "Star", nameZh: "明星", primaryPosition: "1B", lifecycle: "tracked" },
     { mlbPlayerId: THIN, nameEn: "Thin", nameZh: "樣本不足", primaryPosition: "2B", lifecycle: "tracked" },
     { mlbPlayerId: SPLIT, nameEn: "Split", nameZh: "季中換隊", primaryPosition: "SS", lifecycle: "tracked" },
+    { mlbPlayerId: IL_PLAYER, nameEn: "IL Player", nameZh: "傷兵球員", primaryPosition: "P", lifecycle: "tracked" },
+    { mlbPlayerId: DFA_PLAYER, nameEn: "DFA Player", nameZh: "指定讓渡球員", primaryPosition: "OF", lifecycle: "tracked" },
+  ]);
+  await db.insert(transactionEvents).values([
+    { playerId: IL_PLAYER, type: "il_on", effectiveDate: "2026-07-21", source: "statsapi" },
+    { playerId: DFA_PLAYER, type: "dfa", effectiveDate: "2026-07-25", source: "statsapi" },
   ]);
   // Use the latest season so it counts as "current" (examples-db picks max).
   await db.insert(seasonBattingStats).values([
@@ -64,5 +73,29 @@ describe("getMetricExamples", () => {
     const split = picks.find((p) => p.playerId === SPLIT);
     expect(split).toBeDefined();
     expect(split!.value).toBe("15.0%");
+  });
+});
+
+describe("getRosterExamples", () => {
+  it("loads the newest matching tracked transaction and labels it", async () => {
+    const il = loadFrontmatter("il")!;
+    const picks = await getRosterExamples(il, db);
+    // The shared development database can have other real IL events, but this
+    // seeded event must win by date and carry the public Chinese label.
+    expect(picks[0]).toEqual({
+      playerId: IL_PLAYER, name: "傷兵球員", date: "2026-07-21", typeLabel: "進入傷兵名單",
+    });
+  });
+
+  it("uses each roster term's declared transaction type", async () => {
+    const dfa = loadFrontmatter("dfa")!;
+    await expect(getRosterExamples(dfa, db)).resolves.toHaveProperty("0", {
+      playerId: DFA_PLAYER, name: "指定讓渡球員", date: "2026-07-25", typeLabel: "指定讓渡",
+    });
+  });
+
+  it("hides the section when a roster term declares no matching event type", async () => {
+    const waiver = loadFrontmatter("waiver")!;
+    await expect(getRosterExamples(waiver, db)).resolves.toEqual([]);
   });
 });

@@ -1,0 +1,37 @@
+---
+slug: obp
+name_zh: 上壘率
+name_en: OBP
+category: standard
+applies_to: [batter]
+metric_keys: []
+higher_is_better: true
+blurb: 把安打、保送與觸身球都算入，衡量打者避免出局並站上壘包的能力。
+formula: OBP = (H + BB + HBP) / (AB + BB + HBP + SF)
+bands:
+  batter:
+    mlb:
+      - {max: 0.290, label: 偏弱}
+      - {max: 0.320, label: 普通}
+      - {max: 0.350, label: 不錯}
+      - {max: 0.380, label: 優秀}
+      - {label: 頂尖}
+    aaa:
+      - {max: 0.290, label: 偏弱（待校訂）}
+      - {max: 0.320, label: 普通（待校訂）}
+      - {max: 0.350, label: 不錯（待校訂）}
+      - {max: 0.380, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+    aa:
+      - {max: 0.290, label: 偏弱（待校訂）}
+      - {max: 0.320, label: 普通（待校訂）}
+      - {max: 0.350, label: 不錯（待校訂）}
+      - {max: 0.380, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+sources:
+  - {label: MLB Glossary — On-base Percentage, url: https://www.mlb.com/glossary/standard-stats/on-base-percentage}
+---
+
+OBP 關心的是打者能否避免出局：安打、保送與觸身球都能上壘，因此比 AVG 更完整地反映選球與上壘貢獻。它不區分長打價值，適合和 SLG 一起看。
+
+**3A／2A 級距是首版佔位，待依各聯盟近季得分環境校訂。**

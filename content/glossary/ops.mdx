@@ -1,0 +1,37 @@
+---
+slug: ops
+name_zh: 上壘加長打率
+name_en: OPS
+category: standard
+applies_to: [batter]
+metric_keys: []
+higher_is_better: true
+blurb: 上壘率加長打率，用一個數字快速概覽打者兼具上壘與長打的攻擊表現。
+formula: OPS = OBP + SLG
+bands:
+  batter:
+    mlb:
+      - {max: 0.650, label: 偏弱}
+      - {max: 0.720, label: 普通}
+      - {max: 0.800, label: 不錯}
+      - {max: 0.900, label: 優秀}
+      - {label: 頂尖}
+    aaa:
+      - {max: 0.650, label: 偏弱（待校訂）}
+      - {max: 0.720, label: 普通（待校訂）}
+      - {max: 0.800, label: 不錯（待校訂）}
+      - {max: 0.900, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+    aa:
+      - {max: 0.650, label: 偏弱（待校訂）}
+      - {max: 0.720, label: 普通（待校訂）}
+      - {max: 0.800, label: 不錯（待校訂）}
+      - {max: 0.900, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+sources:
+  - {label: MLB Glossary — OPS, url: https://www.mlb.com/glossary/standard-stats/on-base-plus-slugging}
+---
+
+OPS 把「上壘」與「長打」相加，是最常見的打者速讀指標之一。.800 左右通常已具競爭力，.900 以上則多是中心打線等級。它方便但不是精密得分模型，因為 OBP 與 SLG 的權重被直接相加。
+
+**3A／2A 級距是首版佔位，待依各聯盟近季得分環境校訂。**

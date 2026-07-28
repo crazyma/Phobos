@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { LevelBandSet } from "@/lib/glossary/schema";
 import { BandsTable } from "./bands-table.tsx";
 import { GlossaryExamples } from "./examples.tsx";
+import { RosterExamples } from "./roster-examples.tsx";
 
 const set: LevelBandSet = {
   mlb: [{ max: 100, label: "及格" }, { label: "厲害" }],
@@ -24,6 +25,23 @@ describe("BandsTable", () => {
     const html = renderToStaticMarkup(<BandsTable bands={{ batter: set, pitcher: set }} />);
     expect(html).toContain("打者視角");
     expect(html).toContain("投手視角");
+  });
+});
+
+describe("RosterExamples", () => {
+  it("renders recent transaction players with date and type", () => {
+    const html = renderToStaticMarkup(
+      <RosterExamples picks={[{ playerId: 42, name: "王小明", date: "2026-07-28", typeLabel: "進入傷兵名單" }]} />,
+    );
+    expect(html).toContain("最近有此類異動的球員");
+    expect(html).toContain("王小明");
+    expect(html).toContain("2026-07-28");
+    expect(html).toContain("進入傷兵名單");
+    expect(html).toContain("/players/42");
+  });
+
+  it("renders nothing without matching transactions", () => {
+    expect(renderToStaticMarkup(<RosterExamples picks={[]} />)).toBe("");
   });
 });
 

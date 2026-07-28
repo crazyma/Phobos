@@ -85,4 +85,45 @@ describe("FrontmatterSchema", () => {
     });
     expect(parsed.metric_keys).toHaveLength(0);
   });
+
+  it("accepts standard explainers with bands or with neither metric keys nor bands", () => {
+    const graded = valid();
+    graded.slug = "avg";
+    graded.category = "standard";
+    graded.metric_keys = [];
+    expect(FrontmatterSchema.parse(graded).bands?.batter).toBeDefined();
+
+    const explainer = valid();
+    explainer.slug = "ip";
+    explainer.category = "standard";
+    explainer.metric_keys = [];
+    delete (explainer as Record<string, unknown>).bands;
+    expect(FrontmatterSchema.parse(explainer).bands).toBeUndefined();
+  });
+
+  it("keeps advanced terms coupled to metric keys and bands", () => {
+    const fm = valid();
+    fm.metric_keys = [];
+    expect(() => FrontmatterSchema.parse(fm)).toThrow(/metric terms need/);
+  });
+
+  it("accepts roster event-type declarations but rejects them on non-roster terms", () => {
+    const roster = FrontmatterSchema.parse({
+      slug: "option",
+      name_zh: "下放選項",
+      name_en: "Option",
+      category: "roster",
+      applies_to: ["batter", "pitcher"],
+      metric_keys: [],
+      higher_is_better: false,
+      roster_event_types: ["send_down", "assign"],
+      blurb: "球團可把仍有選項的球員下放小聯盟。",
+      sources: [{ label: "MLB", url: "https://www.mlb.com/glossary/transactions/options" }],
+    });
+    expect(roster.roster_event_types).toEqual(["send_down", "assign"]);
+
+    const metric = valid() as Record<string, unknown>;
+    metric.roster_event_types = ["send_down"];
+    expect(() => FrontmatterSchema.parse(metric)).toThrow(/roster event types/);
+  });
 });

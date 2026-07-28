@@ -163,6 +163,14 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-28</h3>
     <ul class="todo">
+    <li class="done"><strong>名詞庫 standard/roster slice（2 票）完成——v1 26 則名詞全數到位</strong>（<code>.scratch/glossary-standard-roster/issues/</code>，spec-04 §A／§E）。
+    <ul>
+    <li><strong>票 01 Standard 8 則</strong>：schema 將 <code>standard</code> 正式區分為「帶級距、無 <code>metric_keys</code>」與「純解說」兩型；進階類仍強制 <code>metric_keys</code>＋<code>bands</code>，registry build-fail 覆蓋不變。新增 AVG／OBP／SLG／OPS／ERA／WHIP 三層級距頁（3A／2A 均明示待校訂）與 IP、SV/HLD 純解說頁；不擴充個人頁指標或 standard 範例回連。</li>
+    <li><strong>票 02 Roster 6 則 + 回連</strong>：新增 IL、DFA、waiver、option、40-man roster、Rule 5 draft；frontmatter 的 <code>roster_event_types</code> 宣告對應異動類型。名詞頁透過 <code>getRosterExamples</code> 取得最近的 tracked 球員事件，顯示日期與中文異動標籤；waiver／40-man／Rule 5 未宣告可對應事件時整塊隱藏。</li>
+    <li><strong>測試</strong>：新增 schema、全部 14 則 content 分組、IL／DFA roster loader、空狀態與 UI smoke 覆蓋；<code>pnpm typecheck</code>、Node 全測試、<code>pnpm build</code> 均過。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>SEO slice（2 票）完成——sitemap/robots + 跨頁 Open Graph／Twitter 分享卡</strong>（<code>.scratch/seo/issues/</code>，spec-02 §4）。
     <ul>
     <li><strong>票 01 爬取面</strong>：Next metadata routes <code>sitemap.xml</code>／<code>robots.txt</code>；sitemap 包含首頁、名冊、名詞索引、全部球員（<strong>含 archived</strong>）與所有 MDX 名詞頁。站台 canonical origin 讀 <code>NEXT_PUBLIC_SITE_URL</code>（缺省 <code>https://phobos.tw</code>），同時作 root <code>metadataBase</code>。</li>
@@ -428,7 +436,8 @@
     <li class="done">~~<strong>順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，<code>.scratch/glossary-and-advanced-metrics/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區；實作為 10 則 MDX——打投共用 4 則各含雙段級距即覆蓋打/投各 7）——<strong>01</strong> 名詞庫管線 + registry + 缺頁 build-fail + <code>/glossary</code>、<code>/glossary/[slug]</code> 三層模板（wRC+ 打穿，frontier）→ <strong>02</strong> 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ <strong>03</strong> 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；<strong>04</strong> 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。<strong>首頁動態導向 → SEO 屬後續 phase、本批不含。</strong></li>
     <li class="done">~~<strong>首頁動態導向 slice（4 票，<code>.scratch/homepage-digest/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區）——<code>/</code> 四區與單一 <code>/api/home</code> 合約已上線。</li>
     <li class="done">~~<strong>SEO slice（2 票，<code>.scratch/seo/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區）——sitemap／robots、metadataBase 與 Open Graph／Twitter 分享卡已上線。</li>
-    <li class=""><strong>後續：③ 名詞庫 standard/roster 兩批（14 則）、首頁 polish 票 <code>homepage-digest/05</code></strong>（尚未動工；盤點見 2026-07-28 對話）。</li>
+    <li class="done">~~<strong>名詞庫 standard/roster slice（2 票，<code>.scratch/glossary-standard-roster/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區）。</li>
+    <li class=""><strong>後續：首頁 polish 票 <code>homepage-digest/05</code>、spec-04 §G 3A/2A 級距校訂、waiver 對照</strong>（尚未動工；盤點見 2026-07-28 對話）。</li>
     </ul>
     <blockquote><p>spec 已於 2026-07-23 重建完成（入口 <code>spec/spec-00-overview.md</code>）；舊 spec 封存於 <code>archive/spec/</code>。</p></blockquote>
     <ul class="todo">

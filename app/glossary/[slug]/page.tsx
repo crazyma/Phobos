@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { loadAllFrontmatter, loadFrontmatter } from "@/lib/glossary/content";
-import { getMetricExamples } from "@/lib/glossary/examples-db";
+import { getMetricExamples, getRosterExamples } from "@/lib/glossary/examples-db";
 import { getRegistry } from "@/lib/glossary/registry";
 import type { Perspective } from "@/lib/glossary/schema";
 import { BandsTable } from "@/components/glossary/bands-table";
 import { GlossaryExamples } from "@/components/glossary/examples";
+import { RosterExamples } from "@/components/glossary/roster-examples";
 import { glossaryShareMetadata } from "@/lib/seo/open-graph";
 
 // Prerendered term pages; unknown slugs 404 (spec-02 §2.5). A build renders
@@ -50,7 +51,8 @@ export default async function GlossaryTermPage({
   getRegistry();
 
   const { default: Body } = await import(`../../../content/glossary/${slug}.mdx`);
-  const picks = term.metric_keys.length > 0 ? await getMetricExamples(term) : [];
+  const metricPicks = term.metric_keys.length > 0 ? await getMetricExamples(term) : [];
+  const rosterPicks = term.category === "roster" ? await getRosterExamples(term) : [];
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">
@@ -102,7 +104,8 @@ export default async function GlossaryTermPage({
       </section>
 
       {/* Layer 4 — 範例球員回連 */}
-      <GlossaryExamples picks={picks} />
+      <GlossaryExamples picks={metricPicks} />
+      <RosterExamples picks={rosterPicks} />
     </article>
   );
 }

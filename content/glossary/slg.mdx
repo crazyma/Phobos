@@ -1,0 +1,37 @@
+---
+slug: slg
+name_zh: 長打率
+name_en: SLG
+category: standard
+applies_to: [batter]
+metric_keys: []
+higher_is_better: true
+blurb: 以總壘打數除以打數，讓二壘安打、三壘安打與全壘打比一壘安打更有價值。
+formula: SLG = TB / AB
+bands:
+  batter:
+    mlb:
+      - {max: 0.350, label: 偏弱}
+      - {max: 0.400, label: 普通}
+      - {max: 0.450, label: 不錯}
+      - {max: 0.500, label: 優秀}
+      - {label: 頂尖}
+    aaa:
+      - {max: 0.350, label: 偏弱（待校訂）}
+      - {max: 0.400, label: 普通（待校訂）}
+      - {max: 0.450, label: 不錯（待校訂）}
+      - {max: 0.500, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+    aa:
+      - {max: 0.350, label: 偏弱（待校訂）}
+      - {max: 0.400, label: 普通（待校訂）}
+      - {max: 0.450, label: 不錯（待校訂）}
+      - {max: 0.500, label: 優秀（待校訂）}
+      - {label: 頂尖（待校訂）}
+sources:
+  - {label: MLB Glossary — Slugging Percentage, url: https://www.mlb.com/glossary/standard-stats/slugging-percentage}
+---
+
+SLG 把安打換成壘打數：一壘安打算 1、二壘安打算 2、三壘安打算 3、全壘打算 4。它反映長打火力，但不像 OBP 那樣計入保送，所以不能單獨代表全部進攻價值。
+
+**3A／2A 級距是首版佔位，待依各聯盟近季得分環境校訂。**

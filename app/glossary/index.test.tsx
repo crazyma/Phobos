@@ -9,7 +9,11 @@ describe("/glossary index", () => {
     expect(html).toContain("打擊進階");
     expect(html).toContain("投球進階");
     expect(html).toContain("打投共用進階");
+    expect(html).toContain("標準數據");
+    expect(html).toContain("名單與規則");
     expect(html).toContain("/glossary/wrc-plus");
+    expect(html).toContain("/glossary/avg");
+    expect(html).toContain("/glossary/il");
     expect(html).toContain("wRC+");
   });
 

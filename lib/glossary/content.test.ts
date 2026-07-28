@@ -9,7 +9,15 @@ describe("glossary content", () => {
   const terms = loadAllFrontmatter();
 
   it("parses every term file's frontmatter", () => {
-    expect(terms.length).toBeGreaterThanOrEqual(10);
+    expect(terms.length).toBeGreaterThanOrEqual(24);
+  });
+
+  it("ships all eight standard and six roster v1 explainers outside the metric registry", () => {
+    const standard = terms.filter((term) => term.category === "standard");
+    const roster = terms.filter((term) => term.category === "roster");
+    expect(standard).toHaveLength(8);
+    expect(roster).toHaveLength(6);
+    expect([...standard, ...roster].every((term) => term.metric_keys.length === 0)).toBe(true);
   });
 
   it("covers all player-page display metrics (build-fail guard)", () => {
