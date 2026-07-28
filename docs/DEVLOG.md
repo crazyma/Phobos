@@ -15,6 +15,7 @@
   - **票 03 即將出賽**：首頁重用 `getPlayerUpcoming`，保證與個人頁一致的 probable／possible／IL 判定；IL 只顯「傷兵中」，其餘以台灣時間顯示下一戰。
   - **票 04 空狀態**：無快訊卡時回每位 tracked 球員的本季、無則上季摘要與近況；名詞入口採 content frontmatter 的穩定靜態三則，不做動畫。
   - **測試**：Node 全 **123 綠**（+7：digest date／角色 line／二刀流、異動倒序、預告三分支、空狀態本季/上季 fallback、`/api/home` Zod、首頁四區 smoke），`pnpm typecheck` 綠。
+  - **`/code-review`（batu 觸發）：關卡全綠（typecheck／123 測試／build 皆過），2 項低嚴重度觀察 → 切 polish 票 `homepage-digest/05`（未修）**：① digest 的「該日全 final」guard 因「有 line ⟹ gamelog 強制 final」在正式資料下實質失效（同日某球員仍進行中、無 line 時會選到半日）——正解改依 `games` 表判定相關賽事是否全 final；② 首頁 upcoming 對每位球員各呼叫 `getPlayerUpcoming`，每次全表掃 `teams` 且算首頁用不到的近期戰績——改單次載 team map 往下傳、略過近期戰績。另記：agent 直接 commit 到 main（未開 feature branch）。
 
 - [x] **名詞庫 + 進階數據 slice `glossary-and-advanced-metrics`（4 票）完成**（`.scratch/glossary-and-advanced-metrics/issues/`，分支 `feat/glossary-and-advanced-metrics`，spec-04 全，spec-02 §2.4-2.5）。名詞庫從無到有跑通：`/glossary` 主題分類索引 → `/glossary/[slug]` 三層模板（判讀＋級距表 → 定義算法小字 → 延伸連結 → 範例球員回連）；個人頁球季區補進階數據（打/投各 7、可展開、缺值不顯示、名詞雙向連結）。
   - **票 01 管線 + registry + build-fail**：接上 `@next/mdx`（Turbopack 需 remark plugin 以字串名指定）＋ `remark-frontmatter` 剝除 YAML；名詞內容 = `content/glossary/*.mdx`（frontmatter 單一事實來源，gray-matter 讀取、Zod 驗證：欄位齊全／bands 僅 mlb/aaa/aa／區間遞增／band 視角對齊 applies_to／roster 無 metric_keys 與 bands）。build-time **registry**（`metric_key→slug`）由全部 frontmatter 生成；`assertMetricsCovered` 對「球員頁顯示指標清單」缺頁即 throw——SSG 的 `/glossary/[slug]` 於 build 觸發 → **缺頁 build fail**（spec-04 §D）。wRC+ 打穿。

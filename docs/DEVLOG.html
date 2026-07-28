@@ -170,6 +170,7 @@
     <li><strong>票 03 即將出賽</strong>：首頁重用 <code>getPlayerUpcoming</code>，保證與個人頁一致的 probable／possible／IL 判定；IL 只顯「傷兵中」，其餘以台灣時間顯示下一戰。</li>
     <li><strong>票 04 空狀態</strong>：無快訊卡時回每位 tracked 球員的本季、無則上季摘要與近況；名詞入口採 content frontmatter 的穩定靜態三則，不做動畫。</li>
     <li><strong>測試</strong>：Node 全 <strong>123 綠</strong>（+7：digest date／角色 line／二刀流、異動倒序、預告三分支、空狀態本季/上季 fallback、<code>/api/home</code> Zod、首頁四區 smoke），<code>pnpm typecheck</code> 綠。</li>
+    <li><strong><code>/code-review</code>（batu 觸發）：關卡全綠（typecheck／123 測試／build 皆過），2 項低嚴重度觀察 → 切 polish 票 <code>homepage-digest/05</code>（未修）</strong>：① digest 的「該日全 final」guard 因「有 line ⟹ gamelog 強制 final」在正式資料下實質失效（同日某球員仍進行中、無 line 時會選到半日）——正解改依 <code>games</code> 表判定相關賽事是否全 final；② 首頁 upcoming 對每位球員各呼叫 <code>getPlayerUpcoming</code>，每次全表掃 <code>teams</code> 且算首頁用不到的近期戰績——改單次載 team map 往下傳、略過近期戰績。另記：agent 直接 commit 到 main（未開 feature branch）。</li>
     </ul></li>
     </ul>
     <ul class="todo">
