@@ -74,6 +74,13 @@ export const FrontmatterSchema = z
     /** spec-01 data keys; empty only for roster terms. */
     metric_keys: z.array(z.string().min(1)),
     higher_is_better: z.boolean(),
+    /**
+     * Pitcher-view good-direction, when it differs from the batter/default
+     * `higher_is_better`. Shared metrics invert by perspective (a batter wants a
+     * high BB%, a pitcher a low one); this override lets the example picker sort
+     * each side correctly. Optional — falls back to `higher_is_better`.
+     */
+    higher_is_better_pitcher: z.boolean().optional(),
     /** One-line 白話 used on the /glossary index. */
     blurb: z.string().min(1),
     /** Definition/formula small-text (spec-04 §B layer 2); roster omits. */

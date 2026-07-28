@@ -5,6 +5,9 @@
  * registry must fully cover, else the build fails.
  */
 import { DASH, formatEra, formatPct, formatRate3 } from "@/lib/format";
+import type { Perspective } from "./schema.ts";
+
+export type { Perspective };
 
 export type MetricKey =
   | "wrc_plus"
@@ -17,8 +20,6 @@ export type MetricKey =
   | "fip"
   | "hr9"
   | "lob_pct";
-
-export type Perspective = "batter" | "pitcher";
 
 /** Ordered advanced metrics shown for each perspective (spec-04 §A: 各 7 項). */
 export const BATTER_ADVANCED: MetricKey[] = [

@@ -6,7 +6,7 @@
 import { and, eq, inArray, max } from "drizzle-orm";
 import { db as defaultDb } from "../db/client.ts";
 import { players, seasonBattingStats, seasonPitchingStats } from "../db/schema/index.ts";
-import { deriveBatting, derivePitching } from "../services/stats.ts";
+import { deriveBatting, derivePitching, sumBatting, sumPitching } from "../services/stats.ts";
 import { selectMetricExamples, type ExamplePick, type MetricCandidate } from "./examples.ts";
 import { metricValue, type MetricKey } from "./metrics.ts";
 import { GRADED_LEVELS, type Frontmatter } from "./schema.ts";
@@ -23,21 +23,28 @@ async function currentSeason(db: typeof defaultDb): Promise<number | null> {
 }
 
 /**
- * Keep one row per player×level — their primary team (max sample). Stored
- * advanced (wOBA/WAR/…) can't aggregate, so a single representative row keeps
- * them meaningful.
+ * Group rows into one line per player×level. Counting is summed so *derived*
+ * metrics (BB%/K%/BABIP/ISO/HR9) and the sample gate reflect the player's full
+ * level line — the same aggregate the player page shows — not a single stint.
+ * *Stored* advanced (wOBA/wRC+/WAR/FIP/LOB%) can't be summed, so we carry the
+ * max-sample team's stored values as the representative value for that level.
  */
-function primaryRows<T extends { playerId: number; level: string }>(
+function groupByPlayerLevel<T extends { playerId: number; level: string }>(
   rows: T[],
   sample: (r: T) => number,
+  sum: (rows: T[]) => Partial<T>,
 ): T[] {
-  const best = new Map<string, T>();
+  const groups = new Map<string, T[]>();
   for (const r of rows) {
     const k = `${r.playerId}:${r.level}`;
-    const cur = best.get(k);
-    if (!cur || sample(r) > sample(cur)) best.set(k, r);
+    (groups.get(k) ?? groups.set(k, []).get(k)!).push(r);
   }
-  return [...best.values()];
+  return [...groups.values()].map((grp) => {
+    const primary = grp.reduce((a, b) => (sample(b) > sample(a) ? b : a));
+    // Summed counting for derived metrics + sample gate; keep the identity and
+    // stored-advanced fields from the primary (max-sample) row.
+    return { ...primary, ...sum(grp) };
+  });
 }
 
 export async function getMetricExamples(
@@ -65,7 +72,7 @@ export async function getMetricExamples(
       .innerJoin(players, eq(players.mlbPlayerId, b.playerId))
       .where(and(eq(b.season, season), inArray(b.level, GRADED)));
 
-    for (const r of primaryRows(rows, (x) => x.pa)) {
+    for (const r of groupByPlayerLevel(rows, (x) => x.pa, sumBatting)) {
       const line = { ...r, ...deriveBatting(r) };
       candidates.push({
         playerId: r.playerId, nameZh: r.nameZh ?? r.nameEn, lifecycle: r.lifecycle,
@@ -89,7 +96,7 @@ export async function getMetricExamples(
       .innerJoin(players, eq(players.mlbPlayerId, p.playerId))
       .where(and(eq(p.season, season), inArray(p.level, GRADED)));
 
-    for (const r of primaryRows(rows, (x) => x.ipOuts)) {
+    for (const r of groupByPlayerLevel(rows, (x) => x.ipOuts, sumPitching)) {
       const line = { ...r, ...derivePitching(r) };
       candidates.push({
         playerId: r.playerId, nameZh: r.nameZh ?? r.nameEn, lifecycle: r.lifecycle,

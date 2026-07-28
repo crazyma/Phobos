@@ -12,10 +12,17 @@ import { FrontmatterSchema, type Frontmatter } from "./schema.ts";
 
 export const CONTENT_DIR = path.join(process.cwd(), "content/glossary");
 
+let cached: Frontmatter[] | undefined;
+
 /** Parse + validate every term file in `dir`; slug must match the filename. */
 export function loadAllFrontmatter(dir = CONTENT_DIR): Frontmatter[] {
+  // Memoize only the live content dir — a single page render otherwise re-reads
+  // and re-parses the whole dir several times (index, metadata, registry,
+  // static params). Custom dirs (test fixtures) stay uncached so each case sees
+  // its own files.
+  if (dir === CONTENT_DIR && cached) return cached;
   const files = fs.readdirSync(dir).filter((f) => f.endsWith(".mdx"));
-  return files
+  const terms = files
     .map((file) => {
       const raw = fs.readFileSync(path.join(dir, file), "utf8");
       const parsed = FrontmatterSchema.parse(matter(raw).data);
@@ -26,6 +33,8 @@ export function loadAllFrontmatter(dir = CONTENT_DIR): Frontmatter[] {
       return parsed;
     })
     .sort((a, b) => a.slug.localeCompare(b.slug));
+  if (dir === CONTENT_DIR) cached = terms;
+  return terms;
 }
 
 /** One term's frontmatter, or undefined when the slug has no file. */

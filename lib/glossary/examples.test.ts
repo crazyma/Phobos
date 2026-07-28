@@ -16,6 +16,17 @@ const wrcTerm: Frontmatter = {
   bands: { batter: bandsSet },
 } as Frontmatter;
 
+// Shared metric whose good-direction inverts by perspective: batter wants high
+// BB%, pitcher wants low.
+const bbTerm: Frontmatter = {
+  slug: "bb-pct",
+  metric_keys: ["bb_pct"],
+  higher_is_better: true,
+  higher_is_better_pitcher: false,
+  applies_to: ["batter", "pitcher"],
+  bands: { batter: bandsSet, pitcher: bandsSet },
+} as Frontmatter;
+
 const cand = (o: Partial<MetricCandidate>): MetricCandidate => ({
   playerId: 1, nameZh: "球員", lifecycle: "tracked", perspective: "batter",
   level: "mlb", value: 130, pa: 200, ipOuts: 0, ...o,
@@ -42,6 +53,17 @@ describe("selectMetricExamples", () => {
         cand({ playerId: 3, lifecycle: "archived" }),
       ]),
     ).toEqual([]);
+  });
+
+  it("picks each perspective by its own good-direction for a shared metric", () => {
+    const picks = selectMetricExamples(bbTerm, [
+      cand({ playerId: 1, nameZh: "高保送打者", perspective: "batter", value: 150, pa: 200 }),
+      cand({ playerId: 2, nameZh: "控球差投手", perspective: "pitcher", value: 150, pa: 0, ipOuts: 120 }),
+      cand({ playerId: 3, nameZh: "控球好投手", perspective: "pitcher", value: 50, pa: 0, ipOuts: 120 }),
+    ]);
+    // Batter side wants the high value; pitcher side wants the LOW value (not the
+    // high one it would get from the term-level higher_is_better).
+    expect(picks.map((p) => p.name)).toEqual(["高保送打者", "控球好投手"]);
   });
 
   it("skips rows with no value and prefers MLB over 3A", () => {

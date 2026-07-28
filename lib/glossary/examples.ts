@@ -19,6 +19,13 @@ function isGraded(level: string): level is GradedLevel {
   return (GRADED_LEVELS as readonly string[]).includes(level);
 }
 
+/** Good-direction for a perspective; pitcher may invert the default (BB%/K%…). */
+function higherIsBetterFor(term: Frontmatter, perspective: Perspective): boolean {
+  return perspective === "pitcher" && term.higher_is_better_pitcher !== undefined
+    ? term.higher_is_better_pitcher
+    : term.higher_is_better;
+}
+
 export type MetricCandidate = {
   playerId: number;
   nameZh: string;
@@ -56,18 +63,33 @@ export function selectMetricExamples(
     return c.perspective === "batter" ? c.pa >= MIN_BATTER_PA : c.ipOuts >= MIN_PITCHER_IP_OUTS;
   });
 
-  // Level priority first (spec-04 §E rule 3); then the more extreme value in
-  // the metric's "good" direction, so the example reads as illustrative.
-  const dir = term.higher_is_better ? -1 : 1;
-  eligible.sort((a, b) => {
-    const byLevel = LEVEL_RANK[a.level as GradedLevel] - LEVEL_RANK[b.level as GradedLevel];
-    if (byLevel !== 0) return byLevel;
-    return (a.value! - b.value!) * dir;
-  });
+  // Sort each perspective by its OWN good-direction (shared metrics like BB%/K%
+  // invert), never across perspectives — the same number means opposite things
+  // to a batter vs a pitcher. Level priority first (spec-04 §E rule 3), then the
+  // more extreme value in that side's good direction.
+  const sortedFor = (perspective: Perspective): MetricCandidate[] => {
+    const dir = higherIsBetterFor(term, perspective) ? -1 : 1;
+    return eligible
+      .filter((c) => c.perspective === perspective)
+      .sort((a, b) => {
+        const byLevel = LEVEL_RANK[a.level as GradedLevel] - LEVEL_RANK[b.level as GradedLevel];
+        if (byLevel !== 0) return byLevel;
+        return (a.value! - b.value!) * dir;
+      });
+  };
+  // Interleave so a shared term illustrates both sides; a single-perspective
+  // term just drains its one list.
+  const batters = sortedFor("batter");
+  const pitchers = sortedFor("pitcher");
+  const ordered: MetricCandidate[] = [];
+  for (let i = 0; i < Math.max(batters.length, pitchers.length); i++) {
+    if (batters[i]) ordered.push(batters[i]);
+    if (pitchers[i]) ordered.push(pitchers[i]);
+  }
 
   const picks: ExamplePick[] = [];
   const seen = new Set<number>();
-  for (const c of eligible) {
+  for (const c of ordered) {
     if (seen.has(c.playerId)) continue;
     seen.add(c.playerId);
     const level = c.level as GradedLevel;
