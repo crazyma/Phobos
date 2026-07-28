@@ -4,9 +4,13 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] `/sitemap.xml`（Next 檔案路由）動態列出：全部球員頁 `/players/[id]`（**含 `archived`**，SEO 連結不斷）＋全部名詞頁 `/glossary/[slug]`＋靜態路由（`/`、`/players`、`/glossary`）；球員清單取自 curated DB、名詞清單取自名詞 frontmatter
-- [ ] `/robots.txt`（Next 檔案路由）開放全站、宣告 sitemap 位置
-- [ ] 設 `metadataBase`（站台絕對網址，來源＝環境變數、缺省給合理預設）供 sitemap 產生絕對 URL；票 02 沿用
-- [ ] 測試：sitemap 產生器含全部球員（含 archived）與全部名詞、靜態路由；robots 開放且指向 sitemap；`pnpm build` 過
+- [x] `/sitemap.xml`（Next 檔案路由）動態列出：全部球員頁 `/players/[id]`（**含 `archived`**，SEO 連結不斷）＋全部名詞頁 `/glossary/[slug]`＋靜態路由（`/`、`/players`、`/glossary`）；球員清單取自 curated DB、名詞清單取自名詞 frontmatter
+- [x] `/robots.txt`（Next 檔案路由）開放全站、宣告 sitemap 位置
+- [x] 設 `metadataBase`（站台絕對網址，來源＝環境變數、缺省給合理預設）供 sitemap 產生絕對 URL；票 02 沿用
+- [x] 測試：sitemap 產生器含全部球員（含 archived）與全部名詞、靜態路由；robots 開放且指向 sitemap；`pnpm build` 過
+
+## Comments
+
+- 2026-07-28：完成；`NEXT_PUBLIC_SITE_URL` 可覆寫站台 origin，缺省為 `https://phobos.tw`。

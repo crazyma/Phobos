@@ -6,6 +6,7 @@ import { getRegistry } from "@/lib/glossary/registry";
 import type { Perspective } from "@/lib/glossary/schema";
 import { BandsTable } from "@/components/glossary/bands-table";
 import { GlossaryExamples } from "@/components/glossary/examples";
+import { glossaryShareMetadata } from "@/lib/seo/open-graph";
 
 // Prerendered term pages; unknown slugs 404 (spec-02 §2.5). A build renders
 // every page, so getRegistry()'s coverage check runs here (spec-04 §D
@@ -27,9 +28,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const term = loadFrontmatter(slug);
   if (!term) return { title: "找不到名詞 — Phobos" };
+  const share = glossaryShareMetadata(term);
   return {
     title: `${term.name_zh}（${term.name_en}）— Phobos`,
     description: term.blurb,
+    openGraph: share.openGraph,
+    twitter: share.twitter,
   };
 }
 

@@ -9,6 +9,11 @@
 
 ### 2026-07-28
 
+- [x] **SEO slice（2 票）完成——sitemap/robots + 跨頁 Open Graph／Twitter 分享卡**（`.scratch/seo/issues/`，spec-02 §4）。
+  - **票 01 爬取面**：Next metadata routes `sitemap.xml`／`robots.txt`；sitemap 包含首頁、名冊、名詞索引、全部球員（**含 archived**）與所有 MDX 名詞頁。站台 canonical origin 讀 `NEXT_PUBLIC_SITE_URL`（缺省 `https://phobos.tw`），同時作 root `metadataBase`。
+  - **票 02 分享面**：站台預設 OG／Twitter 卡採新生成的 `public/og-default.png`；球員頁 title 含目前隊伍、description 用近況、圖片優先 MLB static team logo（無隊 fallback 預設圖）；名詞頁 title／description 取中英文名與 blurb。`/players`、`/glossary` index 繼承站台預設。
+  - **測試**：Node 全 **128 綠**（+5：sitemap 靜態／tracked／archived／名詞、robots、球員 OG logo／fallback、名詞 OG）；`pnpm typecheck` 綠。
+
 - [x] **首頁動態導向 slice `homepage-digest`（4 票）完成——`/` 改為四區動態首頁 + 單一 `/api/home` 合約**（`.scratch/homepage-digest/issues/`，spec-02 §2.1）。首頁以 ISR 1800 秒讀 curated DB，`HomeSchema` 同時是 service／頁面／API 的合約：
   - **票 01 最新賽況**：由 tracked 球員的 game line 找「所有相關賽事皆 final」的最新美國比賽日；打／投各自組單場精簡 line，二刀流可有兩張卡，近況取 `player_recent_form`，`dataUpdatedAt` 與 footer 共用最近完成同步批次。
   - **票 02 球員動態**：digest date 後的 tracked-player `transaction_events` 跨球員倒序顯示，沿用 `transactionTypeLabel` 中文徽章與個人頁連結。
@@ -204,7 +209,7 @@
 - [x] ~~**player-detail-page slice（順位 1：球員個人頁第一階段，4 票）**~~（2026-07-28 完成、merge 回 main，見已完成區）。**進階數據（打/投各7）+名詞連結留順位 2**（受 spec-04 §D「名詞頁先行、缺頁 build fail」約束）。
 - [x] ~~**順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，`.scratch/glossary-and-advanced-metrics/issues/`）**~~（2026-07-28 完成，見已完成區；實作為 10 則 MDX——打投共用 4 則各含雙段級距即覆蓋打/投各 7）——**01** 名詞庫管線 + registry + 缺頁 build-fail + `/glossary`、`/glossary/[slug]` 三層模板（wRC+ 打穿，frontier）→ **02** 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ **03** 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；**04** 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。**首頁動態導向 → SEO 屬後續 phase、本批不含。**
 - [x] ~~**首頁動態導向 slice（4 票，`.scratch/homepage-digest/issues/`）**~~（2026-07-28 完成，見已完成區）——`/` 四區與單一 `/api/home` 合約已上線。
-- [ ] **SEO slice（2 票，`.scratch/seo/issues/`）**——**01** `sitemap.xml`（含 archived 球員＋全名詞頁）+ `robots.txt` + `metadataBase`；**02** Open Graph 分享卡片（球員頁 og:image＝MLB 靜態球隊 logo、og:description＝近況一句話；名詞頁 og:description＝白話；首頁站台級 OG）。兩張獨立、可並行（spec-02 §7）。
+- [x] ~~**SEO slice（2 票，`.scratch/seo/issues/`）**~~（2026-07-28 完成，見已完成區）——sitemap／robots、metadataBase 與 Open Graph／Twitter 分享卡已上線。
 - [ ] **後續：③ 名詞庫 standard/roster 兩批（14 則）、首頁 polish 票 `homepage-digest/05`**（尚未動工；盤點見 2026-07-28 對話）。
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。

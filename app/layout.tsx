@@ -5,12 +5,17 @@ import { cn } from "@/lib/utils";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { getLastSyncedAt } from "@/lib/services";
+import { getSiteUrl } from "@/lib/site";
+import { siteOpenGraph, siteTwitter } from "@/lib/seo/open-graph";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
+  metadataBase: getSiteUrl(),
   title: "Phobos — 台灣球員大聯盟",
   description: "記錄台灣球員在大聯盟（及 3A/2A）的表現與動態。",
+  openGraph: siteOpenGraph,
+  twitter: siteTwitter,
 };
 
 export default async function RootLayout({

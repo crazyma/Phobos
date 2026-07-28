@@ -6,6 +6,7 @@ import { SeasonStats } from "@/components/player-detail/season-stats";
 import { GameLog } from "@/components/player-detail/game-log";
 import { Timeline } from "@/components/player-detail/timeline";
 import { Upcoming } from "@/components/player-detail/upcoming";
+import { playerShareMetadata } from "@/lib/seo/open-graph";
 
 // ISR: data refreshes twice a day (spec-03); a 30-min revalidate suffices
 // (spec-02 §2.3). On-demand revalidation on ETL completion is a v2 open item.
@@ -27,9 +28,12 @@ export async function generateMetadata({
   const player = await getPlayerDetail(playerId);
   if (!player) return { title: "找不到球員 — Phobos" };
   const name = player.nameZh ?? player.nameEn;
+  const share = playerShareMetadata(player);
   return {
     title: `${name}（${player.nameEn}）— Phobos`,
     description: `${name} 的大聯盟表現與動態：${player.statusSentence}。`,
+    openGraph: share.openGraph,
+    twitter: share.twitter,
   };
 }
 
