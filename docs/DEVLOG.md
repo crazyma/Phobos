@@ -185,8 +185,8 @@
   - **決策（球員中心）**：逐場改走**人員 gameLog**（只抓關注球員自己的比賽）；整場 boxscore 不落庫、raw 停存 boxscore；**schedule 前瞻（先發預告/今日/即將）保留**；`games` 只留 gameLog（打過的）＋schedule（即將）兩來源；game-中心查詢刻意取捨。已更新 spec-03 §3。
   - 票 01：逐場改 gameLog、退役 boxscore 全掃。票 02：初始 backfill 2020~今（補 `game_*_lines`，讓 career_high 誠實）＋收尾 reproject/重算近況。
 
-- [ ] **player-detail-page slice（順位 1：球員個人頁第一階段，4 票，`.scratch/player-detail-page/issues/`）**——把 ETL 灌的季數據/逐場/時間軸攤成 UI（spec-02 §2.3）。**01** 骨架+基本資料/近況+`/api/players/:id`（frontier）→ {**02** 球季數據表（標準、層級合計＋即時比率）、**03** 逐場+時間軸、**04** 出賽預告+下一系列賽 可並行}。**進階數據（打/投各7）+名詞連結留順位 2**（受 spec-04 §D「名詞頁先行、缺頁 build fail」約束）。frontier＝票 01。
-- [ ] **順位 2+：名詞庫 12 進階名詞（spec-04）+ 個人頁進階區 → 首頁動態導向 → SEO**（尚未切票）。
+- [x] ~~**player-detail-page slice（順位 1：球員個人頁第一階段，4 票）**~~（2026-07-28 完成、merge 回 main，見已完成區）。**進階數據（打/投各7）+名詞連結留順位 2**（受 spec-04 §D「名詞頁先行、缺頁 build fail」約束）。
+- [ ] **順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，`.scratch/glossary-and-advanced-metrics/issues/`）**——**01** 名詞庫管線 + registry + 缺頁 build-fail + `/glossary`、`/glossary/[slug]` 三層模板（wRC+ 打穿，frontier）→ **02** 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ **03** 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；**04** 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。**首頁動態導向 → SEO 屬後續 phase、本批不含。**
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
