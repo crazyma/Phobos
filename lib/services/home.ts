@@ -14,8 +14,9 @@ import { teamLevel, transactionType } from "../db/schema/enums.ts";
 import { loadAllFrontmatter } from "../glossary/content.ts";
 import { transactionTypeLabel } from "./player-status.ts";
 import { getLastSyncedAt } from "./sync.ts";
-import { getPlayerUpcoming } from "./player-upcoming.ts";
+import { getPlayerUpcoming, usToday } from "./player-upcoming.ts";
 import { getPlayerSeasons } from "./player-seasons.ts";
+import { loadTeamMap } from "./team-map.ts";
 
 const BattingLineSchema = z.object({
   pa: z.number().int(), h: z.number().int(), hr: z.number().int(),
@@ -82,45 +83,31 @@ export const HomeSchema = z.object({
 });
 export type Home = z.infer<typeof HomeSchema>;
 
-type RelatedGame = { gamePk: number; gameDate: string; status: string };
-
 /**
- * The digest only considers games in which a tracked player has a game line.
- * A date is eligible iff every such related game has reached `final`; this
- * keeps a later live game from displacing the last complete US game day.
+ * The digest anchors to the newest US game day that (a) has a tracked player's
+ * game line and (b) is entirely in the past by the US-Pacific wall clock — i.e.
+ * `game_date_us < today`. Because the westmost US zone has finished the day, the
+ * day is guaranteed complete without inspecting per-game status or detecting live
+ * games. Accepted trade-off: the digest typically trails real time by ~a day.
+ * `today` is injectable (US-Pacific "today" by default) so tests stay deterministic.
  */
-async function getDigestDate(db = defaultDb): Promise<string | null> {
-  const battingGames = await db
-    .select({ gamePk: games.gamePk, gameDate: games.gameDateUs, status: games.status })
+async function getDigestDate(db = defaultDb, today: string = usToday()): Promise<string | null> {
+  const battingDates = await db
+    .select({ gameDate: games.gameDateUs })
     .from(gameBattingLines)
     .innerJoin(players, eq(players.mlbPlayerId, gameBattingLines.playerId))
     .innerJoin(games, eq(games.gamePk, gameBattingLines.gamePk))
     .where(eq(players.lifecycle, "tracked"));
-  const pitchingGames = await db
-    .select({ gamePk: games.gamePk, gameDate: games.gameDateUs, status: games.status })
+  const pitchingDates = await db
+    .select({ gameDate: games.gameDateUs })
     .from(gamePitchingLines)
     .innerJoin(players, eq(players.mlbPlayerId, gamePitchingLines.playerId))
     .innerJoin(games, eq(games.gamePk, gamePitchingLines.gamePk))
     .where(eq(players.lifecycle, "tracked"));
 
-  const unique = new Map<number, RelatedGame>();
-  for (const game of [...battingGames, ...pitchingGames]) {
-    unique.set(game.gamePk, {
-      gamePk: game.gamePk,
-      gameDate: String(game.gameDate),
-      status: game.status,
-    });
-  }
-
-  const byDate = new Map<string, RelatedGame[]>();
-  for (const game of unique.values()) {
-    const dated = byDate.get(game.gameDate) ?? [];
-    dated.push(game);
-    byDate.set(game.gameDate, dated);
-  }
-  return [...byDate.entries()]
-    .filter(([, dated]) => dated.every((game) => game.status === "final"))
-    .map(([date]) => date)
+  return [...battingDates, ...pitchingDates]
+    .map((row) => String(row.gameDate))
+    .filter((date) => date < today)
     .sort((a, b) => b.localeCompare(a))[0] ?? null;
 }
 
@@ -131,7 +118,7 @@ export async function getHome(
   digestDateOverride?: string | null,
 ): Promise<Home> {
   const digestDate = digestDateOverride === undefined
-    ? await getDigestDate(db)
+    ? await getDigestDate(db, _today)
     : digestDateOverride;
   const gameCards: Home["gameCards"] = [];
 
@@ -202,9 +189,14 @@ export async function getHome(
     .from(players)
     .leftJoin(playerRecentForm, eq(playerRecentForm.playerId, players.mlbPlayerId))
     .where(eq(players.lifecycle, "tracked"));
+  // Load the team map once and hand it to every per-player call, rather than
+  // letting each `getPlayerUpcoming` rescan `teams`; also skip recent results,
+  // which the homepage upcoming zone never renders. Reusing `getPlayerUpcoming`
+  // keeps the tag rules identical to the player page.
+  const teamMap = await loadTeamMap(db);
   const upcomingResults = await Promise.all(
     trackedPlayers.map(async (player) => {
-      const prediction = await getPlayerUpcoming(player.playerId, db, _today);
+      const prediction = await getPlayerUpcoming(player.playerId, db, _today, teamMap, true);
       // A healthy player without a scheduled game has no row; IL players remain
       // visible so the homepage can explicitly say「傷兵中」.
       if (!prediction || (!prediction.nextGame && prediction.tag !== "il")) return null;

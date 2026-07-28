@@ -43,7 +43,7 @@ export type Upcoming = z.infer<typeof UpcomingSchema>;
  * Today's US game day (YYYY-MM-DD). Uses US-Pacific — the westmost US zone — so a
  * game still being played out west is never prematurely treated as past.
  */
-function usToday(): string {
+export function usToday(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
 }
 
@@ -58,6 +58,7 @@ export async function getPlayerUpcoming(
   db = defaultDb,
   today: string = usToday(),
   teamMap?: TeamMap,
+  skipRecentResults = false,
 ): Promise<Upcoming> {
   const [status] = await db
     .select({
@@ -85,16 +86,20 @@ export async function getPlayerUpcoming(
     .orderBy(games.gameDateUs, games.gamePk)
     .limit(1);
 
-  const recentRows = await db
-    .select({
-      gamePk: games.gamePk, gameDate: games.gameDateUs,
-      homeTeamId: games.homeTeamId, awayTeamId: games.awayTeamId,
-      homeScore: games.homeScore, awayScore: games.awayScore,
-    })
-    .from(games)
-    .where(and(onTeam, eq(games.status, "final")))
-    .orderBy(desc(games.gameDateUs), desc(games.gamePk))
-    .limit(3);
+  // Recent results are a player-page-only concern; callers that don't render them
+  // (e.g. the homepage upcoming zone) skip the extra query entirely.
+  const recentRows = skipRecentResults
+    ? []
+    : await db
+        .select({
+          gamePk: games.gamePk, gameDate: games.gameDateUs,
+          homeTeamId: games.homeTeamId, awayTeamId: games.awayTeamId,
+          homeScore: games.homeScore, awayScore: games.awayScore,
+        })
+        .from(games)
+        .where(and(onTeam, eq(games.status, "final")))
+        .orderBy(desc(games.gameDateUs), desc(games.gamePk))
+        .limit(3);
 
   const nextGame = next
     ? (() => {

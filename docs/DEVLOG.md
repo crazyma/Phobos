@@ -9,6 +9,11 @@
 
 ### 2026-07-28
 
+- [x] **首頁 polish 票 `homepage-digest/05` 完成——digest 錨定改 wall-clock + 即將出賽效率**（`.scratch/homepage-digest/issues/05`，分支 `feat/homepage-digest-05`；接 homepage slice code-review 兩項低嚴重度觀察）。皆為首頁 service 內部修正，`/api/home` 對外 Zod 合約不變：
+  - **① digest 改 wall-clock**：`getDigestDate` 不再從 line 反推 `status`／不查 `games`／不偵測 live；digest date＝有 tracked 球員 line 且 `game_date_us` **早於當前美西（America/Los_Angeles）日期**（整天已過 → 保證該日賽事全數打完）的最新比賽日。美西「今天」以純函式算、`getHome` 的 `_today` 注入得到（重用 `player-upcoming` 導出的 `usToday`）。代價（設計上可接受）：首頁最新賽況常態落後約一天。
+  - **② upcoming 效率**：首頁 upcoming 單次 `loadTeamMap` 往下傳給每次 `getPlayerUpcoming`（消掉每位球員全表掃 `teams`），並讓 `getPlayerUpcoming` 新增 `skipRecentResults` 略過首頁用不到的近期戰績查詢；維持 reuse `getPlayerUpcoming` 使 tag 判定與個人頁一致、結果不變。
+  - **測試（TDD、注入 `today` 不用 live fixture）**：digest 選「早於美西今天」最新有-line 日、美西當日即使有 line 也不選、wall-clock 忽略 status、空資料→null；upcoming 新增 skip 分支斷言、既有三分支/過期排除續綠。Node 全 **140 綠**（+3），`pnpm typecheck`／`pnpm build` 均過。
+
 - [x] **名詞庫 standard/roster slice（2 票）完成——v1 26 則名詞全數到位**（`.scratch/glossary-standard-roster/issues/`，spec-04 §A／§E）。
   - **票 01 Standard 8 則**：schema 將 `standard` 正式區分為「帶級距、無 `metric_keys`」與「純解說」兩型；進階類仍強制 `metric_keys`＋`bands`，registry build-fail 覆蓋不變。新增 AVG／OBP／SLG／OPS／ERA／WHIP 三層級距頁（3A／2A 均明示待校訂）與 IP、SV/HLD 純解說頁；不擴充個人頁指標或 standard 範例回連。
   - **票 02 Roster 6 則 + 回連**：新增 IL、DFA、waiver、option、40-man roster、Rule 5 draft；frontmatter 的 `roster_event_types` 宣告對應異動類型。名詞頁透過 `getRosterExamples` 取得最近的 tracked 球員事件，顯示日期與中文異動標籤；waiver／40-man／Rule 5 未宣告可對應事件時整塊隱藏。

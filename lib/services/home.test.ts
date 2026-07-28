@@ -72,7 +72,9 @@ beforeAll(async () => {
       gamePk: FINAL_GAME, level: "mlb", gameDateUs: "2099-07-26", status: "final",
       homeTeamId: TEAM, awayTeamId: OPPONENT,
     },
-    // This player-related game is not settled, so its date must not become the digest.
+    // Falls on the injected US "today"; the whole day has not yet passed by the
+    // US-Pacific wall clock, so its date must not become the digest — regardless
+    // of status (wall-clock anchoring no longer inspects game status).
     {
       gamePk: PARTIAL_GAME, level: "mlb", gameDateUs: "2099-07-27", status: "live",
       homeTeamId: TEAM, awayTeamId: OPPONENT,
@@ -111,8 +113,11 @@ afterAll(async () => {
 });
 
 describe("getHome", () => {
-  it("selects the newest fully settled US game date and exposes role-specific cards", async () => {
-    const home = await getHome(db, "2099-07-28");
+  it("anchors the digest to the newest US game day fully past by the US-Pacific wall clock", async () => {
+    // Injected US "today" is 2099-07-27, so 07-27 (current day) is excluded even
+    // though a tracked player has a line on it; the newest fully-past line day is
+    // 07-26.
+    const home = await getHome(db, "2099-07-27");
 
     expect(() => HomeSchema.parse(home)).not.toThrow();
     expect(home.digestDate).toBe("2099-07-26");
@@ -132,8 +137,23 @@ describe("getHome", () => {
     }));
   });
 
+  it("returns a null digest (and no game cards) when no line day is fully past", async () => {
+    // Inject a "today" before any tracked line exists → nothing is strictly
+    // earlier → empty → null.
+    const early = await getHome(db, "1990-01-01");
+    expect(early.digestDate).toBeNull();
+    expect(early.gameCards).toEqual([]);
+  });
+
+  it("anchors by wall clock alone, ignoring stored game status", async () => {
+    // With today 07-28 the 07-27 game day is fully past, so it is selected as the
+    // newest eligible day despite that game being stored as "live".
+    const late = await getHome(db, "2099-07-28");
+    expect(late.digestDate).toBe("2099-07-27");
+  });
+
   it("lists only post-digest tracked-player transactions in reverse chronological order", async () => {
-    const home = await getHome(db, "2099-07-28");
+    const home = await getHome(db, "2099-07-27");
 
     expect(home.events).toEqual([
       expect.objectContaining({
@@ -148,7 +168,7 @@ describe("getHome", () => {
   });
 
   it("reuses the player-page upcoming rules for probable, possible, and IL players", async () => {
-    const home = await getHome(db, "2099-07-28");
+    const home = await getHome(db, "2099-07-27");
 
     expect(home.upcoming).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -161,7 +181,7 @@ describe("getHome", () => {
   });
 
   it("returns prior-season review cards and static glossary picks only when there are no game cards", async () => {
-    const home = await getHome(db, "2099-07-28", null);
+    const home = await getHome(db, "2099-07-27", null);
 
     expect(home.digestDate).toBeNull();
     expect(home.gameCards).toEqual([]);
@@ -178,7 +198,7 @@ describe("getHome", () => {
       ]),
     }));
 
-    expect((await getHome(db, "2099-07-28")).emptyState).toBeNull();
+    expect((await getHome(db, "2099-07-27")).emptyState).toBeNull();
   });
 
   it("serves the same Zod-valid contract from GET /api/home", async () => {
