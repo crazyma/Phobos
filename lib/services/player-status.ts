@@ -25,6 +25,42 @@ function ilLabel(ilDetail: string | null | undefined): string {
   return digits ? `IL-${digits}` : "IL";
 }
 
+const TRANSACTION_TYPE_LABELS: Record<string, string> = {
+  sign: "簽約",
+  call_up: "升上大聯盟",
+  send_down: "下放小聯盟",
+  trade: "交易",
+  dfa: "指定讓渡",
+  release: "釋出",
+  declare_fa: "宣告自由球員",
+  assign: "指派",
+  il_on: "進入傷兵名單",
+  il_off: "傷兵名單回歸",
+  depart: "離開美職",
+  other: "異動",
+};
+
+/** transaction_events.type → zh badge label (spec-02 §2.3 timeline). */
+export function transactionTypeLabel(type: string): string {
+  return TRANSACTION_TYPE_LABELS[type] ?? "異動";
+}
+
+const HAND_LABELS: Record<string, string> = { L: "左", R: "右", S: "左右" };
+
+/**
+ * Bats/throws → "右打・左投" (spec-02 §2.3 bio). Either side may be missing;
+ * returns null when both are absent.
+ */
+export function batsThrowsLabel(
+  bats: string | null | undefined,
+  throws: string | null | undefined,
+): string | null {
+  const parts: string[] = [];
+  if (bats && HAND_LABELS[bats]) parts.push(`${HAND_LABELS[bats]}打`);
+  if (throws && HAND_LABELS[throws]) parts.push(`${HAND_LABELS[throws]}投`);
+  return parts.length ? parts.join("・") : null;
+}
+
 export type StatusInput = {
   affiliation: Affiliation | null | undefined;
   health: Health | null | undefined;
