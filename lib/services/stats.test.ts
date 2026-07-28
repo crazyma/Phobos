@@ -56,6 +56,7 @@ describe("derivePitching", () => {
     expect(r.bb9).toBeCloseTo(2.25, 6);
     expect(r.kPct).toBeCloseTo(0.25, 6);
     expect(r.bbPct).toBeCloseTo(0.0625, 6);
+    expect(r.babip).toBeCloseTo(45 / 160, 6); // (50-5)/(240-15-60-5)
   });
 
   it("returns null rates with no outs recorded", () => {

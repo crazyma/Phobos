@@ -9,6 +9,14 @@
 
 ### 2026-07-28
 
+- [x] **名詞庫 + 進階數據 slice `glossary-and-advanced-metrics`（4 票）完成**（`.scratch/glossary-and-advanced-metrics/issues/`，分支 `feat/glossary-and-advanced-metrics`，spec-04 全，spec-02 §2.4-2.5）。名詞庫從無到有跑通：`/glossary` 主題分類索引 → `/glossary/[slug]` 三層模板（判讀＋級距表 → 定義算法小字 → 延伸連結 → 範例球員回連）；個人頁球季區補進階數據（打/投各 7、可展開、缺值不顯示、名詞雙向連結）。
+  - **票 01 管線 + registry + build-fail**：接上 `@next/mdx`（Turbopack 需 remark plugin 以字串名指定）＋ `remark-frontmatter` 剝除 YAML；名詞內容 = `content/glossary/*.mdx`（frontmatter 單一事實來源，gray-matter 讀取、Zod 驗證：欄位齊全／bands 僅 mlb/aaa/aa／區間遞增／band 視角對齊 applies_to／roster 無 metric_keys 與 bands）。build-time **registry**（`metric_key→slug`）由全部 frontmatter 生成；`assertMetricsCovered` 對「球員頁顯示指標清單」缺頁即 throw——SSG 的 `/glossary/[slug]` 於 build 觸發 → **缺頁 build fail**（spec-04 §D）。wRC+ 打穿。
+  - **票 02 其餘進階名詞**：共 **10 則** MDX（打 wRC+/wOBA/ISO、投 FIP/HR9/LOB%、打投共用 BB%/K%/WAR/BABIP 各含打者/投手兩段級距），完整覆蓋球員頁打/投各 7。MLB 用公開慣例值；**3A/2A 首版佔位、正文標「待校訂」**（spec-04 §C／§G）。
+  - **票 03 個人頁進階區**：`player-seasons` service 讀出已存進階欄（打 `woba/wrc_plus/war`、投 `fip/lob_pct/war`）＋新增投手 BABIP 衍生（分母 `BF−BB−K−HR` 近似、缺 HBP/SF），併入既有衍生湊齊打/投各 7；形狀入 Zod 合約（合計列因加總無法還原 stored 進階 → 留 null，衍生進階照重算）。個人頁球季區加**可展開進階區塊**（`<details>`、缺值不顯示、每指標名連向 `/glossary/[slug]`，slug 取自 build-time registry → 同時是球員頁側的 build-fail 觸點）。
+  - **票 04 範例球員回連**：純函式 `selectMetricExamples`（候選＝`tracked`＋本季該指標有值；門檻打者 PA≥50／投手 IP≥20；層級 MLB>3A>2A、1A 以下排除；取 1~2、依方向挑最具代表值；無人→隱藏）＋ `selectRosterExamples`（roster 類走最近異動分支）；DB loader 取本季（資料中最新季）候選餵入。名詞頁底渲染「範例：{球員} 本季 {值}（{層級}，{級距標籤}）」。
+  - **測試**：Node 全 **114 綠**（+34：frontmatter Zod、registry 完整性/缺頁 fail、band 標籤查找、範例挑選表驅動、投手 BABIP 手算、service 讀出進階欄、進階 UI 區塊/名詞連結 smoke、bands-table/examples/index 元件 smoke、examples-db 自備 fixture 整合）、`pnpm typecheck` 過、`pnpm build` 過（10 則名詞頁 SSG + 30m ISR、build-fail check 通過、實測 wRC+ 頁渲染 body/級距/範例李灝宇連結）。
+  - **未跑正式 `/code-review`**（使用者觸發、計費，我無法代跑）；以逐檔自審＋全測試＋正式 build 把關代之。
+
 - [x] **球員個人頁 slice `player-detail-page`（4 票）完成——`/players/[id]` 五區全上**（`.scratch/player-detail-page/issues/`，分支 `feat/player-detail-page`，spec-02 §2.3）。名冊卡片可點入；頁面與 `/api/players/:id` 共用 `lib/services` 一組資料，Zod schema 即對外合約；非白名單→404、錯誤→500。
   - **票 01 骨架 + zone 1**：`getPlayerDetail(id)` 回 base 形狀（基本資料含慣用手/生日、目前隊伍、狀態一句、近況一句話），`/players/[id]` Server Component（ISR 1800）＋ `/api/players/:id`。`archived` 只顯 zone 1＋標「已離開美職體系」。
   - **票 02 zone 2 球季數據**：`stats.ts` 純函式由計數欄推導標準比率（打 AVG/OBP/SLG/OPS/ISO/BB%/K%/BABIP、投 ERA/WHIP/K9/BB9/HR9/K%/BB%，分母 0→null）；`buildSeasons` 依球季→層級→（每隊列＋**層級合計列**，合計由**加總計數再推導**、非平均比率，spec-01 C.7）。低階（1A 以下）標「僅供參考」；archived 呈現為「生涯總成績」。進階數據（打/投各 7）依 spec-04 §D「名詞頁先行」留待名詞庫批。
@@ -186,7 +194,7 @@
   - 票 01：逐場改 gameLog、退役 boxscore 全掃。票 02：初始 backfill 2020~今（補 `game_*_lines`，讓 career_high 誠實）＋收尾 reproject/重算近況。
 
 - [x] ~~**player-detail-page slice（順位 1：球員個人頁第一階段，4 票）**~~（2026-07-28 完成、merge 回 main，見已完成區）。**進階數據（打/投各7）+名詞連結留順位 2**（受 spec-04 §D「名詞頁先行、缺頁 build fail」約束）。
-- [ ] **順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，`.scratch/glossary-and-advanced-metrics/issues/`）**——**01** 名詞庫管線 + registry + 缺頁 build-fail + `/glossary`、`/glossary/[slug]` 三層模板（wRC+ 打穿，frontier）→ **02** 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ **03** 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；**04** 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。**首頁動態導向 → SEO 屬後續 phase、本批不含。**
+- [x] ~~**順位 2：名詞庫 12 進階名詞 + 個人頁進階區（4 票，`.scratch/glossary-and-advanced-metrics/issues/`）**~~（2026-07-28 完成，見已完成區；實作為 10 則 MDX——打投共用 4 則各含雙段級距即覆蓋打/投各 7）——**01** 名詞庫管線 + registry + 缺頁 build-fail + `/glossary`、`/glossary/[slug]` 三層模板（wRC+ 打穿，frontier）→ **02** 其餘 11 則進階名詞頁（MLB 慣例值、3A/2A 佔位待校訂）→ **03** 個人頁進階區（讀出已存進階欄 + 衍生進階、可展開、缺值不顯示、名詞雙向連結；blocked by 02）；**04** 名詞頁範例球員回連（blocked by 01，可與 02/03 並行）。frontier＝票 01。**首頁動態導向 → SEO 屬後續 phase、本批不含。**
 
 > spec 已於 2026-07-23 重建完成（入口 `spec/spec-00-overview.md`）；舊 spec 封存於 `archive/spec/`。
 
@@ -194,7 +202,7 @@
 - [x] ~~**schema + seed slice**（3 票）~~（2026-07-24 完成，見已完成區）
 - [x] ~~Next.js 端把 `lib/services` → Route Handler → 頁面串起來~~（2026-07-24 完成；用**真實 seed 資料**而非假資料——白名單已入 DB，故直接串真資料）
 - [x] ~~導入 shadcn/ui + Tailwind，建立基礎「笨元件」~~（2026-07-24 完成，票 01/04）
-- [ ] spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）
+- [x] ~~spec-04 §A 的 12 則進階名詞開寫（球員頁上線前置）~~（2026-07-28 完成，10 則 MDX；standard/roster 兩批留後續 phase）
 
 ---
 

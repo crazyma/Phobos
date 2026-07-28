@@ -60,6 +60,7 @@ export type PitchingRates = {
   bb9: number | null;
   kPct: number | null;
   bbPct: number | null;
+  babip: number | null;
 };
 
 const div = (num: number, den: number): number | null => (den > 0 ? num / den : null);
@@ -94,6 +95,10 @@ export function derivePitching(c: PitchingCounting): PitchingRates {
     bb9: per9(c.bb),
     kPct: div(c.so, c.bf),
     bbPct: div(c.bb, c.bf),
+    // Pitcher BABIP: (H−HR) over balls in play. We lack HBP/SF on the pitching
+    // side, so at-bats-against is approximated as BF−BB, giving a denominator of
+    // BF−BB−SO−HR (parallels batting's AB−SO−HR+SF). Advanced/best-effort.
+    babip: div(c.h - c.hr, c.bf - c.bb - c.so - c.hr),
   };
 }
 

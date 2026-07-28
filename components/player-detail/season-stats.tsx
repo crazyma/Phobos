@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Season } from "@/lib/services";
 import {
   DASH,
@@ -6,6 +7,14 @@ import {
   formatPct,
   formatRate3,
 } from "@/lib/format";
+import {
+  ADVANCED_BY_PERSPECTIVE,
+  formatMetric,
+  METRIC_LABELS,
+  metricValue,
+  type Perspective,
+} from "@/lib/glossary/metrics";
+import { metricSlug } from "@/lib/glossary/registry";
 
 type BattingLine = Season["batting"][number]["rows"][number];
 type PitchingLine = Season["pitching"][number]["rows"][number];
@@ -113,9 +122,49 @@ function StatTable<T extends { team: { name: string; abbrev: string | null } | n
 }
 
 /**
+ * Advanced metrics (spec-02 §2.3 / spec-04 §A): a secondary, expandable block
+ * per level group. Missing values are hidden (advanced are mostly MLB-only, so
+ * minor-league groups naturally show little or nothing → block hidden). Each
+ * metric name links to its glossary page (bidirectional link; the slug comes
+ * from the build-time registry, spec-04 §D). Shows the aggregate line —
+ * the level total when a level spans teams, else the single team row.
+ */
+function AdvancedStats({
+  perspective,
+  line,
+}: {
+  perspective: Perspective;
+  line: Record<string, unknown>;
+}) {
+  const items = ADVANCED_BY_PERSPECTIVE[perspective]
+    .map((key) => ({ key, value: metricValue(line, key) }))
+    .filter((m) => m.value !== null);
+  if (items.length === 0) return null;
+
+  return (
+    <details className="mt-1.5 text-xs">
+      <summary className="cursor-pointer text-muted-foreground select-none">進階數據</summary>
+      <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+        {items.map(({ key, value }) => (
+          <li key={key}>
+            <Link
+              href={`/glossary/${metricSlug(key)}`}
+              className="text-muted-foreground underline hover:text-foreground"
+            >
+              {METRIC_LABELS[key]}
+            </Link>{" "}
+            <span className="font-medium tabular-nums">{formatMetric(key, value)}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/**
  * Zone 2 (spec-02 §2.3): season stats, grouped by season, sectioned by level,
- * per-team rows + a recomputed level total. Standard rates only (advanced stats
- * are a later, glossary-gated ticket). Low levels carry a "僅供參考" note.
+ * per-team rows + a recomputed level total, with an expandable advanced block
+ * per group (spec-04). Low levels carry a "僅供參考" note.
  * `heading` lets the archived view relabel it「生涯總成績」.
  */
 export function SeasonStats({
@@ -153,6 +202,7 @@ export function SeasonStats({
                       低階層級數據僅供參考。
                     </p>
                   )}
+                  <AdvancedStats perspective="batter" line={group.total ?? group.rows[0]} />
                 </div>
               ))}
               {season.pitching.map((group) => (
@@ -166,6 +216,7 @@ export function SeasonStats({
                       低階層級數據僅供參考。
                     </p>
                   )}
+                  <AdvancedStats perspective="pitcher" line={group.total ?? group.rows[0]} />
                 </div>
               ))}
             </div>

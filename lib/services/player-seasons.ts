@@ -40,7 +40,14 @@ const battingRates = {
   ops: z.number().nullable(), iso: z.number().nullable(), bbPct: z.number().nullable(),
   kPct: z.number().nullable(), babip: z.number().nullable(),
 };
-const BattingLineSchema = z.object({ team: TeamRefSchema, ...battingCounting, ...battingRates });
+// Stored advanced (StatsAPI sabermetrics, MLB-only best-effort); can't be
+// recomputed from counting, so a multi-team level total leaves them null.
+const battingAdvanced = {
+  woba: z.number().nullable(), wrcPlus: z.number().nullable(), war: z.number().nullable(),
+};
+const BattingLineSchema = z.object({
+  team: TeamRefSchema, ...battingCounting, ...battingRates, ...battingAdvanced,
+});
 
 const pitchingCounting = {
   g: z.number().int(), gs: z.number().int(), ipOuts: z.number().int(), bf: z.number().int(),
@@ -51,9 +58,15 @@ const pitchingCounting = {
 const pitchingRates = {
   era: z.number().nullable(), whip: z.number().nullable(), hr9: z.number().nullable(),
   k9: z.number().nullable(), bb9: z.number().nullable(), kPct: z.number().nullable(),
-  bbPct: z.number().nullable(),
+  bbPct: z.number().nullable(), babip: z.number().nullable(),
 };
-const PitchingLineSchema = z.object({ team: TeamRefSchema, ...pitchingCounting, ...pitchingRates });
+// Stored advanced: fip/war from sabermetrics, lob_pct self-computed by ETL.
+const pitchingAdvanced = {
+  fip: z.number().nullable(), lobPct: z.number().nullable(), war: z.number().nullable(),
+};
+const PitchingLineSchema = z.object({
+  team: TeamRefSchema, ...pitchingCounting, ...pitchingRates, ...pitchingAdvanced,
+});
 
 const LevelGroupSchema = <T extends z.ZodTypeAny>(line: T) =>
   z.object({
@@ -73,14 +86,27 @@ export const SeasonSchema = z.object({
 export type Season = z.infer<typeof SeasonSchema>;
 
 type Team = { id: number; name: string; abbrev: string | null };
-type BattingDbRow = BattingCounting & { season: number; level: string; team: Team | null };
-type PitchingDbRow = PitchingCounting & { season: number; level: string; team: Team | null };
+// Stored advanced ride alongside the counting stats on per-team rows; a summed
+// level total drops them (they don't aggregate), so they're optional here and
+// default to null in the line builders.
+type BattingAdv = { woba?: number | null; wrcPlus?: number | null; war?: number | null };
+type PitchingAdv = { fip?: number | null; lobPct?: number | null; war?: number | null };
+type BattingDbRow = BattingCounting &
+  BattingAdv & { season: number; level: string; team: Team | null };
+type PitchingDbRow = PitchingCounting &
+  PitchingAdv & { season: number; level: string; team: Team | null };
 
-function battingLine(c: BattingCounting, team: Team | null) {
-  return { team, ...c, ...deriveBatting(c) };
+function battingLine(c: BattingCounting & BattingAdv, team: Team | null) {
+  return {
+    team, ...c, ...deriveBatting(c),
+    woba: c.woba ?? null, wrcPlus: c.wrcPlus ?? null, war: c.war ?? null,
+  };
 }
-function pitchingLine(c: PitchingCounting, team: Team | null) {
-  return { team, ...c, ...derivePitching(c) };
+function pitchingLine(c: PitchingCounting & PitchingAdv, team: Team | null) {
+  return {
+    team, ...c, ...derivePitching(c),
+    fip: c.fip ?? null, lobPct: c.lobPct ?? null, war: c.war ?? null,
+  };
 }
 
 /**
@@ -148,6 +174,7 @@ export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Seas
       teamId: b.teamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
       g: b.g, pa: b.pa, ab: b.ab, h: b.h, doubles: b.doubles, triples: b.triples, hr: b.hr,
       rbi: b.rbi, r: b.r, sb: b.sb, cs: b.cs, bb: b.bb, so: b.so, hbp: b.hbp, sf: b.sf,
+      woba: b.woba, wrcPlus: b.wrcPlus, war: b.war,
     })
     .from(b)
     .leftJoin(teams, eq(teams.mlbTeamId, b.teamId))
@@ -160,6 +187,7 @@ export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Seas
       teamId: p.teamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
       g: p.g, gs: p.gs, ipOuts: p.ipOuts, bf: p.bf, h: p.h, r: p.r, er: p.er, hr: p.hr,
       bb: p.bb, so: p.so, w: p.w, l: p.l, sv: p.sv, hld: p.hld,
+      fip: p.fip, lobPct: p.lobPct, war: p.war,
     })
     .from(p)
     .leftJoin(teams, eq(teams.mlbTeamId, p.teamId))

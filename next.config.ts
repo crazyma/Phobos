@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
+import createMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
+  // Glossary term pages are authored as MDX (spec-04); frontmatter is stripped
+  // by remark-frontmatter so the body renders cleanly (the structured data is
+  // read separately via gray-matter in lib/glossary).
+  pageExtensions: ["ts", "tsx", "md", "mdx"],
   typescript: {
     // Type-checking is delegated to `pnpm typecheck` (TypeScript 7 / tsgo, the
     // native compiler this repo standardises on — see package.json). Next 16's
@@ -11,4 +16,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withMDX = createMDX({
+  options: {
+    // Turbopack can't serialize function references, so plugins are named as
+    // strings (resolved by @next/mdx). remark-frontmatter strips the YAML block
+    // from the rendered body; remark-mdx-frontmatter is harmless alongside it.
+    remarkPlugins: [["remark-frontmatter"], ["remark-mdx-frontmatter"]],
+  },
+});
+
+export default withMDX(nextConfig);

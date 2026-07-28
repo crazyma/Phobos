@@ -1,0 +1,40 @@
+---
+slug: fip
+name_zh: 獨立防禦率
+name_en: FIP
+category: pitching_adv
+applies_to: [pitcher]
+metric_keys: [fip]
+higher_is_better: false
+blurb: 只看投手能獨立掌控的結果（三振、保送、觸身、全壘打），刻度對齊 ERA。
+formula: FIP =（13×HR + 3×(BB+HBP) − 2×K）/ IP + 常數
+bands:
+  pitcher:
+    mlb:
+      - {max: 3.00, label: 菁英}
+      - {max: 3.75, label: 不錯}
+      - {max: 4.50, label: 平均}
+      - {max: 5.25, label: 偏弱}
+      - {label: 待加強}
+    aaa:
+      - {max: 3.00, label: 菁英}
+      - {max: 3.75, label: 不錯}
+      - {max: 4.50, label: 平均}
+      - {max: 5.25, label: 偏弱}
+      - {label: 待加強}
+    aa:
+      - {max: 3.00, label: 菁英}
+      - {max: 3.75, label: 不錯}
+      - {max: 4.50, label: 平均}
+      - {max: 5.25, label: 偏弱}
+      - {label: 待加強}
+sources:
+  - {label: FanGraphs Library — FIP, url: https://library.fangraphs.com/pitching/fip/}
+  - {label: MLB Glossary — FIP, url: https://www.mlb.com/glossary/advanced-stats/fielding-independent-pitching}
+---
+
+ERA 會受守備、運氣、殘壘等投手無法完全掌控的因素影響。FIP（Fielding Independent Pitching）只採計投手**能獨立決定**的結果——三振、保送、觸身、被全壘打——並加上常數把刻度校正到與 ERA 相近，因此可以直接和 ERA 對照解讀（數字越低越好）。
+
+當投手的 ERA 明顯低於 FIP，往往代表有守備或運氣加持、未來可能回歸；反之則可能被低估。聯盟平均約落在 4.00 上下。
+
+**3A／2A 級距為首版佔位，待依小聯盟環境校訂**——小聯盟得分環境偏高，平均 FIP 通常也較大聯盟高。
