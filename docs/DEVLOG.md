@@ -7,6 +7,10 @@
 
 ## ✅ 已完成
 
+### 2026-07-29
+
+- [x] 執行 ETL `manual` 同步批次：`sync_run #382 → success`。transactions 有 15 個不屬於納入 sportId 的 team ref，依既有 sanitize 規則設為 `NULL`，未影響批次完成。
+
 ### 2026-07-28
 
 - [x] **首頁 polish 票 `homepage-digest/05` 完成——digest 錨定改 wall-clock + 即將出賽效率**（`.scratch/homepage-digest/issues/05`，分支 `feat/homepage-digest-05`；接 homepage slice code-review 兩項低嚴重度觀察）。皆為首頁 service 內部修正，`/api/home` 對外 Zod 合約不變：
@@ -202,6 +206,8 @@
 ---
 
 ## ▶️ 進行中 / 下一步
+
+- [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
 - [x] ~~**ETL slice（spec-03）全 7 票完成**~~（2026-07-27，分支 `feat/spec-03-etl-skeleton`）——01 骨架+StatsAPI+raw+sync_runs（footer 轉真值）→ 02 參考資料 teams/bio → {03 狀態投影★、04 逐場、06 季數據 並行} → 05 近況★ → 07 兩批編排+CLI。★＝點亮 `/players`。語言 Python（uv）、psycopg、把 Drizzle schema 當合約不自行 migrate。三批（morning/evening/manual）真連線跑通、`/players` 狀態＋近況上真值。詳見已完成區各票。
