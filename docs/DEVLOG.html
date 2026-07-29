@@ -432,6 +432,15 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
+    <li class=""><strong><code>games-role-split</code> slice（2 票，<code>.scratch/games-role-split/issues/</code>）——拆開 <code>games</code> 的兩個角色</strong>。2026-07-29 由 DB 現況快照盤點出來：<code>games</code> 2691 筆同時扮演「未來賽程表」與「歷史比賽維度表」，兩者生命週期完全相反（一個過期就該丟、一個要永久保留），混在一張表是後述三個問題的共同根因。<strong>決策理由是語意誠實，不是省空間</strong>——15 人規模下 <code>games</code> 也才約 7,500 筆／1 MB（現況 384 kB；15 MB 的 DB 裡真正的大戶是 <code>raw_payloads</code> 6.1 MB）。
+    <ul class="todo">
+    <li><strong>盤點結果</strong>：2691 筆中 1736（64%）是 tracked 球員打過的（<code>etl backfill</code> 2021→今，<code>career_high</code> 的依據，<strong>必須保留</strong>）、25 筆是現役球隊前瞻、<strong>929 筆（35%）跟任何 tracked 球員都無關</strong>——schedule 每批對六個 sportId 掃全聯盟的殘留，無人參照、只增不減。表上沒有欄位能區分這兩種來源，只能反查 <code>game_*_lines</code>。</li>
+    <li><strong>另查到的 bug</strong>：schedule 窗口是 <code>today-1 .. today</code>（<code>games.py:226</code>）<strong>從不抓未來</strong>，41 筆 <code>scheduled</code> 全部日期 <code>2026-07-27</code>（早於當日），而 <code>player-upcoming.ts:85</code> 要求 <code>&gt;= today</code> → <strong>個人頁與首頁的「下一系列賽」目前實際上是空的</strong>。票 02 一併修掉。</li>
+    <li class=""><strong>票 01 逐場自給自足</strong>（frontier）：<code>game_date_us</code>／<code>opponent_team_id</code>／<code>is_home</code> 反正規化進 <code>game_*_lines</code>、回填、拆掉 <code>game_pk</code> 的 FK、<strong>7 處查詢</strong>移除 join（TS 5：<code>player-recent</code> ×2、<code>home</code> ×3；<strong>Python 2：<code>recent_form.py:310-327</code></strong>——近況引擎讀全歷史取 <code>game_date_us</code>，是清理策略下唯一會被打爆的讀取端）。這三欄是這些查詢從 <code>games</code> 取的<strong>全部</strong>內容（比分／球場／狀態／系列賽一欄都沒用到），且 gameLog payload 本來就有（<code>game_lines.py:147-154</code>），目前只是拿去組 <code>games</code> 表頭。</li>
+    <li class=""><strong>票 02 <code>games</code> 轉純前瞻</strong>（blocked by 01）：schedule 只抓現役球隊、窗口改 <code>today .. +7 天</code>（<strong>不可用 1–2 天</strong>：一個系列 3–4 場，短窗口會讓「下一系列賽」空掉）、gameLog 停止 upsert 表頭、每批清掉過期列。預期收斂到百來筆。<strong>動工前需先決策</strong>：<code>player-upcoming</code> 的「球隊近期戰績」查的是 <code>status=&#x27;final&#x27;</code> 的過去比賽，會被保留策略清掉——保留窗口往回留幾天，或改由逐場表推導。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done">~~執行 ETL <code>manual</code> 同步批次~~（2026-07-29 完成，見已完成區）。</li>
     </ul>
     <ul class="todo">

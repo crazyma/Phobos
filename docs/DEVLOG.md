@@ -212,6 +212,12 @@
 
 ## ▶️ 進行中 / 下一步
 
+- [ ] **`games-role-split` slice（2 票，`.scratch/games-role-split/issues/`）——拆開 `games` 的兩個角色**。2026-07-29 由 DB 現況快照盤點出來：`games` 2691 筆同時扮演「未來賽程表」與「歷史比賽維度表」，兩者生命週期完全相反（一個過期就該丟、一個要永久保留），混在一張表是後述三個問題的共同根因。**決策理由是語意誠實，不是省空間**——15 人規模下 `games` 也才約 7,500 筆／1 MB（現況 384 kB；15 MB 的 DB 裡真正的大戶是 `raw_payloads` 6.1 MB）。
+  - **盤點結果**：2691 筆中 1736（64%）是 tracked 球員打過的（`etl backfill` 2021→今，`career_high` 的依據，**必須保留**）、25 筆是現役球隊前瞻、**929 筆（35%）跟任何 tracked 球員都無關**——schedule 每批對六個 sportId 掃全聯盟的殘留，無人參照、只增不減。表上沒有欄位能區分這兩種來源，只能反查 `game_*_lines`。
+  - **另查到的 bug**：schedule 窗口是 `today-1 .. today`（`games.py:226`）**從不抓未來**，41 筆 `scheduled` 全部日期 `2026-07-27`（早於當日），而 `player-upcoming.ts:85` 要求 `>= today` → **個人頁與首頁的「下一系列賽」目前實際上是空的**。票 02 一併修掉。
+  - [ ] **票 01 逐場自給自足**（frontier）：`game_date_us`／`opponent_team_id`／`is_home` 反正規化進 `game_*_lines`、回填、拆掉 `game_pk` 的 FK、**7 處查詢**移除 join（TS 5：`player-recent` ×2、`home` ×3；**Python 2：`recent_form.py:310-327`**——近況引擎讀全歷史取 `game_date_us`，是清理策略下唯一會被打爆的讀取端）。這三欄是這些查詢從 `games` 取的**全部**內容（比分／球場／狀態／系列賽一欄都沒用到），且 gameLog payload 本來就有（`game_lines.py:147-154`），目前只是拿去組 `games` 表頭。
+  - [ ] **票 02 `games` 轉純前瞻**（blocked by 01）：schedule 只抓現役球隊、窗口改 `today .. +7 天`（**不可用 1–2 天**：一個系列 3–4 場，短窗口會讓「下一系列賽」空掉）、gameLog 停止 upsert 表頭、每批清掉過期列。預期收斂到百來筆。**動工前需先決策**：`player-upcoming` 的「球隊近期戰績」查的是 `status='final'` 的過去比賽，會被保留策略清掉——保留窗口往回留幾天，或改由逐場表推導。
+
 - [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
