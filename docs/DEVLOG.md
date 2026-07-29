@@ -218,6 +218,11 @@
   - [ ] **票 01 逐場自給自足**（frontier）：`game_date_us`／`opponent_team_id`／`is_home` 反正規化進 `game_*_lines`、回填、拆掉 `game_pk` 的 FK、**7 處查詢**移除 join（TS 5：`player-recent` ×2、`home` ×3；**Python 2：`recent_form.py:310-327`**——近況引擎讀全歷史取 `game_date_us`，是清理策略下唯一會被打爆的讀取端）。這三欄是這些查詢從 `games` 取的**全部**內容（比分／球場／狀態／系列賽一欄都沒用到），且 gameLog payload 本來就有（`game_lines.py:147-154`），目前只是拿去組 `games` 表頭。
   - [ ] **票 02 `games` 轉純前瞻**（blocked by 01）：schedule 只抓現役球隊、窗口改 `today .. +7 天`（**不可用 1–2 天**：一個系列 3–4 場，短窗口會讓「下一系列賽」空掉）、gameLog 停止 upsert 表頭、每批清掉過期列。預期收斂到百來筆。**動工前需先決策**：`player-upcoming` 的「球隊近期戰績」查的是 `status='final'` 的過去比賽，會被保留策略清掉——保留窗口往回留幾天，或改由逐場表推導。
 
+- [ ] **`xwoba-savant` slice（1 票，`.scratch/xwoba-savant/issues/`）——以 Baseball Savant 填 `season_batting_stats.xwoba`**。該欄自建表以來全為 NULL（StatsAPI `sabermetrics` 不給 xwOBA，那是 Statcast 的東西），而 schema 一開始就留好位置：`season_stats.py:288` 刻意把 `xwoba` 排除在 `upsert_season_batting` 的 `ON CONFLICT DO UPDATE SET` 外、註解寫明留給未來的 Savant source。與 `games-role-split` 無相依，可並行。
+  - **來源（2026-07-29 實測）**：`baseballsavant.mlb.com/leaderboard/expected_statistics?type=batter&year=<Y>&filterType=bip&min=1&csv=true` → 200 / `text/csv`；`player_id` 即 `mlb_player_id`、`est_woba` 即 xwOBA。**`min=1` 必須明設**（預設 `min=q` 會濾掉兼職球員；實測 2025 年 666 列，抓得到鄭宗哲 `pa=7`）。**不引 pybaseball**——它底層就是打這個 endpoint，卻要拖進 pandas/numpy/matplotlib 只為一欄；標準庫 `urllib`+`csv` 即可，與 `snapshot.py`／`build_docs.py` 零依賴路線一致。
+  - **⚠️ 動工前需決策——粒度不匹配**：我們的 PK 是 `(player_id, season, level, team_id)`，Savant 是「球員×球季」不分隊。現有資料就有實例（Fairchild 2022 年 MLB 待過 113／136／137 三隊）。**建議 (a) 只在該 `(player_id, season, level='mlb')` 唯一一列時才寫、多隊留 NULL**（誠實、零誤導，現有 9 個 player-season 覆蓋 8 個，個人頁本來就缺值不顯示）；(b) 同值寫進多列＝假資料；(c) 加球季合計列違反 spec-01 C.7「層級合計不落表」。
+  - **來源選型結論（順帶查證，值得記住）**：pybaseball 的 Baseball-Reference 與 FanGraphs 路徑 **實測皆 403**（BR 回 Cloudflare「Just a moment...」挑戰頁，pybaseball 的 `IndexError` 是解析挑戰頁的症狀而非改版）。差別是結構性的：Savant 與 StatsAPI 同屬 MLB Advanced Media、`csv=true` 是官方匯出；BR／FG 是私人公司、資料即商品，擋 bot 是理性行為。**BR/FG 一律不進排程 ETL。** 連帶結論：**OPS+ 拿不到**（BR 原生指標，且需要 StatsAPI 沒有的球場因子，自算會得到跟任何公開來源都對不上的數字）——已有的 `wrc_plus` 是其上位替代且同樣 MLB-only，真正的缺口是**小聯盟層級沒有任何校正後打擊指標**（追蹤球員多數在 3A），那需要外部來源、非換欄位可解。
+
 - [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。

@@ -441,6 +441,14 @@
     </ul></li>
     </ul>
     <ul class="todo">
+    <li class=""><strong><code>xwoba-savant</code> slice（1 票，<code>.scratch/xwoba-savant/issues/</code>）——以 Baseball Savant 填 <code>season_batting_stats.xwoba</code></strong>。該欄自建表以來全為 NULL（StatsAPI <code>sabermetrics</code> 不給 xwOBA，那是 Statcast 的東西），而 schema 一開始就留好位置：<code>season_stats.py:288</code> 刻意把 <code>xwoba</code> 排除在 <code>upsert_season_batting</code> 的 <code>ON CONFLICT DO UPDATE SET</code> 外、註解寫明留給未來的 Savant source。與 <code>games-role-split</code> 無相依，可並行。
+    <ul>
+    <li><strong>來源（2026-07-29 實測）</strong>：<code>baseballsavant.mlb.com/leaderboard/expected_statistics?type=batter&amp;year=&lt;Y&gt;&amp;filterType=bip&amp;min=1&amp;csv=true</code> → 200 / <code>text/csv</code>；<code>player_id</code> 即 <code>mlb_player_id</code>、<code>est_woba</code> 即 xwOBA。<strong><code>min=1</code> 必須明設</strong>（預設 <code>min=q</code> 會濾掉兼職球員；實測 2025 年 666 列，抓得到鄭宗哲 <code>pa=7</code>）。<strong>不引 pybaseball</strong>——它底層就是打這個 endpoint，卻要拖進 pandas/numpy/matplotlib 只為一欄；標準庫 <code>urllib</code>+<code>csv</code> 即可，與 <code>snapshot.py</code>／<code>build_docs.py</code> 零依賴路線一致。</li>
+    <li><strong>⚠️ 動工前需決策——粒度不匹配</strong>：我們的 PK 是 <code>(player_id, season, level, team_id)</code>，Savant 是「球員×球季」不分隊。現有資料就有實例（Fairchild 2022 年 MLB 待過 113／136／137 三隊）。<strong>建議 (a) 只在該 <code>(player_id, season, level=&#x27;mlb&#x27;)</code> 唯一一列時才寫、多隊留 NULL</strong>（誠實、零誤導，現有 9 個 player-season 覆蓋 8 個，個人頁本來就缺值不顯示）；(b) 同值寫進多列＝假資料；(c) 加球季合計列違反 spec-01 C.7「層級合計不落表」。</li>
+    <li><strong>來源選型結論（順帶查證，值得記住）</strong>：pybaseball 的 Baseball-Reference 與 FanGraphs 路徑 <strong>實測皆 403</strong>（BR 回 Cloudflare「Just a moment...」挑戰頁，pybaseball 的 <code>IndexError</code> 是解析挑戰頁的症狀而非改版）。差別是結構性的：Savant 與 StatsAPI 同屬 MLB Advanced Media、<code>csv=true</code> 是官方匯出；BR／FG 是私人公司、資料即商品，擋 bot 是理性行為。<strong>BR/FG 一律不進排程 ETL。</strong> 連帶結論：<strong>OPS+ 拿不到</strong>（BR 原生指標，且需要 StatsAPI 沒有的球場因子，自算會得到跟任何公開來源都對不上的數字）——已有的 <code>wrc_plus</code> 是其上位替代且同樣 MLB-only，真正的缺口是<strong>小聯盟層級沒有任何校正後打擊指標</strong>（追蹤球員多數在 3A），那需要外部來源、非換欄位可解。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done">~~執行 ETL <code>manual</code> 同步批次~~（2026-07-29 完成，見已完成區）。</li>
     </ul>
     <ul class="todo">
