@@ -163,6 +163,13 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-07-29</h3>
     <ul class="todo">
+    <li class="done"><strong>DB 現況快照工具 <code>scripts/db/snapshot.py</code></strong>（零依賴 Python 3 + <code>psql</code>，比照 <code>build_docs.py</code> 的路線）。把 12 張表的欄位表、筆數、示範資料、enum、索引寫進 <code>admin_private/current_table.md</code>（新增 <code>admin_private/</code> 到 <code>.gitignore</code>——內含實際資料，不進版控）。
+    <ul>
+    <li><strong>只覆寫 <code>&lt;!-- snapshot:begin KEY --&gt;</code> 標記區塊</strong>，人寫的用途說明、資料流向、投影規則、查詢範例原封不動；目標檔不存在時產生含全部標記的骨架。</li>
+    <li>筆數一律 <code>count(*)</code>：<code>pg_stat_user_tables.n_live_tup</code> 是 autovacuum 估計值，剛寫入未 ANALYZE 會失準（首版快照就被它誤報 <code>sync_runs</code>=0、實際 1 筆）。</li>
+    <li><code>--check</code> 比對時抹掉快照時間戳（否則永遠報不同步），可當 CI gate；<code>--print</code> 輸出到 stdout。</li>
+    <li>偵測到 <code>TABLE_ORDER</code> 未收錄的新表會警告並附加在最後，提醒補標記與用途說明。</li>
+    </ul></li>
     <li class="done">執行 ETL <code>manual</code> 同步批次：<code>sync_run #382 → success</code>。transactions 有 15 個不屬於納入 sportId 的 team ref，依既有 sanitize 規則設為 <code>NULL</code>，未影響批次完成。</li>
     </ul>
     <h3 id="sec-1-2">2026-07-28</h3>

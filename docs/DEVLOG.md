@@ -9,6 +9,11 @@
 
 ### 2026-07-29
 
+- [x] **DB 現況快照工具 `scripts/db/snapshot.py`**（零依賴 Python 3 + `psql`，比照 `build_docs.py` 的路線）。把 12 張表的欄位表、筆數、示範資料、enum、索引寫進 `admin_private/current_table.md`（新增 `admin_private/` 到 `.gitignore`——內含實際資料，不進版控）。
+  - **只覆寫 `<!-- snapshot:begin KEY -->` 標記區塊**，人寫的用途說明、資料流向、投影規則、查詢範例原封不動；目標檔不存在時產生含全部標記的骨架。
+  - 筆數一律 `count(*)`：`pg_stat_user_tables.n_live_tup` 是 autovacuum 估計值，剛寫入未 ANALYZE 會失準（首版快照就被它誤報 `sync_runs`=0、實際 1 筆）。
+  - `--check` 比對時抹掉快照時間戳（否則永遠報不同步），可當 CI gate；`--print` 輸出到 stdout。
+  - 偵測到 `TABLE_ORDER` 未收錄的新表會警告並附加在最後，提醒補標記與用途說明。
 - [x] 執行 ETL `manual` 同步批次：`sync_run #382 → success`。transactions 有 15 個不屬於納入 sportId 的 team ref，依既有 sanitize 規則設為 `NULL`，未影響批次完成。
 
 ### 2026-07-28
