@@ -449,6 +449,14 @@
     </ul></li>
     </ul>
     <ul class="todo">
+    <li class=""><strong><code>sync-runs-test-isolation</code>（1 票，<code>.scratch/sync-runs-test-isolation/issues/</code>）——別讓測試清空 <code>sync_runs</code></strong>。<code>lib/services/sync.test.ts:16,20</code> 對共用開發 DB 做<strong>無 <code>where</code> 的整表刪除</strong>（<code>beforeEach</code> + <code>afterAll</code>），<code>lib/db/client.ts</code> 讀同一個 <code>DATABASE_URL</code> → <strong>每跑一次 <code>pnpm test</code> 批次歷史就歸零</strong>。這是快照裡「<code>id</code> 已到 382、表裡剩 1 筆」的真正原因（先前推測「DB 重建過」為誤）。全 repo 整表刪除僅此一處，其餘 34 個 <code>db.delete()</code> 都以 fixture id 圈住自己。
+    <ul>
+    <li><strong>影響範圍</strong>：<code>sync_runs</code> 三個用途中，footer 的「資料更新於」（取最近一筆非 failed）<strong>不受影響</strong>；失效的是<strong>批次結果稽核</strong>（partial 出現過幾次、哪個 source 常掛）與<strong>對帳告警落點</strong>（roster/IL 與投影不一致寫入 <code>detail</code>，spec-03 §6）。</li>
+    <li><strong>決策（2026-07-29，batu）</strong>：暫不判斷批次歷史是否需長期保留，<strong>先留著、過一陣子再檢討</strong>；本票只讓它<strong>留得住</strong>，不引入保留期限。成本近乎零（一天兩批約 730 列/年、<code>detail</code> 幾百 bytes、查詢連索引都不需要）。<code>id</code> 斷號是 sequence 不回收的正常現象，不處理。</li>
+    <li><strong>⚠️ 只加 <code>where</code> 是不夠的</strong>：<code>getLastSyncedAt()</code> 本就是全表查詢（要回「整個系統最新一筆」），且第一個測試斷言 <code>toBeNull()</code>、<strong>本質上要求空表</strong>。建議改用<strong>獨立測試 DB</strong>（<code>.env.test</code> → <code>phobos_test</code>；測試檔 <code>beforeEach</code> 本來就跑 <code>migrate()</code>，天生支援從空 DB bootstrap），順帶讓其餘 34 個 DB 測試不再寫進開發資料。動工前確認。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done">~~執行 ETL <code>manual</code> 同步批次~~（2026-07-29 完成，見已完成區）。</li>
     </ul>
     <ul class="todo">

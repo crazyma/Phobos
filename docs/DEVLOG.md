@@ -223,6 +223,11 @@
   - **⚠️ 動工前需決策——粒度不匹配**：我們的 PK 是 `(player_id, season, level, team_id)`，Savant 是「球員×球季」不分隊。現有資料就有實例（Fairchild 2022 年 MLB 待過 113／136／137 三隊）。**建議 (a) 只在該 `(player_id, season, level='mlb')` 唯一一列時才寫、多隊留 NULL**（誠實、零誤導，現有 9 個 player-season 覆蓋 8 個，個人頁本來就缺值不顯示）；(b) 同值寫進多列＝假資料；(c) 加球季合計列違反 spec-01 C.7「層級合計不落表」。
   - **來源選型結論（順帶查證，值得記住）**：pybaseball 的 Baseball-Reference 與 FanGraphs 路徑 **實測皆 403**（BR 回 Cloudflare「Just a moment...」挑戰頁，pybaseball 的 `IndexError` 是解析挑戰頁的症狀而非改版）。差別是結構性的：Savant 與 StatsAPI 同屬 MLB Advanced Media、`csv=true` 是官方匯出；BR／FG 是私人公司、資料即商品，擋 bot 是理性行為。**BR/FG 一律不進排程 ETL。** 連帶結論：**OPS+ 拿不到**（BR 原生指標，且需要 StatsAPI 沒有的球場因子，自算會得到跟任何公開來源都對不上的數字）——已有的 `wrc_plus` 是其上位替代且同樣 MLB-only，真正的缺口是**小聯盟層級沒有任何校正後打擊指標**（追蹤球員多數在 3A），那需要外部來源、非換欄位可解。
 
+- [ ] **`sync-runs-test-isolation`（1 票，`.scratch/sync-runs-test-isolation/issues/`）——別讓測試清空 `sync_runs`**。`lib/services/sync.test.ts:16,20` 對共用開發 DB 做**無 `where` 的整表刪除**（`beforeEach` + `afterAll`），`lib/db/client.ts` 讀同一個 `DATABASE_URL` → **每跑一次 `pnpm test` 批次歷史就歸零**。這是快照裡「`id` 已到 382、表裡剩 1 筆」的真正原因（先前推測「DB 重建過」為誤）。全 repo 整表刪除僅此一處，其餘 34 個 `db.delete()` 都以 fixture id 圈住自己。
+  - **影響範圍**：`sync_runs` 三個用途中，footer 的「資料更新於」（取最近一筆非 failed）**不受影響**；失效的是**批次結果稽核**（partial 出現過幾次、哪個 source 常掛）與**對帳告警落點**（roster/IL 與投影不一致寫入 `detail`，spec-03 §6）。
+  - **決策（2026-07-29，batu）**：暫不判斷批次歷史是否需長期保留，**先留著、過一陣子再檢討**；本票只讓它**留得住**，不引入保留期限。成本近乎零（一天兩批約 730 列/年、`detail` 幾百 bytes、查詢連索引都不需要）。`id` 斷號是 sequence 不回收的正常現象，不處理。
+  - **⚠️ 只加 `where` 是不夠的**：`getLastSyncedAt()` 本就是全表查詢（要回「整個系統最新一筆」），且第一個測試斷言 `toBeNull()`、**本質上要求空表**。建議改用**獨立測試 DB**（`.env.test` → `phobos_test`；測試檔 `beforeEach` 本來就跑 `migrate()`，天生支援從空 DB bootstrap），順帶讓其餘 34 個 DB 測試不再寫進開發資料。動工前確認。
+
 - [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
