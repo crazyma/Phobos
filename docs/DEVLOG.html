@@ -457,6 +457,14 @@
     </ul></li>
     </ul>
     <ul class="todo">
+    <li class=""><strong><code>raw-payloads-retention</code>（1 票，<code>.scratch/raw-payloads-retention/issues/</code>）——<code>raw_payloads</code> 保留策略</strong>。DB 裡唯一有體積問題的表：<strong>6.1 MB、佔全庫 40%，而裡面只有 3 天資料</strong>（2026-07-27~29）。寫入集中在 <code>statsapi.py:67</code>（每次 API 呼叫自動記一筆），append-only、無 FK、<strong>無任何清理機制</strong>。組成：<code>people/*/stats</code> 216 筆 2740 kB（72%）、<code>teams</code> 18 筆 516 kB、<code>schedule</code> 12 筆 365 kB、<code>transactions</code> 10 筆 196 kB。與 <code>games</code> 那 929 筆殘留同類，但規模大一個數量級。
+    <ul>
+    <li><strong>⚠️ 動工前需決策——reprocess 到底會不會做</strong>：全 repo 掃過，<code>raw_payloads</code> <strong>有寫入端、零讀取端</strong>（TS 只有 schema 定義無查詢；ETL CLI 有 <code>resync</code>／<code>add-event</code>／<code>reproject</code>／<code>backfill</code>，<strong>沒有 <code>reprocess</code></strong>）。ADR §8.1 承諾的能力設計了但從未實作。<strong>會做</strong> → 保守保留高價值 endpoint 並另開票補 <code>etl reprocess</code>；<strong>不會做</strong> → raw 只剩除錯回看價值，全部留 7–14 天即可。兩者實作量差很多。</li>
+    <li><strong>已用實測排除兩個方案</strong>（不必再試）：①<strong>內容雜湊去重</strong>對最大宗的 <code>people</code> 幾乎無效（216 筆→60 筆相異，但 2740 kB 只降到 2701 kB、省 1.4%——重複的都是空回應小 payload，真正佔空間的 gameLog 每次多一場比賽、位元組必不同）；只有 <code>teams</code> 有效（省 67%）。②<strong>每個 <code>(endpoint, params)</code> 留最新一份</strong>全表僅省 14%——<code>params</code> 內嵌日期，每天都是新 key。<strong>唯一有效槓桿是按 endpoint 類型設保留天數。</strong></li>
+    <li>另記：這張表<strong>已被減量過一次</strong>（<code>DEVLOG:227</code> gamelog refactor 的「raw 停存 boxscore」砍掉 120 份整場 boxscore）。「什麼該進 raw」一直有意識管理，<strong>缺的是時間維度的管理</strong>——ADR §8.1 只說可 reprocess、沒說留多久，是這個坑的源頭。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done">~~執行 ETL <code>manual</code> 同步批次~~（2026-07-29 完成，見已完成區）。</li>
     </ul>
     <ul class="todo">

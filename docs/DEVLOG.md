@@ -228,6 +228,11 @@
   - **決策（2026-07-29，batu）**：暫不判斷批次歷史是否需長期保留，**先留著、過一陣子再檢討**；本票只讓它**留得住**，不引入保留期限。成本近乎零（一天兩批約 730 列/年、`detail` 幾百 bytes、查詢連索引都不需要）。`id` 斷號是 sequence 不回收的正常現象，不處理。
   - **⚠️ 只加 `where` 是不夠的**：`getLastSyncedAt()` 本就是全表查詢（要回「整個系統最新一筆」），且第一個測試斷言 `toBeNull()`、**本質上要求空表**。建議改用**獨立測試 DB**（`.env.test` → `phobos_test`；測試檔 `beforeEach` 本來就跑 `migrate()`，天生支援從空 DB bootstrap），順帶讓其餘 34 個 DB 測試不再寫進開發資料。動工前確認。
 
+- [ ] **`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）——`raw_payloads` 保留策略**。DB 裡唯一有體積問題的表：**6.1 MB、佔全庫 40%，而裡面只有 3 天資料**（2026-07-27~29）。寫入集中在 `statsapi.py:67`（每次 API 呼叫自動記一筆），append-only、無 FK、**無任何清理機制**。組成：`people/*/stats` 216 筆 2740 kB（72%）、`teams` 18 筆 516 kB、`schedule` 12 筆 365 kB、`transactions` 10 筆 196 kB。與 `games` 那 929 筆殘留同類，但規模大一個數量級。
+  - **⚠️ 動工前需決策——reprocess 到底會不會做**：全 repo 掃過，`raw_payloads` **有寫入端、零讀取端**（TS 只有 schema 定義無查詢；ETL CLI 有 `resync`／`add-event`／`reproject`／`backfill`，**沒有 `reprocess`**）。ADR §8.1 承諾的能力設計了但從未實作。**會做** → 保守保留高價值 endpoint 並另開票補 `etl reprocess`；**不會做** → raw 只剩除錯回看價值，全部留 7–14 天即可。兩者實作量差很多。
+  - **已用實測排除兩個方案**（不必再試）：①**內容雜湊去重**對最大宗的 `people` 幾乎無效（216 筆→60 筆相異，但 2740 kB 只降到 2701 kB、省 1.4%——重複的都是空回應小 payload，真正佔空間的 gameLog 每次多一場比賽、位元組必不同）；只有 `teams` 有效（省 67%）。②**每個 `(endpoint, params)` 留最新一份**全表僅省 14%——`params` 內嵌日期，每天都是新 key。**唯一有效槓桿是按 endpoint 類型設保留天數。**
+  - 另記：這張表**已被減量過一次**（`DEVLOG:227` gamelog refactor 的「raw 停存 boxscore」砍掉 120 份整場 boxscore）。「什麼該進 raw」一直有意識管理，**缺的是時間維度的管理**——ADR §8.1 只說可 reprocess、沒說留多久，是這個坑的源頭。
+
 - [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
