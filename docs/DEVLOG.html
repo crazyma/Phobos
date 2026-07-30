@@ -465,6 +465,18 @@
     </ul></li>
     </ul>
     <ul class="todo">
+    <li class=""><strong><code>doc-drift-fixes</code>（1 票，<code>.scratch/doc-drift-fixes/issues/</code>）——ETL 文件漂移兩處</strong>（2026-07-30 說明三批次差異時查出；純文件／死碼清理，不動執行邏輯）。
+    <ul>
+    <li><strong>A：<code>GAMELOG_LOOKBACK_DAYS</code> 是死常數。</strong> <code>config.py:24</code> 有定義，<strong>全 repo 無任何 import</strong>（唯一提及是 <code>cli.py:11</code> docstring 文字）。實際 <code>game_lines.py:409-422</code> 兩批都抓<strong>整個當季</strong> gameLog、無回看窗口，<code>kind</code> 只用於命名 source。這是 2026-07-27 gamelog refactor 的必然結果——改成按球員抓自己的 gameLog 後「掃幾天內的比賽」就不存在了。待清：常數本身、<code>spec-03:37</code> 來源對照表、<code>spec-00:53</code> 參數表。<strong>DEVLOG 已完成區的 <code>:83</code>／<code>:104</code> 不改</strong>（歷史紀錄正確反映當時狀態）。</li>
+    <li><strong>B：ADR 指定「經 pybaseball」取 Savant，但 <code>xwoba-savant</code> 票選了零依賴 CSV。</strong> <code>decisions.md:132</code>／<code>:139</code>、<code>spec-03:39</code> 都寫 Savant 經 pybaseball；票 01 改直接讀官方 <code>csv=true</code> 匯出。<strong>這是決策變更、不只是文件過時</strong>，正解是在 ADR §6.4 補一則決策記錄理由與影響，而非默默改字。</li>
+    <li><strong>C（自我更正）</strong>：DEVLOG 的 <code>xwoba-savant</code> 條目把 FG／BR 403 寫成「順帶查證」的新發現，但 <strong><code>decisions.md:131</code>（§6.4）早在 2026-07-23 就記錄了</strong>並明寫「不嘗試繞過」。07-29 的實測是六天後的再次驗證，非新發現，措辭待改並指向 ADR。</li>
+    <li>成因值得記住：gamelog refactor 改掉了資料抓取的<strong>形狀</strong>（game-中心 → player-中心），只更新了 spec-03 的敘述段落，漏掉同一份文件的<strong>來源對照表</strong>與 spec-00 的<strong>參數表</strong>。改變抓取形狀時，參數表最容易漏。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
+    <li class="done"><strong>執行 ETL <code>morning</code> 同步批次</strong>（2026-07-30）：<code>sync_run #383 → success</code>，約 2 分鐘。變化：<code>games</code> 2691→2877（<strong>+186，其中僅 8 筆對應實際出賽</strong>——印證 <code>games-role-split</code> 票 02 的殘留成長速率比原估更快，929→1107）、<code>raw_payloads</code> 256→339（<strong>日增 83 筆</strong>，印證 <code>raw-payloads-retention</code> 的緊迫性）、逐場 +8、<code>transaction_events</code> +1、<code>season_pitching_stats</code> +1。近況句全部重算出真值（林昱珉升級為 <code>single_game</code>「上一場優質先發」）。兩個 WARNING 皆既有 sanitize 規則正常運作（<code>season_stats</code> 丟 2 支非納入 sportId 球隊、<code>transactions</code> 15 個 team ref 設 NULL），與 07-29 同模式。</li>
+    </ul>
+    <ul class="todo">
     <li class="done">~~執行 ETL <code>manual</code> 同步批次~~（2026-07-29 完成，見已完成區）。</li>
     </ul>
     <ul class="todo">

@@ -233,6 +233,14 @@
   - **已用實測排除兩個方案**（不必再試）：①**內容雜湊去重**對最大宗的 `people` 幾乎無效（216 筆→60 筆相異，但 2740 kB 只降到 2701 kB、省 1.4%——重複的都是空回應小 payload，真正佔空間的 gameLog 每次多一場比賽、位元組必不同）；只有 `teams` 有效（省 67%）。②**每個 `(endpoint, params)` 留最新一份**全表僅省 14%——`params` 內嵌日期，每天都是新 key。**唯一有效槓桿是按 endpoint 類型設保留天數。**
   - 另記：這張表**已被減量過一次**（`DEVLOG:227` gamelog refactor 的「raw 停存 boxscore」砍掉 120 份整場 boxscore）。「什麼該進 raw」一直有意識管理，**缺的是時間維度的管理**——ADR §8.1 只說可 reprocess、沒說留多久，是這個坑的源頭。
 
+- [ ] **`doc-drift-fixes`（1 票，`.scratch/doc-drift-fixes/issues/`）——ETL 文件漂移兩處**（2026-07-30 說明三批次差異時查出；純文件／死碼清理，不動執行邏輯）。
+  - **A：`GAMELOG_LOOKBACK_DAYS` 是死常數。** `config.py:24` 有定義，**全 repo 無任何 import**（唯一提及是 `cli.py:11` docstring 文字）。實際 `game_lines.py:409-422` 兩批都抓**整個當季** gameLog、無回看窗口，`kind` 只用於命名 source。這是 2026-07-27 gamelog refactor 的必然結果——改成按球員抓自己的 gameLog 後「掃幾天內的比賽」就不存在了。待清：常數本身、`spec-03:37` 來源對照表、`spec-00:53` 參數表。**DEVLOG 已完成區的 `:83`／`:104` 不改**（歷史紀錄正確反映當時狀態）。
+  - **B：ADR 指定「經 pybaseball」取 Savant，但 `xwoba-savant` 票選了零依賴 CSV。** `decisions.md:132`／`:139`、`spec-03:39` 都寫 Savant 經 pybaseball；票 01 改直接讀官方 `csv=true` 匯出。**這是決策變更、不只是文件過時**，正解是在 ADR §6.4 補一則決策記錄理由與影響，而非默默改字。
+  - **C（自我更正）**：DEVLOG 的 `xwoba-savant` 條目把 FG／BR 403 寫成「順帶查證」的新發現，但 **`decisions.md:131`（§6.4）早在 2026-07-23 就記錄了**並明寫「不嘗試繞過」。07-29 的實測是六天後的再次驗證，非新發現，措辭待改並指向 ADR。
+  - 成因值得記住：gamelog refactor 改掉了資料抓取的**形狀**（game-中心 → player-中心），只更新了 spec-03 的敘述段落，漏掉同一份文件的**來源對照表**與 spec-00 的**參數表**。改變抓取形狀時，參數表最容易漏。
+
+- [x] **執行 ETL `morning` 同步批次**（2026-07-30）：`sync_run #383 → success`，約 2 分鐘。變化：`games` 2691→2877（**+186，其中僅 8 筆對應實際出賽**——印證 `games-role-split` 票 02 的殘留成長速率比原估更快，929→1107）、`raw_payloads` 256→339（**日增 83 筆**，印證 `raw-payloads-retention` 的緊迫性）、逐場 +8、`transaction_events` +1、`season_pitching_stats` +1。近況句全部重算出真值（林昱珉升級為 `single_game`「上一場優質先發」）。兩個 WARNING 皆既有 sanitize 規則正常運作（`season_stats` 丟 2 支非納入 sportId 球隊、`transactions` 15 個 team ref 設 NULL），與 07-29 同模式。
+
 - [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。
