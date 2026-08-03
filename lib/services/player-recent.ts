@@ -4,7 +4,6 @@ import { db as defaultDb } from "../db/client.ts";
 import {
   gameBattingLines,
   gamePitchingLines,
-  games,
   transactionEvents,
 } from "../db/schema/index.ts";
 import { teamLevel, transactionType } from "../db/schema/enums.ts";
@@ -88,32 +87,30 @@ export async function getPlayerGameLog(
 
   const battingRows = await db
     .select({
-      gamePk: b.gamePk, gameDate: games.gameDateUs, level: b.level,
-      teamId: b.teamId, homeTeamId: games.homeTeamId, awayTeamId: games.awayTeamId,
+      gamePk: b.gamePk, gameDate: b.gameDateUs, level: b.level,
+      teamId: b.teamId, opponentTeamId: b.opponentTeamId, isHome: b.isHome,
       ab: b.ab, h: b.h, doubles: b.doubles, triples: b.triples, hr: b.hr,
       rbi: b.rbi, r: b.r, bb: b.bb, so: b.so, sb: b.sb,
     })
     .from(b)
-    .innerJoin(games, eq(games.gamePk, b.gamePk))
     .where(eq(b.playerId, id))
-    .orderBy(desc(games.gameDateUs), desc(b.gamePk))
+    .orderBy(desc(b.gameDateUs), desc(b.gamePk))
     .limit(limit);
 
   const pitchingRows = await db
     .select({
-      gamePk: p.gamePk, gameDate: games.gameDateUs, level: p.level,
-      teamId: p.teamId, homeTeamId: games.homeTeamId, awayTeamId: games.awayTeamId,
+      gamePk: p.gamePk, gameDate: p.gameDateUs, level: p.level,
+      teamId: p.teamId, opponentTeamId: p.opponentTeamId, isHome: p.isHome,
       started: p.started, ipOuts: p.ipOuts, h: p.h, r: p.r, er: p.er,
       bb: p.bb, so: p.so, hr: p.hr,
     })
     .from(p)
-    .innerJoin(games, eq(games.gamePk, p.gamePk))
     .where(eq(p.playerId, id))
-    .orderBy(desc(games.gameDateUs), desc(p.gamePk))
+    .orderBy(desc(p.gameDateUs), desc(p.gamePk))
     .limit(limit);
 
   const batting = battingRows.map((row) => {
-    const { opponent, isHome } = opponentOf(row.teamId, row.homeTeamId, row.awayTeamId, map);
+    const { opponent, isHome } = opponentOf(row.teamId, row.opponentTeamId, row.isHome, map);
     const rates = deriveBatting({
       ...row, pa: 0, cs: 0, hbp: 0, sf: 0, g: 0,
     });
@@ -127,7 +124,7 @@ export async function getPlayerGameLog(
   });
 
   const pitching = pitchingRows.map((row) => {
-    const { opponent, isHome } = opponentOf(row.teamId, row.homeTeamId, row.awayTeamId, map);
+    const { opponent, isHome } = opponentOf(row.teamId, row.opponentTeamId, row.isHome, map);
     const rates = derivePitching({
       ...row, g: 0, gs: 0, bf: 0, w: 0, l: 0, sv: 0, hld: 0,
     });

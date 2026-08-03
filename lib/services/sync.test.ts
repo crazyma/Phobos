@@ -5,8 +5,8 @@ import { syncRuns } from "../db/schema/index.ts";
 import { getLastSyncedAt } from "./sync.ts";
 
 // Fixed timestamps so ordering is deterministic and assertions are exact. Each
-// test starts from an empty sync_runs so the "latest" is unambiguous (this is
-// the shared integration DB; no other suite touches sync_runs).
+// test starts from an empty sync_runs so the "latest" is unambiguous. vitest
+// loads .env.test before this module, so this is an isolated test database.
 const T1 = new Date("2026-07-27T01:00:00Z");
 const T2 = new Date("2026-07-27T02:00:00Z");
 const T3 = new Date("2026-07-27T03:00:00Z");

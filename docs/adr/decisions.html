@@ -185,7 +185,7 @@
     <tr><td data-label="角色">Markdown / MDX</td><td data-label="選擇"><strong>@next/mdx</strong></td><td data-label="原因">規則說明頁以 Markdown/MDX 撰寫，build time 產生靜態 HTML</td></tr>
     <tr><td data-label="角色">UI</td><td data-label="選擇"><strong>shadcn/ui + Tailwind</strong></td><td data-label="原因">元件原始碼複製進專案（是「你的程式碼」）、最好替換；配合分層設計彈性大</td></tr>
     <tr><td data-label="角色">資料庫</td><td data-label="選擇"><strong>PostgreSQL</strong></td><td data-label="原因">結構化、關聯性強；作為 Node 與 Python 之間的整合邊界</td></tr>
-    <tr><td data-label="角色">資料 ETL / 爬蟲</td><td data-label="選擇"><strong>Python</strong></td><td data-label="原因">主要資料源 <code>pybaseball</code> 為 Python 套件</td></tr>
+    <tr><td data-label="角色">資料 ETL / 爬蟲</td><td data-label="選擇"><strong>Python</strong></td><td data-label="原因">psycopg 與標準庫已足夠；原先 pybaseball 前提已隨 §6.4 演變，但語言結論不變</td></tr>
     <tr><td data-label="角色">部署</td><td data-label="選擇"><strong>Vercel 或自架 <code>next start</code></strong></td><td data-label="原因">Next.js 原生支援，SSG 頁面可搭 CDN，起步階段免運維</td></tr>
     </tbody>
     </table>
@@ -271,7 +271,7 @@
     <thead><tr><th>發現</th><th>內容</th></tr></thead>
     <tbody>
     <tr><td data-label="發現"><strong>FanGraphs / Baseball-Reference 不可用</strong></td><td data-label="內容">pybaseball 對這兩站走 HTML 爬蟲，兩站已上 <strong>Cloudflare 防護</strong>，一律回 403；短期無解，不嘗試繞過</td></tr>
-    <tr><td data-label="發現"><strong>可用來源只剩兩個</strong></td><td data-label="內容"><strong>MLB Stats API</strong>（<code>statsapi.mlb.com/api/v1/</code>）＋ <strong>pybaseball 的 Savant/Statcast 接口</strong></td></tr>
+    <tr><td data-label="發現"><strong>可用來源</strong></td><td data-label="內容"><strong>MLB Stats API</strong>（<code>statsapi.mlb.com/api/v1/</code>）＋ <strong>Savant 官方 CSV 匯出</strong></td></tr>
     <tr><td data-label="發現"><strong>更新速度差異</strong></td><td data-label="內容">MLB API 更新<strong>快</strong>、Savant <strong>較慢</strong></td></tr>
     <tr><td data-label="發現"><strong>MLB API 有累積數據</strong></td><td data-label="內容">直接提供至今累積 AVG／ERA／OPS 等，不必自己從逐場加總</td></tr>
     </tbody>
@@ -279,7 +279,7 @@
     <p><strong>決策</strong>：</p>
     <ul>
     <li><strong>以 MLB Stats API 為主</strong>：賽程/賽果、box score、<strong>累積季數據</strong>、異動、roster/IL 全走它。</li>
-    <li><strong>Savant（經 pybaseball）為輔</strong>：只補 Statcast 系進階數據（xwOBA 等）；因更新較慢，允許落後主資料一批（best-effort）。</li>
+    <li><strong>Savant 官方 CSV 為輔</strong>：以 <code>csv=true</code> 匯出直接讀取、只補 Statcast 系進階數據（xwOBA 等）；不引 pybaseball，因更新較慢允許落後主資料一批（best-effort）。2026-07-29 實測為 200／<code>text/csv</code>，屬官方匯出而非 scraping；一個欄位不值得引入 pandas／numpy／matplotlib。leaderboard 粒度是球員×球季，<code>team=</code> 只篩名單、不改數據口徑，因此換隊球季無法取得分隊 xwOBA，ETL 只在單隊球季寫入。</li>
     <li><strong>後果（同日實測後更新）</strong>：FanGraphs 系指標改由 <strong>StatsAPI <code>stats=sabermetrics</code></strong> 供應——打 <code>woba/wRcPlus/war</code>、投 <code>fip/xfip/war</code>，為 MLB 官方自算版本（與 FanGraphs 同量級、非同值）；<strong>僅 MLB 層級</strong>（小聯盟進階維持 best-effort NULL）、2020~ 可回查。SIERA 仍無來源。實測紀錄見 spec-03 §9、應變決策見 requirements §9.1。</li>
     </ul>
   </section>

@@ -123,19 +123,21 @@ Upsert key：`source_tx_id`；無上游 id 時 `(player_id, type, effective_date
 | `game_number` / `games_in_series` / `series_game_number` | int | 雙重賽場次與系列賽資訊 |
 | `probable_home_pitcher_id` / `probable_away_pitcher_id` | int，可空 | 出賽預告（僅投手有「確定先發」） |
 
+`games` 是**純前瞻賽程表**：只保留現役 tracked 球員所屬球隊、美西今天前後各 7 天的賽程；窗口外資料每批清除。歷史比賽資訊由逐場表自帶，不依賴本表。
+
 ### C.6 逐場成績（球員 × 比賽 × **角色**＝兩張表）
 
 角色由**當場行為**決定（野手投球、二刀流＝同場兩表各一列）。
 
-`game_batting_lines`：PK `(player_id, game_pk)`；`team_id`、`level`、`pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb`。
+`game_batting_lines`：PK `(player_id, game_pk)`；`team_id`、`level`、`pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb`；另有 `game_date_us`（not null）、`opponent_team_id`／`is_home`（可空）。不設 `game_pk → games` FK。
 
-`game_pitching_lines`：PK `(player_id, game_pk)`；`team_id`、`level`、`started` bool、`ip_outs`（局數×3，整數存）、`h, r, er, bb, so, hr`。
+`game_pitching_lines`：PK `(player_id, game_pk)`；`team_id`、`level`、`started` bool、`ip_outs`（局數×3，整數存）、`h, r, er, bb, so, hr`；同樣自帶 `game_date_us`、`opponent_team_id`、`is_home`，不依賴 `games`。
 
 ### C.7 球季數據（球季 × 層級 × **球隊**）
 
 PK 皆 `(player_id, season, level, team_id)`——同季同層級跨隊分列；**層級合計列由 services 從計數欄重算**（比率可加總重算；進階指標不可加總，合計列僅在該層級單隊時顯示進階值）。**不做跨層級合計**。
 
-`season_batting_stats`：計數 `g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf`；進階（可空，best-effort）`woba, xwoba, wrc_plus, war`（`xwoba` 為遞補鏈預留欄，Savant 取得）；`source_updated_at`。
+`season_batting_stats`：計數 `g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf`；進階（可空，best-effort）`woba, xwoba, wrc_plus, war`。`xwoba` 由 Savant 官方 CSV 補入，僅 MLB 且 player-season 只有一隊時寫入；多隊球季留 NULL；`source_updated_at`。
 
 `season_pitching_stats`：計數 `g, gs, ip_outs, bf, h, r, er, hr, bb, so, w, l, sv, hld`；進階（可空）`fip, lob_pct, war`；`source_updated_at`。
 

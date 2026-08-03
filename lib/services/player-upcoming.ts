@@ -2,7 +2,7 @@ import { and, desc, eq, gte, or } from "drizzle-orm";
 import { z } from "zod";
 import { db as defaultDb } from "../db/client.ts";
 import { games, playerCurrentStatus } from "../db/schema/index.ts";
-import { loadTeamMap, opponentOf, type TeamMap } from "./team-map.ts";
+import { loadTeamMap, opponentFromTeams, type TeamMap } from "./team-map.ts";
 
 const OpponentSchema = z
   .object({ abbrev: z.string().nullable(), name: z.string() })
@@ -103,7 +103,7 @@ export async function getPlayerUpcoming(
 
   const nextGame = next
     ? (() => {
-        const { opponent, isHome } = opponentOf(teamId, next.homeTeamId, next.awayTeamId, map);
+        const { opponent, isHome } = opponentFromTeams(teamId, next.homeTeamId, next.awayTeamId, map);
         return {
           gamePk: next.gamePk,
           gameDate: String(next.gameDate),
@@ -131,7 +131,7 @@ export async function getPlayerUpcoming(
   }
 
   const recentResults = recentRows.map((g) => {
-    const { opponent, isHome } = opponentOf(teamId, g.homeTeamId, g.awayTeamId, map);
+    const { opponent, isHome } = opponentFromTeams(teamId, g.homeTeamId, g.awayTeamId, map);
     const teamScore = isHome === null ? null : isHome ? g.homeScore : g.awayScore;
     const opponentScore = isHome === null ? null : isHome ? g.awayScore : g.homeScore;
     const win =

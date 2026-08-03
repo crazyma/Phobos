@@ -11,13 +11,15 @@
 pnpm install
 cp .env.example .env          # 預設連 localhost:5432 的 phobos/phobos/phobos
 docker compose up -d          # 起本地 Postgres（或用你自己的 Postgres，改 .env 即可）
+createdb -h localhost -U phobos phobos_test  # 只需一次；供 pnpm test 使用的隔離 DB
+cp .env.example .env.test     # 再把 .env.test 的資料庫名改成 phobos_test
 pnpm db:migrate               # 套用 migration（全新 DB 為乾淨 no-op）
 pnpm db:seed                  # 灌台灣球員白名單（幂等）
 pnpm test                     # 連線 smoke test（需 DB 在跑）
 pnpm dev                      # 起前端，開 http://localhost:3000
 ```
 
-> 沒有 Docker 也行：起任一本機 Postgres、建好 `phobos` role/db，讓 `.env` 的 `DATABASE_URL` 指過去即可——連線字串兩邊共用。
+> 沒有 Docker 也行：起任一本機 Postgres、建好 `phobos` 與 `phobos_test` 兩個資料庫，讓 `.env`／`.env.test` 各自指向它們。測試會自行 migrate，不需 seed。
 
 ## Scripts
 

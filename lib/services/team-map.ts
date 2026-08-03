@@ -17,8 +17,21 @@ export async function loadTeamMap(db = defaultDb): Promise<TeamMap> {
   return new Map(rows.map((r) => [r.id, { abbrev: r.abbrev, name: r.nameZh ?? r.name }]));
 }
 
-/** Resolve the opponent + home flag for a game, given the player's team. */
+/** Resolve an opponent stored directly on a player's game line. */
 export function opponentOf(
+  teamId: number | null,
+  opponentTeamId: number | null,
+  isHome: boolean | null,
+  teamMap: TeamMap,
+): { opponent: TeamRef | null; isHome: boolean | null } {
+  if (teamId === null || opponentTeamId === null || isHome === null) {
+    return { opponent: null, isHome: null };
+  }
+  return { opponent: teamMap.get(opponentTeamId) ?? null, isHome };
+}
+
+/** Resolve a schedule game's opponent before it becomes a player game line. */
+export function opponentFromTeams(
   teamId: number | null,
   homeTeamId: number | null,
   awayTeamId: number | null,
@@ -28,6 +41,5 @@ export function opponentOf(
     return { opponent: null, isHome: null };
   }
   const isHome = homeTeamId === teamId;
-  const oppId = isHome ? awayTeamId : homeTeamId;
-  return { opponent: teamMap.get(oppId) ?? null, isHome };
+  return { opponent: teamMap.get(isHome ? awayTeamId : homeTeamId) ?? null, isHome };
 }

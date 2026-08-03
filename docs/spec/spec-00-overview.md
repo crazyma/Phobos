@@ -50,7 +50,6 @@
 | 常數 | 值 | 出處 |
 |---|---|---|
 | `SEASON_BACKFILL_START` | 2020 | requirements F1-2 |
-| `GAMELOG_LOOKBACK_DAYS` | 10（範圍 7~14 可調） | requirements §9.1 回填 |
 | `RECENT_GAMES_N` | 10（球員頁逐場顯示場數） | requirements F1-2 第 3 區（N 由本 spec 定案） |
 | 級距層級 | MLB / 3A / 2A | requirements §9.1 |
 | 顯示時區 | Asia/Taipei（儲存一律 UTC） | requirements F1-2 |

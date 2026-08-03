@@ -177,14 +177,9 @@ def test_recompute_writes_player_recent_form(db_conn):
                 (pid,),
             )
             cur.execute(
-                """insert into games (game_pk, level, game_date_us, status)
-                   values (%s, 'mlb', %s, 'final')""",
-                (game_pk, game_day),
-            )
-            cur.execute(
-                """insert into game_batting_lines (player_id, game_pk, level, ab, h)
-                   values (%s, %s, 'mlb', 4, 3)""",
-                (pid, game_pk),
+                """insert into game_batting_lines (player_id, game_pk, game_date_us, level, ab, h)
+                   values (%s, %s, %s, 'mlb', 4, 3)""",
+                (pid, game_pk, game_day),
             )
         db_conn.commit()
 
@@ -204,6 +199,5 @@ def test_recompute_writes_player_recent_form(db_conn):
         with db_conn.cursor() as cur:
             cur.execute("delete from player_recent_form where player_id = %s", (pid,))
             cur.execute("delete from game_batting_lines where player_id = %s", (pid,))
-            cur.execute("delete from games where game_pk = %s", (game_pk,))
             cur.execute("delete from players where mlb_player_id = %s", (pid,))
         db_conn.commit()

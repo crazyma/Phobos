@@ -189,17 +189,17 @@
     <table>
     <thead><tr><th>資料</th><th>來源</th><th>寫入</th><th>批次</th></tr></thead>
     <tbody>
-    <tr><td data-label="資料">賽程/先發預告（<strong>前瞻</strong>）</td><td data-label="來源">StatsAPI <code>schedule</code>（帶 <code>sportId</code>，<code>hydrate=probablePitcher</code>）</td><td data-label="寫入"><code>games</code>（即將/今日場次表頭）</td><td data-label="批次">兩批</td></tr>
-    <tr><td data-label="資料">逐場成績</td><td data-label="來源"><strong>StatsAPI 人員 gameLog</strong>（<code>people/{id}/stats?stats=gameLog</code>，每位 tracked 球員、按季／群組 hitting·pitching／必要時 sportId）；整場 boxscore <strong>不落庫</strong>，需要時 by-case 取</td><td data-label="寫入"><code>game_*_lines</code>（＋順手補 <code>games</code> 表頭：已打過的場）</td><td data-label="批次">morning 回看 <code>GAMELOG_LOOKBACK_DAYS=10</code>＋evening 掃尾；初期一次性 <strong>backfill 2020~今</strong></td></tr>
+    <tr><td data-label="資料">賽程/先發預告（<strong>前瞻</strong>）</td><td data-label="來源">StatsAPI <code>schedule</code>（現役球隊 <code>teamId</code>，<code>hydrate=probablePitcher</code>）</td><td data-label="寫入"><code>games</code>（美西今天前後 7 天的前瞻賽程）</td><td data-label="批次">兩批</td></tr>
+    <tr><td data-label="資料">逐場成績</td><td data-label="來源"><strong>StatsAPI 人員 gameLog</strong>（<code>people/{id}/stats?stats=gameLog</code>，每位 tracked 球員、按季／群組 hitting·pitching／必要時 sportId）；整場 boxscore <strong>不落庫</strong>，需要時 by-case 取</td><td data-label="寫入"><code>game_*_lines</code></td><td data-label="批次">morning／evening 各抓整個當季 gameLog（冪等；evening 補 morning 時未結束的場次）；歷史球季一次性 <code>etl backfill</code></td></tr>
     <tr><td data-label="資料">球季標準數據（全層級）</td><td data-label="來源">StatsAPI 人員 season stats（各 sportId；<strong>上游直接提供累積 AVG/ERA/OPS 等，取計數欄落庫、比率仍由 services 推導</strong>）</td><td data-label="寫入"><code>season_*_stats</code> 計數欄</td><td data-label="批次">morning（<strong>2020 起整季重拉</strong>，人數少可行）</td></tr>
-    <tr><td data-label="資料">球季進階數據（僅 MLB 層級）</td><td data-label="來源"><strong>StatsAPI <code>stats=sabermetrics</code></strong>（打 <code>woba/wRcPlus/war</code>、投 <code>fip/fipMinus/xfip/war/eraMinus</code>，2026-07-23 實測確認）＋ <strong>ETL 自算</strong>（LOB%）＋ pybaseball Savant 可選補充（xwOBA 等 Statcast 系）</td><td data-label="寫入"><code>season_*_stats</code> 進階欄</td><td data-label="批次">morning；小聯盟不供應→留 NULL，best-effort</td></tr>
+    <tr><td data-label="資料">球季進階數據（僅 MLB 層級）</td><td data-label="來源"><strong>StatsAPI <code>stats=sabermetrics</code></strong>（打 <code>woba/wRcPlus/war</code>、投 <code>fip/fipMinus/xfip/war/eraMinus</code>，2026-07-23 實測確認）＋ <strong>ETL 自算</strong>（LOB%）＋ Savant 官方 CSV 匯出（xwOBA）</td><td data-label="寫入"><code>season_*_stats</code> 進階欄</td><td data-label="批次">morning；小聯盟不供應→留 NULL，best-effort</td></tr>
     </tbody>
     </table>
     <blockquote><p><strong>來源可用性（ADR §6.4，2026-07-23 實測）</strong>：pybaseball 的 FanGraphs／Baseball-Reference 接口因兩站 Cloudflare 防護一律 403，<strong>不可用、不繞過</strong>——一切以 <strong>MLB Stats API 為主</strong>，Savant 只當進階數據補充。Savant 更新較 MLB API 慢：進階欄允許<strong>落後主資料一批</strong>，不因 Savant 未更新而標整批失敗。wRC+/WAR/xFIP 已確認可由 StatsAPI <code>stats=sabermetrics</code> 取得（僅 MLB 層級、2020~ 可回查；為 MLB 官方自算版本，名詞頁延伸來源指向 MLB），見 §9 實測紀錄。</p></blockquote>
     <p>| 異動 | StatsAPI <code>transactions</code> | <code>transaction_events</code> | evening（另 morning 補漏） |</p>
     <p>| roster / IL | StatsAPI roster 端點 | 僅當<strong>對帳信號</strong>（§6），不直接寫狀態 | evening |</p>
     <p>| 球員/球隊基本資料 | StatsAPI people / teams | <code>players</code>（非白名單欄位）、<code>teams</code> | 低頻（每週或手動） |</p>
-    <blockquote><p><strong>逐場來源策略（2026-07-27 定案，球員中心）</strong>：逐場成績一律走<strong>人員 gameLog</strong>（只抓 tracked 球員自己的比賽），<strong>不再逐場掃全賽程 boxscore、也不把 boxscore 落庫</strong>——服務聚焦關注球員，game-中心的完整 box 查詢<strong>刻意取捨</strong>（使用者可回官方站查）。<code>games</code> 表只留兩種來源的列：gameLog 補「球員打過的比賽」＋ schedule 補「即將/今日場次（含先發預告，前瞻功能保留）」。原始層 <code>raw_payloads</code> 保留 gameLog／schedule／people／teams 原檔、<strong>不存 boxscore</strong>。<code>career_high</code>/<code>season_high</code> 以歷史逐場為基準（引擎讀全 <code>game_*_lines</code> 歷史，2026-07-27 驗證無日期窗），故初期需一次性 <strong>backfill 2020~今</strong>才會正確。</p></blockquote>
+    <blockquote><p><strong>逐場來源策略（2026-07-27 定案，球員中心）</strong>：逐場成績一律走<strong>人員 gameLog</strong>（只抓 tracked 球員自己的比賽），<strong>不再逐場掃全賽程 boxscore、也不把 boxscore 落庫</strong>。逐場表自帶日期／對手／主客場並永久保留；<code>games</code> 只保留現役球隊的短期前瞻賽程，gameLog 不再寫入它。原始層 <code>raw_payloads</code> 保留 gameLog／schedule／people／teams／Savant CSV 原檔、<strong>不存 boxscore</strong>。<code>career_high</code>/<code>season_high</code> 以歷史逐場為基準（引擎讀全 <code>game_*_lines</code> 歷史，無日期窗），故初期需一次性 <strong>backfill 2020~今</strong>才會正確。</p></blockquote>
     <h3 id="sec-3-1">4. sportId ↔ level 對照</h3>
     <p><code>1=mlb, 11=aaa, 12=aa, 13=a_plus, 14=a, 16=rookie</code>（實作時以 StatsAPI <code>/sports</code> 端點驗證後寫成常數表）。</p>
   </section>
@@ -230,7 +230,7 @@
     <ul>
     <li>上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、<code>pybaseball.cache.enable()</code>。</li>
     <li>失敗語意：來源級失敗 → 該來源跳過、其餘照跑、<code>partial</code>；整批失敗 → <code>failed</code>，網站繼續供舊資料（spec-02 §5）。</li>
-    <li>手動工具（CLI）：<code>resync --season</code>、<code>resync --gamelog --from DATE</code>（早於 lookback 的上游修正用）、<code>add-event</code>（補錄 manual 事件）、<code>reproject</code>（重放投影）。</li>
+    <li>手動工具（CLI）：<code>resync --season</code>、<code>resync --gamelog --from DATE</code>（回補早於當季的歷史逐場）、<code>add-event</code>（補錄 manual 事件）、<code>reproject</code>（重放投影）。</li>
     </ul>
   </section>
   <section>

@@ -307,9 +307,9 @@ def _load_appearances(
     with conn.cursor() as cur:
         cur.execute(
             """
-            select b.player_id, b.game_pk, g.game_date_us,
+            select b.player_id, b.game_pk, b.game_date_us,
                    b.ab, b.h, b.hr, b.rbi, b.bb, b.so, b.sb
-            from game_batting_lines b join games g on g.game_pk = b.game_pk
+            from game_batting_lines b
             where b.player_id = any(%s)
             """,
             (player_ids,),
@@ -322,9 +322,9 @@ def _load_appearances(
             )
         cur.execute(
             """
-            select p.player_id, p.game_pk, g.game_date_us,
+            select p.player_id, p.game_pk, p.game_date_us,
                    p.started, p.ip_outs, p.h, p.r, p.er, p.bb, p.so
-            from game_pitching_lines p join games g on g.game_pk = p.game_pk
+            from game_pitching_lines p
             where p.player_id = any(%s)
             """,
             (player_ids,),

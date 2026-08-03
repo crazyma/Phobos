@@ -93,16 +93,14 @@ export type Home = z.infer<typeof HomeSchema>;
  */
 async function getDigestDate(db = defaultDb, today: string = usToday()): Promise<string | null> {
   const battingDates = await db
-    .select({ gameDate: games.gameDateUs })
+    .select({ gameDate: gameBattingLines.gameDateUs })
     .from(gameBattingLines)
     .innerJoin(players, eq(players.mlbPlayerId, gameBattingLines.playerId))
-    .innerJoin(games, eq(games.gamePk, gameBattingLines.gamePk))
     .where(eq(players.lifecycle, "tracked"));
   const pitchingDates = await db
-    .select({ gameDate: games.gameDateUs })
+    .select({ gameDate: gamePitchingLines.gameDateUs })
     .from(gamePitchingLines)
     .innerJoin(players, eq(players.mlbPlayerId, gamePitchingLines.playerId))
-    .innerJoin(games, eq(games.gamePk, gamePitchingLines.gamePk))
     .where(eq(players.lifecycle, "tracked"));
 
   return [...battingDates, ...pitchingDates]
@@ -133,10 +131,9 @@ export async function getHome(
       })
       .from(gameBattingLines)
       .innerJoin(players, eq(players.mlbPlayerId, gameBattingLines.playerId))
-      .innerJoin(games, eq(games.gamePk, gameBattingLines.gamePk))
       .leftJoin(teams, eq(teams.mlbTeamId, gameBattingLines.teamId))
       .leftJoin(playerRecentForm, eq(playerRecentForm.playerId, players.mlbPlayerId))
-      .where(and(eq(players.lifecycle, "tracked"), eq(games.gameDateUs, digestDate)))
+      .where(and(eq(players.lifecycle, "tracked"), eq(gameBattingLines.gameDateUs, digestDate)))
       .orderBy(players.nameEn, gameBattingLines.gamePk);
     gameCards.push(...battingRows.map((row) => ({
       playerId: row.playerId, nameZh: row.nameZh ?? row.nameEn,
@@ -155,10 +152,9 @@ export async function getHome(
       })
       .from(gamePitchingLines)
       .innerJoin(players, eq(players.mlbPlayerId, gamePitchingLines.playerId))
-      .innerJoin(games, eq(games.gamePk, gamePitchingLines.gamePk))
       .leftJoin(teams, eq(teams.mlbTeamId, gamePitchingLines.teamId))
       .leftJoin(playerRecentForm, eq(playerRecentForm.playerId, players.mlbPlayerId))
-      .where(and(eq(players.lifecycle, "tracked"), eq(games.gameDateUs, digestDate)))
+      .where(and(eq(players.lifecycle, "tracked"), eq(gamePitchingLines.gameDateUs, digestDate)))
       .orderBy(players.nameEn, gamePitchingLines.gamePk);
     gameCards.push(...pitchingRows.map((row) => ({
       playerId: row.playerId, nameZh: row.nameZh ?? row.nameEn,

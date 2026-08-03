@@ -1,13 +1,4 @@
-"""Schedule/results: StatsAPI `schedule` → curated `games` (spec-01 C.5).
-
-Fetches a small rolling window (yesterday..today, in each ingest sportId) with
-`hydrate=probablePitcher` and upserts by `game_pk` (StatsAPI's PK, which
-naturally disambiguates doubleheaders). Run in both batches (spec-03 §3): the
-morning run settles yesterday's results, the evening run settles residual
-west-coast finals and refreshes today's probable-pitcher preview. `game_date_us`
-is anchored on StatsAPI's own `officialDate`, not on our local clock — the
-window below only decides *which* dates to ask for, never what gets stored.
-"""
+"""Forward-looking StatsAPI schedule → curated ``games`` (spec-01 C.5)."""
 
 from __future__ import annotations
 
@@ -15,11 +6,12 @@ import logging
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 import psycopg
 
 from ..batch import Source
-from ..constants import INGEST_SPORT_IDS, level_for_sport_id
+from ..constants import LEVEL_TO_SPORT_ID, level_for_sport_id
 from ..statsapi import StatsApiClient
 
 logger = logging.getLogger(__name__)
@@ -167,6 +159,22 @@ def _known_team_ids(conn: psycopg.Connection) -> set[int]:
         return {int(r[0]) for r in cur.fetchall()}
 
 
+def _tracked_teams(conn: psycopg.Connection) -> list[tuple[int, str]]:
+    """Teams currently assigned to tracked players, once each."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select distinct status.team_id, teams.level
+            from player_current_status as status
+            join players on players.mlb_player_id = status.player_id
+            join teams on teams.mlb_team_id = status.team_id
+            where players.lifecycle = 'tracked' and status.team_id is not null
+            order by status.team_id, teams.level
+            """
+        )
+        return [(int(row[0]), str(row[1])) for row in cur.fetchall()]
+
+
 def upsert_games(conn: psycopg.Connection, rows: list[GameRow]) -> int:
     """Upsert games by `game_pk`. Does not commit."""
     count = 0
@@ -220,33 +228,32 @@ def upsert_games(conn: psycopg.Connection, rows: list[GameRow]) -> int:
 
 
 def _schedule_window(today: date) -> tuple[date, date]:
-    """Yesterday..today — enough to preview today's probable pitchers and anchor
-    the latest settled game day. Box lines come from player gameLogs, not from
-    sweeping this window (spec-03 §3), so it stays narrow."""
-    return today - timedelta(days=1), today
+    """Seven completed days + seven future days in the US-Pacific calendar."""
+    return today - timedelta(days=7), today + timedelta(days=7)
 
 
 def ingest_schedule(
     client: StatsApiClient, conn: psycopg.Connection, start: date, end: date
 ) -> int:
-    """Fetch + upsert every sportId's schedule for [start, end]. Returns rows
-    upserted. Reused by the batch source and the `resync --gamelog` CLI."""
-    all_rows: list[GameRow] = []
-    for sport_id in INGEST_SPORT_IDS:
-        level = level_for_sport_id(sport_id)
-        if level is None:
+    """Fetch each tracked team's schedule for [start, end], then upsert it."""
+    by_game_pk: dict[int, GameRow] = {}
+    for team_id, level in _tracked_teams(conn):
+        sport_id = LEVEL_TO_SPORT_ID.get(level)
+        if sport_id is None:
             continue
         payload = client.get(
             "schedule",
             {
+                "teamId": team_id,
                 "sportId": sport_id,
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),
                 "hydrate": "probablePitcher",
             },
         )
-        all_rows.extend(transform_schedule(payload, default_level=level))
-    cleaned, dropped = sanitize_team_refs(all_rows, _known_team_ids(conn))
+        for row in transform_schedule(payload, default_level=level):
+            by_game_pk[row.game_pk] = row
+    cleaned, dropped = sanitize_team_refs(list(by_game_pk.values()), _known_team_ids(conn))
     if dropped:
         logger.warning(
             "games: nulled %d team ref(s) not in teams (exhibition/out-of-scope "
@@ -257,9 +264,23 @@ def ingest_schedule(
     return upsert_games(conn, cleaned)
 
 
-def make_games_source(client: StatsApiClient, conn: psycopg.Connection) -> Source:
+def delete_games_outside_window(conn: psycopg.Connection, start: date, end: date) -> int:
+    """Keep ``games`` aligned with the forward-schedule retention window."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "delete from games where game_date_us < %s or game_date_us > %s",
+            (start, end),
+        )
+        return cur.rowcount
+
+
+def make_games_source(
+    client: StatsApiClient, conn: psycopg.Connection, *, today: Optional[date] = None
+) -> Source:
     def run() -> None:
-        start, end = _schedule_window(datetime.now(timezone.utc).date())
+        pacific_today = today or datetime.now(ZoneInfo("America/Los_Angeles")).date()
+        start, end = _schedule_window(pacific_today)
         ingest_schedule(client, conn, start, end)
+        delete_games_outside_window(conn, start, end)
 
     return Source("games", run)

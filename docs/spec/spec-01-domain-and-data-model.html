@@ -274,13 +274,14 @@
     <tr><td data-label="欄位"><code>probable_home_pitcher_id</code> / <code>probable_away_pitcher_id</code></td><td data-label="型別">int，可空</td><td data-label="說明">出賽預告（僅投手有「確定先發」）</td></tr>
     </tbody>
     </table>
+    <p><code>games</code> 是<strong>純前瞻賽程表</strong>：只保留現役 tracked 球員所屬球隊、美西今天前後各 7 天的賽程；窗口外資料每批清除。歷史比賽資訊由逐場表自帶，不依賴本表。</p>
     <h3 id="sec-3-6">C.6 逐場成績（球員 × 比賽 × <strong>角色</strong>＝兩張表）</h3>
     <p>角色由<strong>當場行為</strong>決定（野手投球、二刀流＝同場兩表各一列）。</p>
-    <p><code>game_batting_lines</code>：PK <code>(player_id, game_pk)</code>；<code>team_id</code>、<code>level</code>、<code>pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb</code>。</p>
-    <p><code>game_pitching_lines</code>：PK <code>(player_id, game_pk)</code>；<code>team_id</code>、<code>level</code>、<code>started</code> bool、<code>ip_outs</code>（局數×3，整數存）、<code>h, r, er, bb, so, hr</code>。</p>
+    <p><code>game_batting_lines</code>：PK <code>(player_id, game_pk)</code>；<code>team_id</code>、<code>level</code>、<code>pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb</code>；另有 <code>game_date_us</code>（not null）、<code>opponent_team_id</code>／<code>is_home</code>（可空）。不設 <code>game_pk → games</code> FK。</p>
+    <p><code>game_pitching_lines</code>：PK <code>(player_id, game_pk)</code>；<code>team_id</code>、<code>level</code>、<code>started</code> bool、<code>ip_outs</code>（局數×3，整數存）、<code>h, r, er, bb, so, hr</code>；同樣自帶 <code>game_date_us</code>、<code>opponent_team_id</code>、<code>is_home</code>，不依賴 <code>games</code>。</p>
     <h3 id="sec-3-7">C.7 球季數據（球季 × 層級 × <strong>球隊</strong>）</h3>
     <p>PK 皆 <code>(player_id, season, level, team_id)</code>——同季同層級跨隊分列；<strong>層級合計列由 services 從計數欄重算</strong>（比率可加總重算；進階指標不可加總，合計列僅在該層級單隊時顯示進階值）。<strong>不做跨層級合計</strong>。</p>
-    <p><code>season_batting_stats</code>：計數 <code>g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf</code>；進階（可空，best-effort）<code>woba, xwoba, wrc_plus, war</code>（<code>xwoba</code> 為遞補鏈預留欄，Savant 取得）；<code>source_updated_at</code>。</p>
+    <p><code>season_batting_stats</code>：計數 <code>g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf</code>；進階（可空，best-effort）<code>woba, xwoba, wrc_plus, war</code>。<code>xwoba</code> 由 Savant 官方 CSV 補入，僅 MLB 且 player-season 只有一隊時寫入；多隊球季留 NULL；<code>source_updated_at</code>。</p>
     <p><code>season_pitching_stats</code>：計數 <code>g, gs, ip_outs, bf, h, r, er, hr, bb, so, w, l, sv, hld</code>；進階（可空）<code>fip, lob_pct, war</code>；<code>source_updated_at</code>。</p>
     <blockquote><p>進階清單為<strong>可調整清單</strong>（目前打/投各 7 項，其中 ISO/BB%/K%/BABIP/HR9 由計數推導、不落欄）。增減指標時遵守「<strong>名詞頁先行</strong>」（spec-04 §D）。</p><p><strong>來源定案（2026-07-23 實測，ADR §6.4、requirements §9.1）</strong>：<code>woba</code>／<code>wrc_plus</code>／<code>war</code>（打）與 <code>fip</code>／<code>war</code>（投）由 <strong>StatsAPI <code>stats=sabermetrics</code></strong> 取得——<strong>僅 MLB 層級</strong>（sportId≠1 回空 → 小聯盟留 NULL，符合既定 best-effort）、2020~ 可回查；數值為 MLB 官方自算版本（與 FanGraphs 同量級、非同值）。<code>lob_pct</code> 仍由 ETL 自算；<code>xwoba</code> 欄保留為 Savant 可選補充。requirements §9.1 的遞補鏈／WAR 移除預案<strong>封存不啟動</strong>。</p></blockquote>
     <h3 id="sec-3-8">C.8 <code>player_recent_form</code>（近況一句話，ETL 每批重算）</h3>

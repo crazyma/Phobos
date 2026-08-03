@@ -90,14 +90,14 @@ beforeAll(async () => {
     },
   ]);
   await db.insert(gameBattingLines).values([
-    { playerId: BATTER, gamePk: FINAL_GAME, teamId: TEAM, level: "mlb", pa: 5, h: 2, hr: 1, rbi: 3, bb: 1, so: 0 },
-    { playerId: TWO_WAY, gamePk: FINAL_GAME, teamId: TEAM, level: "mlb", pa: 4, h: 1, hr: 0, rbi: 0, bb: 0, so: 1 },
-    { playerId: BATTER, gamePk: PARTIAL_GAME, teamId: TEAM, level: "mlb", pa: 1 },
-    { playerId: BATTER, gamePk: PREVIOUS_FINAL_GAME, teamId: TEAM, level: "mlb", pa: 4, h: 1 },
+    { playerId: BATTER, gamePk: FINAL_GAME, teamId: TEAM, gameDateUs: "2099-07-26", opponentTeamId: OPPONENT, isHome: true, level: "mlb", pa: 5, h: 2, hr: 1, rbi: 3, bb: 1, so: 0 },
+    { playerId: TWO_WAY, gamePk: FINAL_GAME, teamId: TEAM, gameDateUs: "2099-07-26", opponentTeamId: OPPONENT, isHome: true, level: "mlb", pa: 4, h: 1, hr: 0, rbi: 0, bb: 0, so: 1 },
+    { playerId: BATTER, gamePk: PARTIAL_GAME, teamId: TEAM, gameDateUs: "2099-07-27", opponentTeamId: OPPONENT, isHome: true, level: "mlb", pa: 1 },
+    { playerId: BATTER, gamePk: PREVIOUS_FINAL_GAME, teamId: TEAM, gameDateUs: "2099-07-25", opponentTeamId: OPPONENT, isHome: true, level: "mlb", pa: 4, h: 1 },
   ]);
   await db.insert(gamePitchingLines).values([
-    { playerId: PITCHER, gamePk: FINAL_GAME, teamId: TEAM, level: "mlb", started: true, ipOuts: 18, h: 4, r: 1, er: 1, so: 8, bb: 2 },
-    { playerId: TWO_WAY, gamePk: FINAL_GAME, teamId: TEAM, level: "mlb", ipOuts: 3, h: 0, r: 0, er: 0, so: 1, bb: 0 },
+    { playerId: PITCHER, gamePk: FINAL_GAME, teamId: TEAM, gameDateUs: "2099-07-26", opponentTeamId: OPPONENT, isHome: true, level: "mlb", started: true, ipOuts: 18, h: 4, r: 1, er: 1, so: 8, bb: 2 },
+    { playerId: TWO_WAY, gamePk: FINAL_GAME, teamId: TEAM, gameDateUs: "2099-07-26", opponentTeamId: OPPONENT, isHome: true, level: "mlb", ipOuts: 3, h: 0, r: 0, er: 0, so: 1, bb: 0 },
   ]);
   await db.insert(transactionEvents).values([
     { playerId: BATTER, type: "call_up", effectiveDate: "2099-07-27", description: "Called up", source: "manual" },

@@ -20,9 +20,6 @@ STATSAPI_BASE_URL = "https://statsapi.mlb.com/api/v1"
 # pybaseball/StatsAPI publish no rate limit; stay deliberately gentle.
 REQUEST_DELAY_SECONDS = 1.0
 MAX_RETRIES = 2  # 2 retries ⇒ 3 total attempts
-# morning box-score sweep looks this many days back (spec-03 §3).
-GAMELOG_LOOKBACK_DAYS = 10
-
 # On-disk cache for raw StatsAPI responses, kept out of the repo root.
 CACHE_DIR = _REPO_ROOT / "etl" / ".cache" / "statsapi"
 

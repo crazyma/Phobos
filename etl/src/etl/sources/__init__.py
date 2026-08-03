@@ -27,6 +27,7 @@ from .players_bio import make_player_bio_source
 from .projection import make_projection_source, make_reconciliation_source
 from .recent_form import make_recent_form_source
 from .season_stats import make_season_stats_source
+from .savant import make_savant_source
 from .teams import make_teams_source
 from .transactions import make_transactions_source
 
@@ -60,6 +61,9 @@ def build_sources(
     # event sources, so ordering among them doesn't matter.
     if kind == "morning":
         sources.append(make_season_stats_source(client, conn))
+        # Savant updates only xwOBA, and needs the season-stats source to have
+        # created the MLB rows first.
+        sources.append(make_savant_source(client, conn))
 
     # Transactions ingest: evening (primary) + morning (backfill) + manual
     # (spec-03 §2/§3). Runs before projection so the events it commits are

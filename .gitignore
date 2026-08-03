@@ -15,6 +15,7 @@ dist/
 
 # Env files (keep example files tracked)
 .env
+.env.test
 .env.local
 .env.development.local
 .env.test.local

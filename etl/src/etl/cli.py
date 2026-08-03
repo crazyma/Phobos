@@ -7,8 +7,8 @@ scheduled batches:
       Full 2020→current season-stats re-pull (same work the morning batch does).
 
   etl resync --gamelog --from YYYY-MM-DD
-      Re-fetch schedule + box lines from a date earlier than the batch lookback
-      (for upstream corrections older than GAMELOG_LOOKBACK_DAYS), then reproject.
+      Re-fetch historical gameLog data from before the current season (for
+      upstream corrections), then reproject.
 
   etl add-event --player-id N --type T --date YYYY-MM-DD [--to-team-id N]
                 [--from-team-id N] [--il-detail il_10] [--description "..."]
