@@ -2,13 +2,16 @@
 
 **What to build:** 2026-07-30 說明三個批次差異時查出兩處文件與實作不符。皆為文件／死碼清理，不動任何執行邏輯。
 
-**Blocked by:** None。獨立小票。
+**Blocked by:**
 
-**Status:** ready-for-agent
+- **漂移 A、C：None**，獨立可先做。
+- **漂移 B：實質上 blocked by `.scratch/xwoba-savant/issues/01`。** B 要在 ADR 補的那則決策，記的是 xwoba 票**還沒實作**的選型（改直讀官方 CSV、不經 pybaseball）。若先補 ADR 而該票實作時改了主意，等於在 ADR 留下一則錯誤決策——比文件過時更糟。**正解是與 xwoba 票一起做，或等它完成後再補。**（初版寫「Blocked by: None。獨立小票」對 B 不成立，2026-08-03 更正。）
+
+**Status:** ready-for-agent（A、C 可立即動工；B 見上）
 
 ---
 
-## 漂移 A — `GAMELOG_LOOKBACK_DAYS` 是死常數，但三處文件仍描述它
+## 漂移 A — `GAMELOG_LOOKBACK_DAYS` 是死常數，但常數本身＋三處文件仍描述它
 
 `etl/src/etl/config.py:24` 定義：
 
@@ -33,6 +36,7 @@ def run() -> None:
 - [ ] `docs/spec/spec-03-etl-pipeline.md:37` 逐場成績那列，批次欄改為「morning／evening 各抓整個當季 gameLog（冪等，evening 補 morning 時未結束的場次）；歷史球季一次性 `etl backfill`」
 - [ ] `docs/spec/spec-00-overview.md:53` 移除 `GAMELOG_LOOKBACK_DAYS` 那列參數
 - [ ] **不要改 `docs/DEVLOG.md:104`／`:83`**——那在「已完成」區，正確記載當時的實作狀態，是歷史紀錄
+- [ ] **同理不要改已完成票裡的提及**：`.scratch/etl-pipeline/issues/04-game-lines-ingest.md:10` 與 `.scratch/etl-gamelog-refactor/issues/01-*.md:17` 也寫了 `GAMELOG_LOOKBACK_DAYS`，但兩處都是已打勾的 `[x]` 項、記錄當時的驗收條件，**是歷史紀錄不是漂移**。清點時會 grep 到它們，別順手改掉（2026-08-03 補註）
 
 ---
 
@@ -51,6 +55,7 @@ def run() -> None:
 **這是決策變更，不只是文件過時**，所以正解是在 ADR 補一則、而非默默改字：
 
 - [ ] `docs/adr/decisions.md` §6.4 補一則決策：**Savant 改直接讀官方 CSV 匯出，不經 pybaseball**。記錄理由（依賴體積 vs 單一欄位；`csv=true` 是官方匯出參數、非 scraping；2026-07-29 實測 200／`text/csv`）與影響（ETL 不需 pybaseball 依賴）
+  - 一併記下**已知限制**：`expected_statistics` leaderboard 的粒度是「球員 × 球季」，`team=` 參數只篩名單、不改數據口徑（2026-08-03 實測），所以**換隊球季無法取得分隊 xwOBA**。這個限制決定了 xwoba 票採「只在無歧義時寫入」，屬於 source 的固有性質、值得記在 ADR 而非只留在票裡
 - [ ] 同步更新 `decisions.md:132`／`:139` 與 `spec-03:39` 的措辭
 - [ ] `decisions.md:37`（選 Python 的理由是「主要資料源 `pybaseball` 為 Python 套件」）補註：該前提已隨 §6.4 演變，但**選 Python 的結論不變**（psycopg + 標準庫已足夠，且 ETL 已成熟）
 

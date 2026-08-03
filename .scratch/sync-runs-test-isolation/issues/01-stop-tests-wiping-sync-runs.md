@@ -9,6 +9,8 @@ afterAll(async () => { await db.delete(syncRuns); await pool.end(); });
 
 `lib/db/client.ts` 讀的是同一個 `DATABASE_URL`，所以**每跑一次 `pnpm test`，`sync_runs` 就被清空一次**。這就是快照裡「`id` 已跑到 382、表裡只剩 1 筆」的真正原因（先前推測的「DB 重建過」是錯的）。
 
+（2026-08-03 複查：現為 **2 筆、max id 383**——07-30 跑了一次批次、之後沒再跑測試。斷號與筆數落差的形狀完全吻合此診斷。）
+
 影響的是 `sync_runs` 的另外兩個用途（spec-01 C.9 / spec-03 §3、§6）：**批次結果稽核**（哪些 source 失敗、partial 出現過幾次）與**對帳告警落點**（roster/IL 與投影不一致時寫進 `detail`，不自動改投影）。footer 的「資料更新於」只要最近一筆，不受影響。
 
 **背景決策（2026-07-29，batu）**：目前無法判斷是否需要長期保留批次歷史，**先暫時保留、過一陣子再檢討**。但「什麼都不做」達不到保留——有這個主動清除者在，屆時回頭看手上仍只有 1 筆、沒有素材可判斷。本票只是讓歷史**留得住**，不預設要留多久。
@@ -31,7 +33,9 @@ afterAll(async () => { await db.delete(syncRuns); await pool.end(); });
 | (b) fixture 時間戳改未來 + scoped delete | 讓測試 2–4 恆為最新 | 治標，且**救不了測試 1**（仍需空表），得改寫或刪掉那個測試——等於為了遷就環境弱化覆蓋 |
 | (c) 每個測試包 transaction 再 rollback | — | 同樣救不了測試 1：真實列在交易外仍可見 |
 
-**建議採 (a)**，動工前跟 batu 確認——它比「改兩行」大一些，但是唯一能同時保住四個測試與批次歷史的作法。
+**決策已定：採 (a)**（2026-08-03，batu）。它比「改兩行」大一些，但是唯一能同時保住四個測試與批次歷史的作法。
+
+**可行性已複查**（2026-08-03）：全 repo **11 個測試檔會連 DB，且每一個都自帶 `migrate()`**——`sync`／`home`／`players`／`player-recent`／`player-detail`／`player-seasons-db`／`player-upcoming`／`glossary/examples-db`／`db/seed/players`／`db/schema`／`app/seo`。所以搬到空的 `phobos_test` **不需要額外 bootstrap 或 seed**，schema 由測試自己建。這是 (a) 成本低的關鍵前提，已確認成立。
 
 ## Checklist（以選項 (a) 為前提）
 
