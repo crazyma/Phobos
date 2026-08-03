@@ -272,6 +272,14 @@
 
 ## ▶️ 進行中 / 下一步
 
+- [ ] **`batch-warnings`（1 票，`.scratch/batch-warnings/issues/`）——讓 source 能回報 warning，落進 `sync_runs.detail`**。目前 per-source 結果是二元的（`syncrun.py:24-29` 的 `SourceResult` 只有 `ok`／`error`），`batch.py:53-59` 只有「成功並保留資料」或「失敗並回滾」兩種結局，**沒有「成功但有話要說」**。
+  - **這是規格債、不是新功能**：`docs/spec/spec-03-etl-pipeline.md:77`（§6）明文指定對帳告警要進 `sync_runs.detail`，但 `sources/projection.py:393` 現在只是 `logger.warning`，**從來沒接上**。
+  - **六個 warning 產生者全部落空**：`projection.py:393`（對帳，spec 指名）、`transactions.py:383`／`season_stats.py:500`／`games.py:258`（team ref sanitize，例行）、`savant.py:262`（年份跳過）、`statsapi.py:102`（重試）。07-30 批次紀錄裡的「兩個 WARNING」是當下看終端機才知道的，事後翻 `sync_runs` 查不到。
+  - **⚠️ 關鍵約束：`derive_status` 不能動。** warning 必須純資訊性、不影響 `success`／`partial`。上述六個裡有四個是例行告警（sanitize 每批都發生），若 warning 會讓批次落成 partial，那每批都是 partial、欄位就失去意義。
+  - **範圍小**：前端對 `sync_runs.detail` **零讀取**（`grep -rn "detail" lib/ --include="*.ts"` 唯一命中是無關測試），`detail` 是 jsonb **不需 migration**，純 ETL Python 內部改動。
+  - **觸發來源**：`xwoba-savant` 驗收時，savant 多年份抓取遇到「一年失敗要不要拖垮全部」——因 `batch.py` 拋例外就回滾整個 source，要保住已成功年份就不能拋，導致部分失敗的批次顯示成 `success`。那個取捨撞的正是本票要補的牆，本票完成後 savant 應改回報 warning。
+  - 建議順序：先接 `projection.py` 補完 spec-03 §6，其餘五處可分批。
+
 - [ ] **`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）——`raw_payloads` 保留策略**。DB 裡唯一有體積問題的表：**6.0 MB、佔全庫（15 MB）40%，而裡面只有 4 天資料**（2026-07-27~30）。寫入集中在 `statsapi.py:67`（每次 API 呼叫自動記一筆），append-only、無 FK、**無任何清理機制**。組成（2026-08-03 重測，339 筆／4921 kB）：`people/*/stats` 240 筆 3133 kB（64%）、`schedule` 18 筆 644 kB、`teams` 18 筆 516 kB、`people`(bio) 48 筆 333 kB、`transactions` 15 筆 294 kB。**日增約 1.2 MB**（5 名球員）。與 `games` 那 1133 筆殘留同類，但規模大一個數量級。
   - **reprocess 定位——決策已定（2026-08-03，batu）：採「分級 TTL，暫不實作 `etl reprocess`」。** 各 endpoint 依價值設不同天數（`transactions` 量最小價值最高、留最久；`people/*/stats` 佔 64% 且新的完全涵蓋舊的、留最短），體積問題當場解決，同時保住日後真要 reprocess 的高價值素材。`etl reprocess` 指令不在本票範圍，等真有需求再另開票。本票因此落在輕量端：**純粹加 TTL + 清存量**。
   - 背景：`raw_payloads` 有寫入端但**沒有任何 production 讀取端**（TS 只有 schema 定義無查詢；ETL CLI 有 `resync`／`add-event`／`reproject`／`backfill`，**沒有 `reprocess`**）。唯二會讀它的是 `scripts/db/snapshot.py:73-78` 的快照抽樣與 `etl/tests/test_integration_db.py` 的測試斷言，都不是 reprocess 用途。ADR §8.1 承諾的能力設計了但從未實作。（初版寫「零讀取端」措辭過滿，2026-08-03 收緊。）

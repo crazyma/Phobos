@@ -524,6 +524,17 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
+    <li class=""><strong><code>batch-warnings</code>（1 票，<code>.scratch/batch-warnings/issues/</code>）——讓 source 能回報 warning，落進 <code>sync_runs.detail</code></strong>。目前 per-source 結果是二元的（<code>syncrun.py:24-29</code> 的 <code>SourceResult</code> 只有 <code>ok</code>／<code>error</code>），<code>batch.py:53-59</code> 只有「成功並保留資料」或「失敗並回滾」兩種結局，<strong>沒有「成功但有話要說」</strong>。
+    <ul>
+    <li><strong>這是規格債、不是新功能</strong>：<code>docs/spec/spec-03-etl-pipeline.md:77</code>（§6）明文指定對帳告警要進 <code>sync_runs.detail</code>，但 <code>sources/projection.py:393</code> 現在只是 <code>logger.warning</code>，<strong>從來沒接上</strong>。</li>
+    <li><strong>六個 warning 產生者全部落空</strong>：<code>projection.py:393</code>（對帳，spec 指名）、<code>transactions.py:383</code>／<code>season_stats.py:500</code>／<code>games.py:258</code>（team ref sanitize，例行）、<code>savant.py:262</code>（年份跳過）、<code>statsapi.py:102</code>（重試）。07-30 批次紀錄裡的「兩個 WARNING」是當下看終端機才知道的，事後翻 <code>sync_runs</code> 查不到。</li>
+    <li><strong>⚠️ 關鍵約束：<code>derive_status</code> 不能動。</strong> warning 必須純資訊性、不影響 <code>success</code>／<code>partial</code>。上述六個裡有四個是例行告警（sanitize 每批都發生），若 warning 會讓批次落成 partial，那每批都是 partial、欄位就失去意義。</li>
+    <li><strong>範圍小</strong>：前端對 <code>sync_runs.detail</code> <strong>零讀取</strong>（<code>grep -rn &quot;detail&quot; lib/ --include=&quot;*.ts&quot;</code> 唯一命中是無關測試），<code>detail</code> 是 jsonb <strong>不需 migration</strong>，純 ETL Python 內部改動。</li>
+    <li><strong>觸發來源</strong>：<code>xwoba-savant</code> 驗收時，savant 多年份抓取遇到「一年失敗要不要拖垮全部」——因 <code>batch.py</code> 拋例外就回滾整個 source，要保住已成功年份就不能拋，導致部分失敗的批次顯示成 <code>success</code>。那個取捨撞的正是本票要補的牆，本票完成後 savant 應改回報 warning。</li>
+    <li>建議順序：先接 <code>projection.py</code> 補完 spec-03 §6，其餘五處可分批。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class=""><strong><code>raw-payloads-retention</code>（1 票，<code>.scratch/raw-payloads-retention/issues/</code>）——<code>raw_payloads</code> 保留策略</strong>。DB 裡唯一有體積問題的表：<strong>6.0 MB、佔全庫（15 MB）40%，而裡面只有 4 天資料</strong>（2026-07-27~30）。寫入集中在 <code>statsapi.py:67</code>（每次 API 呼叫自動記一筆），append-only、無 FK、<strong>無任何清理機制</strong>。組成（2026-08-03 重測，339 筆／4921 kB）：<code>people/*/stats</code> 240 筆 3133 kB（64%）、<code>schedule</code> 18 筆 644 kB、<code>teams</code> 18 筆 516 kB、<code>people</code>(bio) 48 筆 333 kB、<code>transactions</code> 15 筆 294 kB。<strong>日增約 1.2 MB</strong>（5 名球員）。與 <code>games</code> 那 1133 筆殘留同類，但規模大一個數量級。
     <ul>
     <li><strong>reprocess 定位——決策已定（2026-08-03，batu）：採「分級 TTL，暫不實作 <code>etl reprocess</code>」。</strong> 各 endpoint 依價值設不同天數（<code>transactions</code> 量最小價值最高、留最久；<code>people/*/stats</code> 佔 64% 且新的完全涵蓋舊的、留最短），體積問題當場解決，同時保住日後真要 reprocess 的高價值素材。<code>etl reprocess</code> 指令不在本票範圍，等真有需求再另開票。本票因此落在輕量端：<strong>純粹加 TTL + 清存量</strong>。</li>
