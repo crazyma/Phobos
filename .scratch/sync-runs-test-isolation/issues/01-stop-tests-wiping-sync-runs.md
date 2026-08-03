@@ -17,7 +17,7 @@ afterAll(async () => { await db.delete(syncRuns); await pool.end(); });
 
 **Blocked by:** None。獨立小票，與其他 slice 無相依。
 
-**Status:** ready-for-agent
+**Status:** done（2026-08-03，commit `43ed9f2`；README 的建 DB 步驟於同日後續修正，見 Comments）
 
 ## ⚠️ 只把 delete 加上 `where` 是不夠的
 
@@ -39,15 +39,30 @@ afterAll(async () => { await db.delete(syncRuns); await pool.end(); });
 
 ## Checklist（以選項 (a) 為前提）
 
-- [ ] 測試指向獨立資料庫：新增 `.env.test`（`DATABASE_URL=…/phobos_test`），`vitest.config.ts` 的 `setupFiles` 改載入它而非 `.env`（現為 `["dotenv/config"]`）。`.env.test` 進 `.gitignore`，並在 `.env.example` 補一行說明
-- [ ] `docker-compose.yml` 或 README 補「建立 `phobos_test` 資料庫」的一步；測試已自帶 `migrate()`，不需另外 seed
-- [ ] 確認 `lib/db/client.ts` 在測試環境讀到的是測試 DB（它在 import 時讀 `process.env`，`setupFiles` 的載入順序要早於測試模組——現有註解已點出這個約束）
-- [ ] `sync.test.ts` 的兩個整表 delete 保留即可（在獨立 DB 上是正確作法），但補一行註解說明前提已從「共用 DB、沒別人碰」改為「獨立測試 DB」
-- [ ] 跑 `pnpm test` 全綠（現為 140 綠），並確認**跑完後開發 DB 的 `sync_runs` 筆數不變**（這是本票的驗收條件）
-- [ ] `docs/DEVLOG.md` 記錄：批次歷史從此留得住，保留期限待日後檢討
+- [x] 測試指向獨立資料庫：新增 `.env.test`（`DATABASE_URL=…/phobos_test`），`vitest.config.ts` 的 `setupFiles` 改載入它而非 `.env`（現為 `["dotenv/config"]`）。`.env.test` 進 `.gitignore`，並在 `.env.example` 補一行說明
+- [x] `docker-compose.yml` 或 README 補「建立 `phobos_test` 資料庫」的一步；測試已自帶 `migrate()`，不需另外 seed
+- [x] 確認 `lib/db/client.ts` 在測試環境讀到的是測試 DB（它在 import 時讀 `process.env`，`setupFiles` 的載入順序要早於測試模組——現有註解已點出這個約束）
+- [x] `sync.test.ts` 的兩個整表 delete 保留即可（在獨立 DB 上是正確作法），但補一行註解說明前提已從「共用 DB、沒別人碰」改為「獨立測試 DB」
+- [x] 跑 `pnpm test` 全綠（現為 140 綠），並確認**跑完後開發 DB 的 `sync_runs` 筆數不變**（這是本票的驗收條件）
+- [x] `docs/DEVLOG.md` 記錄：批次歷史從此留得住，保留期限待日後檢討
 
 ## Comments
 
 - 本票**不**引入任何保留／清理策略。`sync_runs` 一天兩批約 730 列/年、`detail` 才幾百 bytes，五年三千多列，`sync.ts` 那個 `order by finished_at desc limit 1` 連索引都不需要。留著不花錢。
 - `id` 跑到 382 的斷號是 sequence 不回收的正常現象，沒有邏輯依賴 id 連續，**不需處理**。
 - 順帶好處：其餘 34 個 DB 測試目前雖然刪得乾淨，但過程中仍會把 fixture 球員/比賽寫進開發 DB。移到獨立 DB 後開發資料完全不受測試干擾。
+
+### 收尾（2026-08-03，後續修正）
+
+- **驗收條件已實測通過**：`pnpm test` 140 綠，跑完後開發 DB `phobos` 的 `sync_runs` 維持 **4 筆／max id 389** 不變。
+- **⚠️ 「補建立 `phobos_test` 的一步」原本寫得出來、跑不起來。** README 給的是
+  `createdb -h localhost -U phobos phobos_test`，在**本機安裝的 Postgres 上必然失敗**——
+  `ERROR: permission denied to create database`，因為 `phobos` role 沒有 `CREATEDB` 權限
+  （`select rolname, rolcreatedb from pg_roles`：只有安裝時的 superuser 有）。docker 之所以看起來沒事，
+  是因為容器裡的 `POSTGRES_USER: phobos` 在該實例內本身就是 superuser——**兩種環境的前提不同，
+  文件卻只寫了一種**。實務後果：這個 commit 進版控時測試從沒綠過（12 個測試檔失敗），
+  要 superuser 先建好 `phobos_test` 才會 140 綠。
+- 已修正：README 拆成「docker」與「本機 Postgres」兩條路各自寫清楚（本機那條明示要用 superuser、
+  並解釋為什麼 `-U phobos` 會失敗）；另新增 `scripts/db/init-test-db.sql` 掛進
+  `docker-entrypoint-initdb.d`，docker 使用者首次啟動即自動建好 `phobos_test`（舊 volume 不會重跑
+  init script，README 附補建指令）。`.env.example` 的註解同步指向該節。

@@ -137,7 +137,7 @@ Upsert key：`source_tx_id`；無上游 id 時 `(player_id, type, effective_date
 
 PK 皆 `(player_id, season, level, team_id)`——同季同層級跨隊分列；**層級合計列由 services 從計數欄重算**（比率可加總重算；進階指標不可加總，合計列僅在該層級單隊時顯示進階值）。**不做跨層級合計**。
 
-`season_batting_stats`：計數 `g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf`；進階（可空，best-effort）`woba, xwoba, wrc_plus, war`。`xwoba` 由 Savant 官方 CSV 補入，僅 MLB 且 player-season 只有一隊時寫入；多隊球季留 NULL；`source_updated_at`。
+`season_batting_stats`：計數 `g, pa, ab, h, doubles, triples, hr, rbi, r, sb, cs, bb, so, hbp, sf`；進階（可空，best-effort）`woba, xwoba, wrc_plus, war`。`xwoba` 由 Savant 官方 CSV 補入，僅 MLB，且該 player-season 的 MLB 列**只有一列有打席（`pa > 0`）** 時才寫入那一列；真正的多隊球季（兩列以上有打席）留 NULL。**`pa = 0` 的列不算歧義**——上場但沒輪到打擊（代跑／代守／交易當天上場一場）會多出一列，但 Savant 的球季數字顯然屬於唯一有打席的那列；同理也**絕不寫進 `pa = 0` 的列**。全部 MLB 列都 `pa = 0` 時不寫。`source_updated_at`。
 
 `season_pitching_stats`：計數 `g, gs, ip_outs, bf, h, r, er, hr, bb, so, w, l, sv, hld`；進階（可空）`fip, lob_pct, war`；`source_updated_at`。
 

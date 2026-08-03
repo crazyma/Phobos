@@ -12,20 +12,20 @@
 
 **Blocked by:** 票 01（`game_*_lines` 仍有 FK 指向 `games` 時無法刪列）。
 
-**Status:** ready-for-agent
+**Status:** done（2026-08-03，commit `43ed9f2`）
 
-- [ ] **schedule 只抓現役球隊**（`etl/src/etl/sources/games.py` `ingest_schedule`）：改以 `player_current_status.team_id`（tracked 球員、非 NULL）為過濾依據。實作可用 StatsAPI `schedule` 的 `teamId` 參數逐隊查，或維持 sportId 查詢後於 `transform_schedule` 之後濾掉兩隊都不在名單內的比賽——擇一即可，以**呼叫次數少**者為準（現役球隊數 ≤ 球員數，15 人約 ≤ 15 支）
-- [ ] **窗口改成 `today-7 .. today+7`（美西）**（`_schedule_window`）——**決策已定，2026-08-03 batu**，見下方「近期戰績」段
+- [x] **schedule 只抓現役球隊**（`etl/src/etl/sources/games.py` `ingest_schedule`）：改以 `player_current_status.team_id`（tracked 球員、非 NULL）為過濾依據。實作可用 StatsAPI `schedule` 的 `teamId` 參數逐隊查，或維持 sportId 查詢後於 `transform_schedule` 之後濾掉兩隊都不在名單內的比賽——擇一即可，以**呼叫次數少**者為準（現役球隊數 ≤ 球員數，15 人約 ≤ 15 支）
+- [x] **窗口改成 `today-7 .. today+7`（美西）**（`_schedule_window`）——**決策已定，2026-08-03 batu**，見下方「近期戰績」段
   - 往後 7 天：「下一系列賽」要顯示對手／球場／系列第幾戰，一個系列 3–4 場，**不要用 1–2 天**——球隊休兵或系列未開打時短窗口會讓該區塊空掉（正是現在的狀況）
   - 往前 7 天：供個人頁「近期戰績」（球隊最近 3 場 `final`，含比分勝敗）。**不要用 3 天**——遇上休兵日或系列賽間隔會湊不滿 3 場
   - **ingest 窗口與保留窗口用同一個值**，不要分開設，否則抓進來又立刻被清（或反之留下抓不到的空洞）
   - 筆數：14 天 × 15 支球隊約兩百多筆，仍遠低於現況 2877
-- [ ] **gameLog 不再 upsert `games` 表頭**（`game_lines.py:215-228` 的 `upsert_game_headers`）：票 01 拆掉 FK 後這個 upsert 已無存在理由，移除之，連同 `GameHeaderRow`
-- [ ] **每批收尾清理**：刪掉 `game_date_us < 美西今天 - 7 天` 的列（與上面的窗口一致）。票 01 之後 `games` 已無任何 FK 子表，可直接刪。清理放在 games source 內、與 ingest 同一個 transaction
-- [ ] **一次性清掉存量**：既有 2877 筆中不屬於窗口者全數刪除（票 01 回填完成後才執行——回填要靠 `games` 取日期與對手）
-- [ ] `docs/spec/spec-01-domain-and-data-model.md` C.5 與 `docs/spec/spec-03-*.md` §3 改寫 `games` 定位：**純前瞻賽程表，只含現役球隊、只往未來、過期即清**；歷史比賽資訊改由逐場表自帶（票 01）
-- [ ] 測試：窗口計算（美西今天 −7 → +7）、只保留現役球隊的比賽、**超出窗口兩端**的列被清、清理不影響逐場表；`player-upcoming` 三分支續綠且**真的取得到未來比賽**（現行 fixture 若假設有歷史列需調整）；**「近期戰績」在窗口內仍取得到 `final` 比賽**（含湊不滿 3 場時不炸）
-- [ ] 跑一次 ETL `evening` 真連線驗證「下一系列賽」在個人頁與首頁都顯示得出來，再跑 `python3 scripts/db/snapshot.py`
+- [x] **gameLog 不再 upsert `games` 表頭**（`game_lines.py:215-228` 的 `upsert_game_headers`）：票 01 拆掉 FK 後這個 upsert 已無存在理由，移除之，連同 `GameHeaderRow`
+- [x] **每批收尾清理**：刪掉 `game_date_us < 美西今天 - 7 天` 的列（與上面的窗口一致）。票 01 之後 `games` 已無任何 FK 子表，可直接刪。清理放在 games source 內、與 ingest 同一個 transaction
+- [x] **一次性清掉存量**：既有 2877 筆中不屬於窗口者全數刪除（票 01 回填完成後才執行——回填要靠 `games` 取日期與對手）
+- [x] `docs/spec/spec-01-domain-and-data-model.md` C.5 與 `docs/spec/spec-03-*.md` §3 改寫 `games` 定位：**純前瞻賽程表，只含現役球隊、只往未來、過期即清**；歷史比賽資訊改由逐場表自帶（票 01）
+- [x] 測試：窗口計算（美西今天 −7 → +7）、只保留現役球隊的比賽、**超出窗口兩端**的列被清、清理不影響逐場表；`player-upcoming` 三分支續綠且**真的取得到未來比賽**（現行 fixture 若假設有歷史列需調整）；**「近期戰績」在窗口內仍取得到 `final` 比賽**（含湊不滿 3 場時不炸）
+- [x] 跑一次 ETL `evening` 真連線驗證「下一系列賽」在個人頁與首頁都顯示得出來，再跑 `python3 scripts/db/snapshot.py`
 
 ## Comments
 
@@ -43,3 +43,10 @@
 所以要嘛保留 `games` 的過去窗口（採用），要嘛拿掉該區塊。
 
 - 元件已經是 `recentResults.length > 0 &&` 才渲染，所以窗口內湊不滿 3 場時會自然少顯示幾列或整段不顯示，**不需要額外的空狀態處理**。
+
+### 完成紀錄（2026-08-03）
+
+- 實測收斂結果：`games` **2877 → 275 筆**（其中 30 筆日期 `>= 今天`）——「下一系列賽」從實質全空
+  變成真的取得到未來比賽，與票上預估的「兩百多筆」吻合。
+- gameLog 的 `upsert_game_headers`／`GameHeaderRow` 已移除；每批收尾清理與 ingest 共用同一個
+  `today-7 .. today+7`（美西）窗口值。

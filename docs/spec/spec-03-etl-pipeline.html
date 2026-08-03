@@ -195,6 +195,7 @@
     <tr><td data-label="資料">球季進階數據（僅 MLB 層級）</td><td data-label="來源"><strong>StatsAPI <code>stats=sabermetrics</code></strong>（打 <code>woba/wRcPlus/war</code>、投 <code>fip/fipMinus/xfip/war/eraMinus</code>，2026-07-23 實測確認）＋ <strong>ETL 自算</strong>（LOB%）＋ Savant 官方 CSV 匯出（xwOBA）</td><td data-label="寫入"><code>season_*_stats</code> 進階欄</td><td data-label="批次">morning；小聯盟不供應→留 NULL，best-effort</td></tr>
     </tbody>
     </table>
+    <blockquote><p><strong>Savant xwOBA 的抓取範圍與 raw 存法（2026-08-03）</strong>——與 season stats 的「2020 起整季重拉」刻意<strong>不同</strong>：</p><p>- <strong>只抓需要的球季</strong>：當季（會變）＋ <strong>任何「寫得進去卻仍為 NULL」的過去球季</strong>（該 tracked 球員該季 MLB 只有一列 <code>pa &gt; 0</code> 且 <code>xwoba is null</code>）。已結束的球季在上游是凍結的，每天早上重抓 2020~去年只是白花請求與 raw 空間。白名單新增球員 → season stats 補出他的 MLB 歷史列 → 缺口自動出現 → 隔天早上自動補齊，<strong>不需人工介入</strong>。實測：改前每批 7 個請求，改後常態 1 個。</p><p>- 已知代價：Savant 真的沒有值的球季（<code>est_woba</code> 空白、或該球員不在 bip leaderboard 上）會每天重查一次，上限就是原本固定的 7 個請求，不會更差。</p><p>- 需要無視缺口掃描、強制全部重抓時走 <code>etl resync --season</code>（見 §7）。</p><p>- <strong>raw 只存 tracked 球員的列</strong>：CSV 匯出是全聯盟 577~946 列，但白名單只有 5 人、日後 reprocess 也只針對他們。實測一批 7 檔共 <strong>1679 kB → 過濾後單檔約 1 kB</strong>。</p><p>- <strong>逐年容錯</strong>：某一年抓取失敗只記 warning 並跳過，<strong>成功的年份照樣寫入</strong>（<code>batch.py</code> 一拋例外就整個 source rollback，所以部分失敗刻意不拋）；<strong>全部年份都失敗才拋</strong> <code>SavantError</code>，讓批次如實落成 partial／failed。例外訊息帶上底層 <code>repr</code>，<code>sync_runs.detail</code> 才看得出是 timeout、403 還是 DNS。</p></blockquote>
     <blockquote><p><strong>來源可用性（ADR §6.4，2026-07-23 實測）</strong>：pybaseball 的 FanGraphs／Baseball-Reference 接口因兩站 Cloudflare 防護一律 403，<strong>不可用、不繞過</strong>——一切以 <strong>MLB Stats API 為主</strong>，Savant 只當進階數據補充。Savant 更新較 MLB API 慢：進階欄允許<strong>落後主資料一批</strong>，不因 Savant 未更新而標整批失敗。wRC+/WAR/xFIP 已確認可由 StatsAPI <code>stats=sabermetrics</code> 取得（僅 MLB 層級、2020~ 可回查；為 MLB 官方自算版本，名詞頁延伸來源指向 MLB），見 §9 實測紀錄。</p></blockquote>
     <p>| 異動 | StatsAPI <code>transactions</code> | <code>transaction_events</code> | evening（另 morning 補漏） |</p>
     <p>| roster / IL | StatsAPI roster 端點 | 僅當<strong>對帳信號</strong>（§6），不直接寫狀態 | evening |</p>
@@ -230,7 +231,7 @@
     <ul>
     <li>上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、<code>pybaseball.cache.enable()</code>。</li>
     <li>失敗語意：來源級失敗 → 該來源跳過、其餘照跑、<code>partial</code>；整批失敗 → <code>failed</code>，網站繼續供舊資料（spec-02 §5）。</li>
-    <li>手動工具（CLI）：<code>resync --season</code>、<code>resync --gamelog --from DATE</code>（回補早於當季的歷史逐場）、<code>add-event</code>（補錄 manual 事件）、<code>reproject</code>（重放投影）。</li>
+    <li>手動工具（CLI）：<code>resync --season</code>（球季數據 2020→當季整季重拉，<strong>並強制重抓每一年的 Savant xwOBA</strong>——batch 的缺口掃描正是這個指令要繞過的東西）、<code>resync --gamelog --from DATE</code>（回補早於當季的歷史逐場）、<code>add-event</code>（補錄 manual 事件）、<code>reproject</code>（重放投影）。</li>
     </ul>
   </section>
   <section>

@@ -9,10 +9,63 @@
 
 ### 2026-08-03
 
-- [x] **`doc-drift-fixes/01`**：移除死的 `GAMELOG_LOOKBACK_DAYS`、更新逐場抓取敘述，並更正 FG／BR 403 為再次驗證 ADR §6.4 的既有結論；Savant 選型完成後同步更新 ADR 與 spec。
-- [x] **`sync-runs-test-isolation/01`**：Vitest 改為先載入 `.env.test` 的 `phobos_test`，測試不再碰開發 DB；README／範例環境檔補上建立隔離資料庫的步驟。
-- [x] **`xwoba-savant/01`**：新增零依賴 Savant 官方 CSV source，morning 在 season stats 後寫入 MLB 單隊球季的 `xwoba`；CSV 原檔轉 JSON array 留在 raw layer，來源失敗維持 partial。
-- [x] **`games-role-split/01 → 02`**：逐場表新增日期／對手／主客場並回填、移除對 `games` 的 FK 與全部歷史讀取 join；`games` 收斂為現役球隊的美西前後七日賽程，gameLog 不再寫表頭，視窗外列每批清理。
+- [x] **`sync-runs-test-isolation/01` 完成——測試改連獨立 DB，批次歷史從此留得住**（票 `.scratch/sync-runs-test-isolation/issues/01`，commit `43ed9f2`）。
+  - **背景與決策（自「進行中」區移入）**：`lib/services/sync.test.ts:16,20` 對共用開發 DB 做**無 `where` 的整表刪除**（`beforeEach` + `afterAll`），`lib/db/client.ts` 讀同一個 `DATABASE_URL` → **每跑一次 `pnpm test` 批次歷史就歸零**。這是快照裡「`id` 已到 382、表裡剩 1 筆」的真正原因（先前推測「DB 重建過」為誤）。全 repo 整表刪除僅此一處，其餘 34 個 `db.delete()` 都以 fixture id 圈住自己。
+    - **影響範圍**：`sync_runs` 三個用途中，footer 的「資料更新於」（取最近一筆非 failed）**不受影響**；失效的是**批次結果稽核**（partial 出現過幾次、哪個 source 常掛）與**對帳告警落點**（roster/IL 與投影不一致寫入 `detail`，spec-03 §6）。
+    - **決策（2026-07-29，batu）**：暫不判斷批次歷史是否需長期保留，**先留著、過一陣子再檢討**；本票只讓它**留得住**，不引入保留期限。成本近乎零（一天兩批約 730 列/年、`detail` 幾百 bytes、查詢連索引都不需要）。`id` 斷號是 sequence 不回收的正常現象，不處理。
+    - **只加 `where` 是不夠的——決策已定：改用獨立測試 DB（2026-08-03，batu）**：`getLastSyncedAt()` 本就是全表查詢（要回「整個系統最新一筆」），且第一個測試斷言 `toBeNull()`、**本質上要求空表**，所以 scoped delete 與 transaction rollback 都救不了它。採 `.env.test` → `phobos_test`，順帶讓其餘 34 個 DB 測試不再寫進開發資料。
+      - **可行性已複查（2026-08-03）**：全 repo **11 個測試檔會連 DB，且每一個都自帶 `migrate()`**——搬到空的 `phobos_test` 不需額外 bootstrap 或 seed，schema 由測試自己建。這是此方案成本低的關鍵前提，已確認成立。
+      - 複查現況（診斷當下）：`sync_runs` 為 **2 筆、max id 383**（07-30 跑過一次批次、之後沒再跑測試），斷號與筆數落差的形狀完全吻合此診斷。
+  - **落地**：`.env.test` → `phobos_test`，`vitest.setup.ts` 以 `override: true` 在測試模組 import 前載入（`lib/db/client.ts` 在 import 當下就讀 `DATABASE_URL`）；`sync.test.ts` 的兩個整表 delete 保留、改註解說明前提已是獨立 DB。**Node 140 綠，跑完後開發 DB `sync_runs` 維持 4 筆／max id 389 不變**（本票驗收條件）。
+  - **後續修正（同日）**：README 的 `createdb -h localhost -U phobos phobos_test` **在本機 Postgres 上必然失敗**（`ERROR: permission denied to create database`——`phobos` role 沒有 `CREATEDB`；docker 的 `POSTGRES_USER: phobos` 在容器內本身是 superuser，本機安裝不是，**文件只寫了一種前提**）。實務後果：這個 commit 進版控時測試從沒綠過。已把 docker／本機兩條路分開寫清楚（本機那條明示用 superuser 並解釋為何 `-U phobos` 會失敗），並新增 `scripts/db/init-test-db.sql` 掛進 `docker-entrypoint-initdb.d`，docker 首次啟動即自動建好 `phobos_test`。
+
+- [x] **`games-role-split/01 → 02` 完成——拆開 `games` 的兩個角色**（票 `.scratch/games-role-split/issues/`，commit `43ed9f2`，migration `drizzle/0003_absent_skin.sql`）。
+  - **背景與決策（自「進行中」區移入）**：2026-07-29 由 DB 現況快照盤點出來：`games` 2691 筆同時扮演「未來賽程表」與「歷史比賽維度表」，兩者生命週期完全相反（一個過期就該丟、一個要永久保留），混在一張表是後述三個問題的共同根因。**決策理由是語意誠實，不是省空間**——15 人規模下 `games` 也才約 7,500 筆／1 MB（現況 384 kB；15 MB 的 DB 裡真正的大戶是 `raw_payloads` 6.1 MB）。
+    - **盤點結果**：2691 筆中 1736（64%）是 tracked 球員打過的（`etl backfill` 2021→今，`career_high` 的依據，**必須保留**）、25 筆是現役球隊前瞻、**929 筆（35%）跟任何 tracked 球員都無關**——schedule 每批對六個 sportId 掃全聯盟的殘留，無人參照、只增不減。表上沒有欄位能區分這兩種來源，只能反查 `game_*_lines`。
+    - **另查到的 bug**：schedule 窗口是 `today-1 .. today`（`games.py:226`）**從不抓未來**，41 筆 `scheduled` 全部日期 `2026-07-27`（早於當日），而 `player-upcoming.ts:85` 要求 `>= today` → **個人頁與首頁的「下一系列賽」目前實際上是空的**。票 02 一併修掉。
+    - **票 01 逐場自給自足**（frontier）：`game_date_us`／`opponent_team_id`／`is_home` 反正規化進 `game_*_lines`、回填、拆掉 `game_pk` 的 FK、**8 處查詢**移除 join（TS 6：`player-recent` ×2、`home` ×4；**Python 2：`recent_form.py:310-327`**——近況引擎讀全歷史取 `game_date_us`，是清理策略下唯一會被打爆的讀取端）。這三欄是這些查詢從 `games` 取的**全部**內容（比分／球場／狀態／系列賽一欄都沒用到），且 gameLog payload 本來就有（`game_lines.py:147-154`），目前只是拿去組 `games` 表頭。
+      - **2026-08-03 修正清點**：初版寫「7 處，TS 5」漏掉 `home.ts:158`（digest 當日**投手** line 的 join）。漏改不會報錯，但票 02 清掉 `games` 過期列後**首頁 digest 投手卡會靜默消失**。
+    - **票 02 `games` 轉純前瞻**（blocked by 01）：schedule 只抓現役球隊、**窗口改 `today-7 .. today+7`**、gameLog 停止 upsert 表頭、每批清掉窗口外的列。預期收斂到兩百多筆。
+      - **決策（2026-08-03，batu）**：往前留 7 天是為了保住個人頁的「球隊近期戰績」（最近 3 場 `final` 含比分）。原本列的替代方案「改由逐場表推導」**經查證做不到**——逐場表只有 tracked 球員自己出賽的場次（球隊比賽他沒上場就沒有列），且票 01 明確不帶比分欄。往後 7 天則是「下一系列賽」所需（一個系列 3–4 場，1–2 天會空掉）。ingest 與保留用同一個窗口值。
+      - **2026-08-03 重測數字**（開票時 → 現在）：總筆數 2691 → **2877**；無人參照殘留 929 → **1133（39%）**，單一批次就 +204；`scheduled` 139 筆但**全表只有 2 筆日期 >= 今天**，「下一系列賽」仍實質全空。
+  - **落地與實測**：兩張逐場表加 `game_date_us`／`opponent_team_id`／`is_home` 並回填、拆掉 `game_pk` 的 FK；**8 處 join 全數移除**（含初版漏清點的 `home.ts:158`——漏改不報錯，但票 02 清列後首頁 digest 投手卡會**靜默消失**，已補測試斷言）。`games` **2877 → 275 筆**（其中 30 筆日期 `>= 今天`），「下一系列賽」由實質全空恢復正常；gameLog 的 `upsert_game_headers`／`GameHeaderRow` 已移除。
+  - 精確版本的「`player-upcoming.ts` 不動」：查詢語意完全沒變（照舊讀 `games`），但 `team-map.ts` 的 `opponentOf` 一分為二（逐場列自帶對手 → `opponentOf`；schedule 由主客兩隊推導 → `opponentFromTeams`），呼叫端跟著改名。
+
+- [x] **`xwoba-savant/01` 完成——`season_batting_stats.xwoba` 終於有值**（票 `.scratch/xwoba-savant/issues/01`，commit `43ed9f2` ＋同日四項後續修正）。
+  - **背景與決策（自「進行中」區移入）**：該欄自建表以來全為 NULL（StatsAPI `sabermetrics` 不給 xwOBA，那是 Statcast 的東西），而 schema 一開始就留好位置：`season_stats.py:288` 刻意把 `xwoba` 排除在 `ON CONFLICT DO UPDATE SET` 外、註解寫明留給未來的 Savant source。與 `games-role-split` 無相依，可並行。
+    - **來源（2026-07-29 實測）**：`baseballsavant.mlb.com/leaderboard/expected_statistics?type=batter&year=<Y>&filterType=bip&min=1&csv=true` → 200 / `text/csv`；`player_id` 即 `mlb_player_id`、`est_woba` 即 xwOBA。**`min=1` 必須明設**（預設 `min=q` 會濾掉兼職球員；實測 2025 年 666 列，抓得到鄭宗哲 `pa=7`）。**不引 pybaseball**——它底層就是打這個 endpoint，卻要拖進 pandas/numpy/matplotlib 只為一欄；標準庫 `urllib`+`csv` 即可，與 `snapshot.py`／`build_docs.py` 零依賴路線一致。
+    - **粒度不匹配——決策已定 (a)（2026-08-03，batu）**：我們的 PK 是 `(player_id, season, level, team_id)`，Savant 是「球員×球季」不分隊。**採 (a) 只在該 `(player_id, season, level='mlb')` 唯一一列時才寫、多隊留 NULL**（誠實、零誤導，9 個 MLB player-season 覆蓋 8 個，個人頁本來就缺值不顯示）；(b) 同值寫進多列＝假資料；(c) 加球季合計列違反 spec-01 C.7「層級合計不落表」。
+      - **(b) 為何特別糟（實測佐證）**：同列的 `woba` 是**分隊**的（`season_stats.py` 的 `_index_saber_by_team` 按 `team.id` 索引，上游的「跨隊合計」split 被 ETL 刻意跳過）。Fairchild 2022 三列 woba 各為 0.389（113，99 PA）／0（136，3 PA）／0（137，8 PA）。若三列都填整季 est_woba 0.323，等於在 3 PA 與 8 PA 的樣本上憑空生出「運氣很差」的故事，而 xwOBA 的用途正是跟 wOBA 對照看運氣——**口徑不一致的對照比留白傷害更大**。
+      - **`team=` 參數已實測、救不了這題（2026-08-03）**：`year=2022` 加 `team=113` 回的仍是整季 `pa=110`／`est_woba=0.323`（不是他在 113 隊的 99 PA），且每位球員只掛一支球隊（136／137 查無此人）。**`team=` 是名單篩選、不是數據口徑**，多隊球季的分隊 xwOBA 在這個 endpoint 上無解。
+      - 順帶驗證：用我們的 per-team woba 做 PA 加權 `(0.389×99+0×3+0×8)/110 = 0.3501`，對上 Savant 整季 `woba=0.350`——ETL 的 per-team 值與上游一致。但**可合成 ≠ 可拆解**，已知整季值反推三隊是一式三未知數。
+      - 日後若真要顯示多隊球季 xwOBA，正解是在 **services 的層級合計層**跟重算的合計 wOBA 並排（同口徑），**不是往 per-team 列裡塞**。
+    - **來源選型結論（再次驗證 ADR §6.4，2026-07-23 的結論仍成立）**：pybaseball 的 Baseball-Reference 與 FanGraphs 路徑 **實測皆 403**（BR 回 Cloudflare「Just a moment...」挑戰頁，pybaseball 的 `IndexError` 是解析挑戰頁的症狀而非改版）。差別是結構性的：Savant 與 StatsAPI 同屬 MLB Advanced Media、`csv=true` 是官方匯出；BR／FG 是私人公司、資料即商品，擋 bot 是理性行為。**BR/FG 一律不進排程 ETL。** 連帶結論：**OPS+ 拿不到**（BR 原生指標，且需要 StatsAPI 沒有的球場因子，自算會得到跟任何公開來源都對不上的數字）——已有的 `wrc_plus` 是其上位替代且同樣 MLB-only，真正的缺口是**小聯盟層級沒有任何校正後打擊指標**（追蹤球員多數在 3A），那需要外部來源、非換欄位可解。
+  - **落地**：零依賴 `urllib`＋`csv` 的 `etl/src/etl/sources/savant.py`，掛在 morning 的 `season_stats` 之後（要先有列才能 UPDATE）；只更新 `xwoba` 一欄，與 `upsert_season_batting` 刻意把 `xwoba` 排除在 `ON CONFLICT DO UPDATE SET` 外互為配套。實測決策 (a) 生效：Fairchild 2022 三列維持 NULL、鄭宗哲 2025 得到 wOBA 0.000 / xwOBA 0.170（正是這個欄位存在的意義）。
+  - **驗收時發現並修掉的四個問題（2026-08-03，batu）**：
+    1. **【正確性】0 打席的列誤觸「多隊球季」守門員。** `count(*) = 1` 把 `pa = 0` 的列也算進去。實例：Fairchild 2026 有兩列 MLB——team 114 `g=14, pa=27` 與 team 136 `g=1, pa=0`（出賽一場但沒輪到打擊）；Savant 2026 是 `pa=27, est_woba=0.28`，**與 team 114 的 27 PA 完全相等**，現實中零歧義、只有我們的列數有歧義，結果整季 xwOBA 從網站消失。交易、升降、代跑代守都會生出 `pa = 0` 的列，**不是罕見邊界**。修法：守門員與 UPDATE 目標**兩處都限制 `pa > 0`**；全部 MLB 列皆 `pa = 0` 時 count = 0、不寫。**實測驗證**：team 114 = `0.28`、team 136 維持 NULL。
+    2. **【raw 體積】每批重存整個聯盟的 CSV。** 實測一批 **7 筆／1679 kB**（全聯盟 577~946 列），但只追 5 人、reprocess 也只會針對他們。改為 raw 只存過濾後的 tracked 列 → 同一批 **1 筆／1085 bytes（3 列）**。這件事原本直接惡化 `raw-payloads-retention` 要解的問題（日增 1.2 → 2.9 MB）。
+    3. **【請求數】不再每天早上重抓 2020~去年。** 歷史球季在上游是凍結的。改為只抓**當季 ＋ 任何「寫得進去卻仍為 NULL」的過去球季**（`seasons_to_fetch`，與守門員共用同一條 `pa > 0` 唯一列判準，兩者不會漂移）。實測 `seasons_to_fetch → [2026]`，**7 個請求變 1 個**；白名單新增球員時缺口會自動出現、隔天自動補齊。強制全部重抓走 `etl resync --season`（已把 savant 掛上去）。
+    4. **【穩健性＋可診斷性】** 原本任一年拋例外就整個 source 中止、`update_xwoba` 完全不執行，已抓到的年份一起丟掉（批次 388、389 兩次都掛在 2020，均為暫時性失敗）。改為**逐年容錯**：某年失敗記 warning 並跳過、成功的年份照樣寫入；**只有全部年份都失敗才拋**——因為 `batch.py` 是「拋例外就 rollback 整個 source」，部分失敗若拋，好資料會被回滾；全失敗才拋才能讓 `derive_status` 如實落成 partial／failed。另把 `repr(last_exc)` 併進 `SavantError` 訊息（`batch.py` 只存 `repr(exc)`，根因不進訊息就進不了 `sync_runs.detail`），retry 捕捉範圍從 `except Exception` 縮到 `(OSError, http.client.HTTPException)`，**程式錯誤直接冒出來**、不再被重試三次偽裝成網路問題。
+    - 已知取捨：部分年份失敗只留 log warning、不落 `sync_runs.detail`（沿用對帳告警的 signal-only 慣例，要落帳得擴充 per-source batch API）；Savant 真的沒有值的球季會每天重查，上限就是原本固定的 7 個請求。
+  - 測試：`etl` **132 綠**（+8：0 PA 不算歧義、全 0 PA 不寫、raw 只留 tracked 列、逐年容錯保住成功年份、全失敗才拋、缺口掃描、錯誤訊息帶根因、程式錯誤不重試）。
+
+- [x] **`doc-drift-fixes/01` 完成——ETL 文件漂移 A／B／C 三段全清**（票 `.scratch/doc-drift-fixes/issues/01`，commit `43ed9f2`）。
+  - **背景與決策（自「進行中」區移入）**——ETL 文件漂移兩處（2026-07-30 說明三批次差異時查出；純文件／死碼清理，不動執行邏輯）。
+    - **A：`GAMELOG_LOOKBACK_DAYS` 是死常數。** `config.py:24` 有定義，**全 repo 無任何 import**（唯一提及是 `cli.py:11` docstring 文字）。實際 `game_lines.py:409-422` 兩批都抓**整個當季** gameLog、無回看窗口，`kind` 只用於命名 source。這是 2026-07-27 gamelog refactor 的必然結果——改成按球員抓自己的 gameLog 後「掃幾天內的比賽」就不存在了。待清：常數本身、`spec-03:37` 來源對照表、`spec-00:53` 參數表。**DEVLOG 已完成區的 `:83`／`:104` 不改**（歷史紀錄正確反映當時狀態）。
+    - **B：ADR 指定「經 pybaseball」取 Savant，但 `xwoba-savant` 票選了零依賴 CSV。** `decisions.md:132`／`:139`、`spec-03:39` 都寫 Savant 經 pybaseball；票 01 改直接讀官方 `csv=true` 匯出。**這是決策變更、不只是文件過時**，正解是在 ADR §6.4 補一則決策記錄理由與影響，而非默默改字。一併記下 source 的固有限制：leaderboard 粒度是「球員×球季」、`team=` 只篩名單不改口徑，換隊球季拿不到分隊 xwOBA。
+      - **⚠️ B 實質上 blocked by `xwoba-savant` 票（2026-08-03 更正）**：B 要補的 ADR 決策記的是該票**還沒實作**的選型；若先補而實作時改主意，會在 ADR 留下一則錯誤決策，比文件過時更糟。**與 xwoba 票一起做，或等它完成後再補。** A、C 不受影響，可立即動工。
+    - **C（自我更正）**：DEVLOG 的 `xwoba-savant` 條目把 FG／BR 403 寫成「順帶查證」的新發現，但 **`decisions.md:131`（§6.4）早在 2026-07-23 就記錄了**並明寫「不嘗試繞過」。07-29 的實測是六天後的再次驗證，非新發現，措辭待改並指向 ADR。
+    - 成因值得記住：gamelog refactor 改掉了資料抓取的**形狀**（game-中心 → player-中心），只更新了 spec-03 的敘述段落，漏掉同一份文件的**來源對照表**與 spec-00 的**參數表**。改變抓取形狀時，參數表最容易漏。
+  - **A**：`config.py` 的 `GAMELOG_LOOKBACK_DAYS` 已刪、`cli.py` docstring 改為「回補早於當季的歷史逐場」、`spec-03` 來源對照表與 `spec-00` §4 參數表已更新；DEVLOG 已完成區與兩張已完成票裡的提及**刻意保留**（歷史紀錄）。
+  - **B**：ADR §6.4「可用來源」改為 **MLB Stats API ＋ Savant 官方 CSV 匯出**，補上不引 pybaseball 的理由與 source 固有限制（leaderboard 粒度球員×球季、`team=` 只篩名單不改口徑）；`decisions.md:37` 補註「pybaseball 前提已演變、選 Python 的結論不變」。原本「B blocked by xwoba 票」的顧慮因兩者同批完成而解除——ADR 記的就是實際落地的選型。
+  - **C**：DEVLOG 的 FG／BR 403 措辭改為「**再次驗證 ADR §6.4（2026-07-23）的結論仍成立**」並指向 ADR。
+  - 同日後續：因 xwoba 票的四項修正，`spec-03` §3 補了 Savant 抓取範圍與 raw 存法、§7 補了 `resync --season` 也會強制重抓 Savant，`spec-01` C.7 補了 `pa > 0` 判準。
+
+- [x] **順修 `lib/services/home.ts` 的 dead import**：票 01 移掉 8 處 join 後 `games` 已無使用處，但 `pnpm typecheck` 沒開 `noUnusedLocals` 所以擋不下來。已移除。
+
+### 2026-07-30
+
+- [x] **執行 ETL `morning` 同步批次**（2026-07-30）：`sync_run #383 → success`，約 2 分鐘。變化：`games` 2691→2877（**+186，其中僅 8 筆對應實際出賽**——印證 `games-role-split` 票 02 的殘留成長速率比原估更快，929→1107）、`raw_payloads` 256→339（**日增 83 筆**，印證 `raw-payloads-retention` 的緊迫性）、逐場 +8、`transaction_events` +1、`season_pitching_stats` +1。近況句全部重算出真值（林昱珉升級為 `single_game`「上一場優質先發」）。兩個 WARNING 皆既有 sanitize 規則正常運作（`season_stats` 丟 2 支非納入 sportId 球隊、`transactions` 15 個 team ref 設 NULL），與 07-29 同模式。
 
 ### 2026-07-29
 
@@ -219,46 +272,18 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [x] **`games-role-split` slice（2 票，`.scratch/games-role-split/issues/`）——拆開 `games` 的兩個角色**。2026-07-29 由 DB 現況快照盤點出來：`games` 2691 筆同時扮演「未來賽程表」與「歷史比賽維度表」，兩者生命週期完全相反（一個過期就該丟、一個要永久保留），混在一張表是後述三個問題的共同根因。**決策理由是語意誠實，不是省空間**——15 人規模下 `games` 也才約 7,500 筆／1 MB（現況 384 kB；15 MB 的 DB 裡真正的大戶是 `raw_payloads` 6.1 MB）。
-  - **盤點結果**：2691 筆中 1736（64%）是 tracked 球員打過的（`etl backfill` 2021→今，`career_high` 的依據，**必須保留**）、25 筆是現役球隊前瞻、**929 筆（35%）跟任何 tracked 球員都無關**——schedule 每批對六個 sportId 掃全聯盟的殘留，無人參照、只增不減。表上沒有欄位能區分這兩種來源，只能反查 `game_*_lines`。
-  - **另查到的 bug**：schedule 窗口是 `today-1 .. today`（`games.py:226`）**從不抓未來**，41 筆 `scheduled` 全部日期 `2026-07-27`（早於當日），而 `player-upcoming.ts:85` 要求 `>= today` → **個人頁與首頁的「下一系列賽」目前實際上是空的**。票 02 一併修掉。
-  - [ ] **票 01 逐場自給自足**（frontier）：`game_date_us`／`opponent_team_id`／`is_home` 反正規化進 `game_*_lines`、回填、拆掉 `game_pk` 的 FK、**8 處查詢**移除 join（TS 6：`player-recent` ×2、`home` ×4；**Python 2：`recent_form.py:310-327`**——近況引擎讀全歷史取 `game_date_us`，是清理策略下唯一會被打爆的讀取端）。這三欄是這些查詢從 `games` 取的**全部**內容（比分／球場／狀態／系列賽一欄都沒用到），且 gameLog payload 本來就有（`game_lines.py:147-154`），目前只是拿去組 `games` 表頭。
-    - **2026-08-03 修正清點**：初版寫「7 處，TS 5」漏掉 `home.ts:158`（digest 當日**投手** line 的 join）。漏改不會報錯，但票 02 清掉 `games` 過期列後**首頁 digest 投手卡會靜默消失**。
-  - [ ] **票 02 `games` 轉純前瞻**（blocked by 01）：schedule 只抓現役球隊、**窗口改 `today-7 .. today+7`**、gameLog 停止 upsert 表頭、每批清掉窗口外的列。預期收斂到兩百多筆。
-    - **決策（2026-08-03，batu）**：往前留 7 天是為了保住個人頁的「球隊近期戰績」（最近 3 場 `final` 含比分）。原本列的替代方案「改由逐場表推導」**經查證做不到**——逐場表只有 tracked 球員自己出賽的場次（球隊比賽他沒上場就沒有列），且票 01 明確不帶比分欄。往後 7 天則是「下一系列賽」所需（一個系列 3–4 場，1–2 天會空掉）。ingest 與保留用同一個窗口值。
-    - **2026-08-03 重測數字**（開票時 → 現在）：總筆數 2691 → **2877**；無人參照殘留 929 → **1133（39%）**，單一批次就 +204；`scheduled` 139 筆但**全表只有 2 筆日期 >= 今天**，「下一系列賽」仍實質全空。
-
-- [x] **`xwoba-savant` slice（1 票，`.scratch/xwoba-savant/issues/`）——以 Baseball Savant 填 `season_batting_stats.xwoba`**。該欄自建表以來全為 NULL（StatsAPI `sabermetrics` 不給 xwOBA，那是 Statcast 的東西），而 schema 一開始就留好位置：`season_stats.py:288` 刻意把 `xwoba` 排除在 `ON CONFLICT DO UPDATE SET` 外、註解寫明留給未來的 Savant source。與 `games-role-split` 無相依，可並行。
-  - **來源（2026-07-29 實測）**：`baseballsavant.mlb.com/leaderboard/expected_statistics?type=batter&year=<Y>&filterType=bip&min=1&csv=true` → 200 / `text/csv`；`player_id` 即 `mlb_player_id`、`est_woba` 即 xwOBA。**`min=1` 必須明設**（預設 `min=q` 會濾掉兼職球員；實測 2025 年 666 列，抓得到鄭宗哲 `pa=7`）。**不引 pybaseball**——它底層就是打這個 endpoint，卻要拖進 pandas/numpy/matplotlib 只為一欄；標準庫 `urllib`+`csv` 即可，與 `snapshot.py`／`build_docs.py` 零依賴路線一致。
-  - **粒度不匹配——決策已定 (a)（2026-08-03，batu）**：我們的 PK 是 `(player_id, season, level, team_id)`，Savant 是「球員×球季」不分隊。**採 (a) 只在該 `(player_id, season, level='mlb')` 唯一一列時才寫、多隊留 NULL**（誠實、零誤導，9 個 MLB player-season 覆蓋 8 個，個人頁本來就缺值不顯示）；(b) 同值寫進多列＝假資料；(c) 加球季合計列違反 spec-01 C.7「層級合計不落表」。
-    - **(b) 為何特別糟（實測佐證）**：同列的 `woba` 是**分隊**的（`season_stats.py` 的 `_index_saber_by_team` 按 `team.id` 索引，上游的「跨隊合計」split 被 ETL 刻意跳過）。Fairchild 2022 三列 woba 各為 0.389（113，99 PA）／0（136，3 PA）／0（137，8 PA）。若三列都填整季 est_woba 0.323，等於在 3 PA 與 8 PA 的樣本上憑空生出「運氣很差」的故事，而 xwOBA 的用途正是跟 wOBA 對照看運氣——**口徑不一致的對照比留白傷害更大**。
-    - **`team=` 參數已實測、救不了這題（2026-08-03）**：`year=2022` 加 `team=113` 回的仍是整季 `pa=110`／`est_woba=0.323`（不是他在 113 隊的 99 PA），且每位球員只掛一支球隊（136／137 查無此人）。**`team=` 是名單篩選、不是數據口徑**，多隊球季的分隊 xwOBA 在這個 endpoint 上無解。
-    - 順帶驗證：用我們的 per-team woba 做 PA 加權 `(0.389×99+0×3+0×8)/110 = 0.3501`，對上 Savant 整季 `woba=0.350`——ETL 的 per-team 值與上游一致。但**可合成 ≠ 可拆解**，已知整季值反推三隊是一式三未知數。
-    - 日後若真要顯示多隊球季 xwOBA，正解是在 **services 的層級合計層**跟重算的合計 wOBA 並排（同口徑），**不是往 per-team 列裡塞**。
-  - **來源選型結論（再次驗證 ADR §6.4，2026-07-23 的結論仍成立）**：pybaseball 的 Baseball-Reference 與 FanGraphs 路徑 **實測皆 403**（BR 回 Cloudflare「Just a moment...」挑戰頁，pybaseball 的 `IndexError` 是解析挑戰頁的症狀而非改版）。差別是結構性的：Savant 與 StatsAPI 同屬 MLB Advanced Media、`csv=true` 是官方匯出；BR／FG 是私人公司、資料即商品，擋 bot 是理性行為。**BR/FG 一律不進排程 ETL。** 連帶結論：**OPS+ 拿不到**（BR 原生指標，且需要 StatsAPI 沒有的球場因子，自算會得到跟任何公開來源都對不上的數字）——已有的 `wrc_plus` 是其上位替代且同樣 MLB-only，真正的缺口是**小聯盟層級沒有任何校正後打擊指標**（追蹤球員多數在 3A），那需要外部來源、非換欄位可解。
-
-- [x] **`sync-runs-test-isolation`（1 票，`.scratch/sync-runs-test-isolation/issues/`）——別讓測試清空 `sync_runs`**。`lib/services/sync.test.ts:16,20` 對共用開發 DB 做**無 `where` 的整表刪除**（`beforeEach` + `afterAll`），`lib/db/client.ts` 讀同一個 `DATABASE_URL` → **每跑一次 `pnpm test` 批次歷史就歸零**。這是快照裡「`id` 已到 382、表裡剩 1 筆」的真正原因（先前推測「DB 重建過」為誤）。全 repo 整表刪除僅此一處，其餘 34 個 `db.delete()` 都以 fixture id 圈住自己。
-  - **影響範圍**：`sync_runs` 三個用途中，footer 的「資料更新於」（取最近一筆非 failed）**不受影響**；失效的是**批次結果稽核**（partial 出現過幾次、哪個 source 常掛）與**對帳告警落點**（roster/IL 與投影不一致寫入 `detail`，spec-03 §6）。
-  - **決策（2026-07-29，batu）**：暫不判斷批次歷史是否需長期保留，**先留著、過一陣子再檢討**；本票只讓它**留得住**，不引入保留期限。成本近乎零（一天兩批約 730 列/年、`detail` 幾百 bytes、查詢連索引都不需要）。`id` 斷號是 sequence 不回收的正常現象，不處理。
-  - **只加 `where` 是不夠的——決策已定：改用獨立測試 DB（2026-08-03，batu）**：`getLastSyncedAt()` 本就是全表查詢（要回「整個系統最新一筆」），且第一個測試斷言 `toBeNull()`、**本質上要求空表**，所以 scoped delete 與 transaction rollback 都救不了它。採 `.env.test` → `phobos_test`，順帶讓其餘 34 個 DB 測試不再寫進開發資料。
-    - **可行性已複查（2026-08-03）**：全 repo **11 個測試檔會連 DB，且每一個都自帶 `migrate()`**——搬到空的 `phobos_test` 不需額外 bootstrap 或 seed，schema 由測試自己建。這是此方案成本低的關鍵前提，已確認成立。
-    - 複查現況：`sync_runs` 現為 **2 筆、max id 383**（07-30 跑過一次批次、之後沒再跑測試），斷號與筆數落差的形狀完全吻合此診斷。
-
 - [ ] **`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）——`raw_payloads` 保留策略**。DB 裡唯一有體積問題的表：**6.0 MB、佔全庫（15 MB）40%，而裡面只有 4 天資料**（2026-07-27~30）。寫入集中在 `statsapi.py:67`（每次 API 呼叫自動記一筆），append-only、無 FK、**無任何清理機制**。組成（2026-08-03 重測，339 筆／4921 kB）：`people/*/stats` 240 筆 3133 kB（64%）、`schedule` 18 筆 644 kB、`teams` 18 筆 516 kB、`people`(bio) 48 筆 333 kB、`transactions` 15 筆 294 kB。**日增約 1.2 MB**（5 名球員）。與 `games` 那 1133 筆殘留同類，但規模大一個數量級。
   - **reprocess 定位——決策已定（2026-08-03，batu）：採「分級 TTL，暫不實作 `etl reprocess`」。** 各 endpoint 依價值設不同天數（`transactions` 量最小價值最高、留最久；`people/*/stats` 佔 64% 且新的完全涵蓋舊的、留最短），體積問題當場解決，同時保住日後真要 reprocess 的高價值素材。`etl reprocess` 指令不在本票範圍，等真有需求再另開票。本票因此落在輕量端：**純粹加 TTL + 清存量**。
   - 背景：`raw_payloads` 有寫入端但**沒有任何 production 讀取端**（TS 只有 schema 定義無查詢；ETL CLI 有 `resync`／`add-event`／`reproject`／`backfill`，**沒有 `reprocess`**）。唯二會讀它的是 `scripts/db/snapshot.py:73-78` 的快照抽樣與 `etl/tests/test_integration_db.py` 的測試斷言，都不是 reprocess 用途。ADR §8.1 承諾的能力設計了但從未實作。（初版寫「零讀取端」措辭過滿，2026-08-03 收緊。）
   - **已用實測排除兩個方案**（不必再試）：①**內容雜湊去重**對最大宗的 `people` 幾乎無效（216 筆→60 筆相異，但 2740 kB 只降到 2701 kB、省 1.4%——重複的都是空回應小 payload，真正佔空間的 gameLog 每次多一場比賽、位元組必不同）；只有 `teams` 有效（省 67%）。②**每個 `(endpoint, params)` 留最新一份**全表僅省 14%——`params` 內嵌日期，每天都是新 key。**唯一有效槓桿是按 endpoint 類型設保留天數。**
+  - **2026-08-03 更新（savant source 的插曲）**：新上線的 Savant source 原本每批把**整個聯盟**的 CSV 存進 raw（實測 7 筆／1679 kB，日增一度變成約 2.9 MB），已在 xwoba 票的後續修正裡改成只存 tracked 球員的列（同一批 → 1 筆／約 1 kB），**日增回到約 1.2 MB 的原估**。本票的分級 TTL 設計不受影響；只是**存量多了 7 筆全聯盟 CSV（合計約 1.68 MB）待一併掃掉**，`savant` 是新增的一個 endpoint 類型，設 TTL 時記得涵蓋。
   - 另記：這張表**已被減量過一次**（`DEVLOG:227` gamelog refactor 的「raw 停存 boxscore」砍掉 120 份整場 boxscore）。「什麼該進 raw」一直有意識管理，**缺的是時間維度的管理**——ADR §8.1 只說可 reprocess、沒說留多久，是這個坑的源頭。
 
-- [x] **`doc-drift-fixes`（1 票，`.scratch/doc-drift-fixes/issues/`）——ETL 文件漂移兩處**（2026-07-30 說明三批次差異時查出；純文件／死碼清理，不動執行邏輯）。
-  - **A：`GAMELOG_LOOKBACK_DAYS` 是死常數。** `config.py:24` 有定義，**全 repo 無任何 import**（唯一提及是 `cli.py:11` docstring 文字）。實際 `game_lines.py:409-422` 兩批都抓**整個當季** gameLog、無回看窗口，`kind` 只用於命名 source。這是 2026-07-27 gamelog refactor 的必然結果——改成按球員抓自己的 gameLog 後「掃幾天內的比賽」就不存在了。待清：常數本身、`spec-03:37` 來源對照表、`spec-00:53` 參數表。**DEVLOG 已完成區的 `:83`／`:104` 不改**（歷史紀錄正確反映當時狀態）。
-  - **B：ADR 指定「經 pybaseball」取 Savant，但 `xwoba-savant` 票選了零依賴 CSV。** `decisions.md:132`／`:139`、`spec-03:39` 都寫 Savant 經 pybaseball；票 01 改直接讀官方 `csv=true` 匯出。**這是決策變更、不只是文件過時**，正解是在 ADR §6.4 補一則決策記錄理由與影響，而非默默改字。一併記下 source 的固有限制：leaderboard 粒度是「球員×球季」、`team=` 只篩名單不改口徑，換隊球季拿不到分隊 xwOBA。
-    - **⚠️ B 實質上 blocked by `xwoba-savant` 票（2026-08-03 更正）**：B 要補的 ADR 決策記的是該票**還沒實作**的選型；若先補而實作時改主意，會在 ADR 留下一則錯誤決策，比文件過時更糟。**與 xwoba 票一起做，或等它完成後再補。** A、C 不受影響，可立即動工。
-  - **C（自我更正）**：DEVLOG 的 `xwoba-savant` 條目把 FG／BR 403 寫成「順帶查證」的新發現，但 **`decisions.md:131`（§6.4）早在 2026-07-23 就記錄了**並明寫「不嘗試繞過」。07-29 的實測是六天後的再次驗證，非新發現，措辭待改並指向 ADR。
-  - 成因值得記住：gamelog refactor 改掉了資料抓取的**形狀**（game-中心 → player-中心），只更新了 spec-03 的敘述段落，漏掉同一份文件的**來源對照表**與 spec-00 的**參數表**。改變抓取形狀時，參數表最容易漏。
-
-- [x] **執行 ETL `morning` 同步批次**（2026-07-30）：`sync_run #383 → success`，約 2 分鐘。變化：`games` 2691→2877（**+186，其中僅 8 筆對應實際出賽**——印證 `games-role-split` 票 02 的殘留成長速率比原估更快，929→1107）、`raw_payloads` 256→339（**日增 83 筆**，印證 `raw-payloads-retention` 的緊迫性）、逐場 +8、`transaction_events` +1、`season_pitching_stats` +1。近況句全部重算出真值（林昱珉升級為 `single_game`「上一場優質先發」）。兩個 WARNING 皆既有 sanitize 規則正常運作（`season_stats` 丟 2 支非納入 sportId 球隊、`transactions` 15 個 team ref 設 NULL），與 07-29 同模式。
-
+- [x] ~~**`games-role-split` slice（2 票，`.scratch/games-role-split/issues/`）**~~（2026-08-03 完成，見已完成區）——`games` 2877→275 筆，逐場表自帶日期／對手／主客場。
+- [x] ~~**`xwoba-savant`（1 票，`.scratch/xwoba-savant/issues/`）**~~（2026-08-03 完成，見已完成區）——含同日四項後續修正。
+- [x] ~~**`sync-runs-test-isolation`（1 票，`.scratch/sync-runs-test-isolation/issues/`）**~~（2026-08-03 完成，見已完成區）。
+- [x] ~~**`doc-drift-fixes`（1 票，`.scratch/doc-drift-fixes/issues/`）**~~（2026-08-03 完成，見已完成區）。
+- [x] ~~執行 ETL `morning` 同步批次~~（2026-07-30 完成，見已完成區）。
 - [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。
 
 - [x] ~~**frontend-shell-and-roster slice**（spec-02 切片 1+2，4 票）~~（2026-07-24 完成，見已完成區）。名詞庫（spec-02 §2.4-5）延到 spec-04 slice。

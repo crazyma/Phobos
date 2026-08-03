@@ -18,7 +18,7 @@ https://baseballsavant.mlb.com/leaderboard/expected_statistics
 
 **Blocked by:** None。與 `games-role-split` 兩票無相依，可並行。
 
-**Status:** ready-for-agent
+**Status:** done（2026-08-03，commit `43ed9f2` ＋同日四項後續修正，見 Comments）
 
 ## 粒度不匹配 —— 決策已定 (a)（2026-08-03，batu）
 
@@ -61,20 +61,20 @@ leaderboard URL 有 `team=` 欄位，看似能拿到分隊數字。實測 `year=
 
 ## Checklist
 
-- [ ] 新模組 `etl/src/etl/sources/savant.py`（獨立於 `season_stats.py`：不同 host、不同格式）
+- [x] 新模組 `etl/src/etl/sources/savant.py`（獨立於 `season_stats.py`：不同 host、不同格式）
   - 零依賴：`urllib.request` + `csv.DictReader`（注意 CSV 帶 BOM，需 `encoding='utf-8-sig'`）
   - 沿用既有 client 的保守 rate-limit 精神：一年一個請求，2020→今約 7 個請求
   - 逐年抓 `type=batter&min=1`，於本地濾出 tracked 球員（**不要**逐球員打一次）
-- [ ] **只更新 `xwoba` 一欄**的 UPDATE 敘述：`update season_batting_stats set xwoba = %s where player_id=%s and season=%s and level='mlb' and team_id=%s`。**絕不碰其他欄位**——這正是 `upsert_season_batting` 當初把 `xwoba` 排除在 UPDATE SET 外的理由，兩個 source 各管各的欄位、不互相覆蓋
-- [ ] 套用決策 (a)：寫入前先確認該 `(player_id, season, level='mlb')` 只有一列；多隊球季**整組跳過、留 NULL**（現況唯一實例：Fairchild 656413 的 2022）
-- [ ] **只寫 `level='mlb'`**：Statcast 沒有小聯盟資料，其他層級永遠 NULL（與 `woba`／`wrc_plus`／`war` 的 MLB-only 特性一致）
-- [ ] raw 層：把 CSV 轉成 JSON array 存進 `raw_payloads`（`source='savant'`、`endpoint='leaderboard/expected_statistics'`），維持「上游原檔可 reprocess」的既有慣例（ADR §8.1）
-- [ ] 批次編排（`sources/__init__.py`）：掛在 **morning**（季數據本來就是 morning 全量重拉），**排在 `season_stats` 之後**——要先有列才能 UPDATE
-- [ ] 失敗不炸批次：Savant 掛掉時記 warning、該 source 標 partial，不影響其他 source（沿用既有 best-effort 慣例，spec-03 §7）
-- [ ] `docs/spec/spec-03-etl-pipeline.md` §3 來源表新增一列（Savant → `season_batting_stats.xwoba`，morning）；`docs/spec/spec-01-domain-and-data-model.md` C.7 把 `xwoba` 從「目前全空」改為實際來源與 MLB-only／單一球隊限制
-- [ ] 個人頁進階區確認 xwOBA 有值時顯示得出來（`glossary-and-advanced-metrics` 票 03 已做「缺值不顯示」，本票只是讓它終於有值）；`content/glossary/woba.mdx` 檢查是否該補 xwOBA 的說明與對照
-- [ ] 測試：CSV 解析（含 BOM、`est_woba` 空字串）、tracked 濾出、**多球隊季不寫入**、只更新 xwoba 不動其他欄、非 MLB 層級不寫、Savant 失敗不中斷批次
-- [ ] 跑一次 morning 真連線，確認 Fairchild／鄭宗哲的 MLB 列 xwoba 有值，再跑 `python3 scripts/db/snapshot.py`
+- [x] **只更新 `xwoba` 一欄**的 UPDATE 敘述：`update season_batting_stats set xwoba = %s where player_id=%s and season=%s and level='mlb' and team_id=%s`。**絕不碰其他欄位**——這正是 `upsert_season_batting` 當初把 `xwoba` 排除在 UPDATE SET 外的理由，兩個 source 各管各的欄位、不互相覆蓋
+- [x] 套用決策 (a)：寫入前先確認該 `(player_id, season, level='mlb')` 只有一列；多隊球季**整組跳過、留 NULL**（現況唯一實例：Fairchild 656413 的 2022）
+- [x] **只寫 `level='mlb'`**：Statcast 沒有小聯盟資料，其他層級永遠 NULL（與 `woba`／`wrc_plus`／`war` 的 MLB-only 特性一致）
+- [x] raw 層：把 CSV 轉成 JSON array 存進 `raw_payloads`（`source='savant'`、`endpoint='leaderboard/expected_statistics'`），維持「上游原檔可 reprocess」的既有慣例（ADR §8.1）
+- [x] 批次編排（`sources/__init__.py`）：掛在 **morning**（季數據本來就是 morning 全量重拉），**排在 `season_stats` 之後**——要先有列才能 UPDATE
+- [x] 失敗不炸批次：Savant 掛掉時記 warning、該 source 標 partial，不影響其他 source（沿用既有 best-effort 慣例，spec-03 §7）
+- [x] `docs/spec/spec-03-etl-pipeline.md` §3 來源表新增一列（Savant → `season_batting_stats.xwoba`，morning）；`docs/spec/spec-01-domain-and-data-model.md` C.7 把 `xwoba` 從「目前全空」改為實際來源與 MLB-only／單一球隊限制
+- [x] 個人頁進階區確認 xwOBA 有值時顯示得出來（`glossary-and-advanced-metrics` 票 03 已做「缺值不顯示」，本票只是讓它終於有值）；`content/glossary/woba.mdx` 檢查是否該補 xwOBA 的說明與對照
+- [x] 測試：CSV 解析（含 BOM、`est_woba` 空字串）、tracked 濾出、**多球隊季不寫入**、只更新 xwoba 不動其他欄、非 MLB 層級不寫、Savant 失敗不中斷批次
+- [x] 跑一次 morning 真連線，確認 Fairchild／鄭宗哲的 MLB 列 xwoba 有值，再跑 `python3 scripts/db/snapshot.py`
   - **具體驗收範例**：鄭宗哲（691907）2025 年 MLB 只有一隊（team 134）、`pa=7`，我們的 `woba = 0`，Savant `est_woba = 0.170`。寫入後該列應呈現 wOBA 0.000 / xwOBA 0.170——**這正是這個欄位存在的意義**（打得不算差但一無所獲），可當成個人頁進階區的顯示範例
   - 反向驗收：Fairchild 2022 的三列 MLB `xwoba` 應**全部維持 NULL**
 
@@ -84,3 +84,39 @@ leaderboard URL 有 `team=` 欄位，看似能拿到分隊數字。實測 `year=
 - **投手側不在範圍內**：Savant 也有 `type=pitcher` 的 expected statistics，但 `season_pitching_stats` **沒有 `xwoba` 欄**。要做得先改 schema，另開票。
 - `est_ba`／`est_slg`（xBA／xSLG）同一份 CSV 就有，但目前 schema 沒有對應欄位，本票不擴充。日後要加是低成本的（同一個 source 多寫兩欄）。
 - 覆蓋率預期不高且會隨球員組成變動：目前 5 人中 2 位投手不會出現在打者 leaderboard（正常），李灝宇 2025 年不在名單（2026 才登板 MLB）。**這是資料的實況，不是 bug**。
+
+### 完成後的四項修正（2026-08-03，batu 驗收時發現）
+
+初版功能正確但有四個問題，已一併修掉（全在 `etl/src/etl/sources/savant.py`）：
+
+1. **【正確性】0 打席的列誤觸「多隊球季」守門員。** `count(*) = 1` 把 `pa = 0` 的列也算進去。
+   實例：Fairchild（656413）2026 有兩列 MLB——team 114 `g=14, pa=27` 與 team 136 `g=1, pa=0`
+   （出賽一場但沒輪到打擊）。Savant 2026 是 `pa=27, est_woba=0.28`，**與 team 114 的 27 PA 完全相等**，
+   現實中零歧義、只有我們的列數有歧義，結果整季 xwOBA 從網站消失。交易、升降、代跑代守都會生出
+   `pa = 0` 的列，**這不是罕見邊界**。修法：守門員與 UPDATE 目標**兩處都限制 `pa > 0`**——
+   守門員不再被無打席列騙，目標也不可能寫進那列；全部 MLB 列都 `pa = 0` 時 count = 0、不寫。
+   已加測試涵蓋這個形狀（一列有 PA、一列 0 PA → 只寫有 PA 的那列）與全 0 PA 的邊界。
+   **實測驗證**：跑完後 Fairchild 2026 team 114 = `0.28`、team 136 維持 NULL。
+2. **【raw 體積】每批重存整個聯盟的 CSV。** 實測一次批次寫了 **7 筆／1679 kB**（全聯盟 577~946 列），
+   但我們只追 5 人、reprocess 也只會針對他們。已改為 **raw 只存過濾後的 tracked 球員列**：
+   同一批實測降到 **1 筆／1085 bytes（3 列）**。
+3. **【請求數】不再每天早上重抓 2020~去年。** 歷史球季在上游是凍結的。改為只抓
+   **當季 ＋ 任何「寫得進去卻仍為 NULL」的過去球季**（`seasons_to_fetch`，與守門員共用同一條
+   `pa > 0` 唯一列判準，兩者不會漂移）。今天實測 `seasons_to_fetch → [2026]`，**7 個請求變 1 個**。
+   白名單新增球員 → season stats 補出 MLB 歷史列 → 缺口自動出現 → 隔天早上自動補齊。
+   要強制全部重抓走 `etl resync --season`（已一併把 savant 掛上去，spec-03 §7 已更新）。
+4. **【穩健性 + 可診斷性】單年失敗不再拖垮全部，錯誤根因不再被吃掉。**
+   - 原本 `csv_text = fetcher(season)` 一拋例外就整個 source 中止、`update_xwoba` 完全不執行，
+     已成功抓到的年份也一起丟掉（實際批次 388、389 兩次都在 2020 掛掉）。改為**逐年容錯**：
+     某年失敗記 warning 並跳過、成功的年份照樣寫入；**只有全部年份都失敗才拋** `SavantError`。
+     這是配合 `batch.py`「拋例外就 rollback 整個 source」的框架——部分失敗若拋，好資料會被回滾；
+     全失敗才拋，才能讓 `derive_status` 如實落成 partial／failed。
+   - `SavantError` 的訊息帶上 `repr(last_exc)`（`batch.py` 只存 `repr(exc)`，根因不放進訊息就進不了
+     `sync_runs.detail`——查一次 timeout／403／DNS 要翻很久）；retry 的捕捉範圍從 `except Exception`
+     縮到 `(OSError, http.client.HTTPException)`，**程式錯誤（TypeError 等）直接冒出來**，
+     不再被重試三次後偽裝成網路問題。已加測試涵蓋兩者。
+
+**已知取捨**：部分年份失敗只留 log warning，不會出現在 `sync_runs.detail`（沿用 `projection.py`
+對帳告警的既有 signal-only 慣例）。要讓它落帳得擴充 per-source batch API，非本票範圍。
+另：Savant 真的沒有值的球季（`est_woba` 空白、或該球員不在 bip leaderboard 上）會每天重查一次，
+上限就是原本固定的 7 個請求，不會比改前差。

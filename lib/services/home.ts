@@ -4,7 +4,6 @@ import { db as defaultDb } from "../db/client.ts";
 import {
   gameBattingLines,
   gamePitchingLines,
-  games,
   playerRecentForm,
   players,
   teams,
