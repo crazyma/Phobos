@@ -184,7 +184,7 @@
     <h3 id="sec-2-1">2.1 首頁 <code>/</code></h3>
     <p>由上而下：</p>
     <ol>
-    <li><strong>最新賽況（主）</strong>：錨定「<strong>最新一個已結算的美國比賽日</strong>」（該日所有相關比賽 <code>status=final</code>；判定由 services 依 <code>games</code> 計算）。每張快訊卡＝一位球員一場：中文名、隊伍/層級徽章、<strong>單場精簡 line</strong>（打者：打席/安打/全壘打/打點/保送/三振；投手：局數/被安打/失分/自責/三振/保送）、<strong>近況一句話</strong>。</li>
+    <li><strong>最新賽況（主）</strong>：錨定「<strong>最新一個已結束的美國比賽日</strong>」：該日已依美西時鐘完全結束。每張快訊卡＝一位球員一場：中文名、隊伍/層級徽章、<strong>單場精簡 line</strong>（打者：打席/安打/全壘打/打點/保送/三振；投手：局數/被安打/失分/自責/三振/保送）、<strong>近況一句話</strong>。</li>
     <li><strong>球員動態</strong>：該比賽日之後發生的 <code>transaction_events</code>（升降/交易/DFA/釋出/IL 進出），一則一行＋日期。</li>
     <li><strong>即將出賽（次）</strong>：每位 <code>tracked</code> 球員的下一場：對手、<strong>台灣時間</strong>開賽、標示——<strong>「確定先發」僅投手</strong>（<code>games.probable_*_pitcher_id</code> 命中）；其他健康在隊者一律「<strong>可能出賽</strong>」；<code>health=il</code> 顯示「傷兵中」不列預告。</li>
     <li><strong>空狀態</strong>：當日無台灣球員賽事或休賽期 → 改顯示<strong>本季/上季回顧卡</strong>（每人季數據摘要＋近況一句話）＋<strong>名詞知識入口輪播</strong>（自名詞庫輪選）。</li>

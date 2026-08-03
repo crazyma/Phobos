@@ -33,17 +33,25 @@
 
 | 資料 | 來源 | 寫入 | 批次 |
 |---|---|---|---|
-| 賽程/先發預告（**前瞻**） | StatsAPI `schedule`（帶 `sportId`，`hydrate=probablePitcher`） | `games`（即將/今日場次表頭） | 兩批 |
-| 逐場成績 | **StatsAPI 人員 gameLog**（`people/{id}/stats?stats=gameLog`，每位 tracked 球員、按季／群組 hitting·pitching／必要時 sportId）；整場 boxscore **不落庫**，需要時 by-case 取 | `game_*_lines`（＋順手補 `games` 表頭：已打過的場） | morning 回看 `GAMELOG_LOOKBACK_DAYS=10`＋evening 掃尾；初期一次性 **backfill 2020~今** |
+| 賽程/先發預告（**前瞻**） | StatsAPI `schedule`（現役球隊 `teamId`，`hydrate=probablePitcher`） | `games`（美西今天前後 7 天的前瞻賽程） | 兩批 |
+| 逐場成績 | **StatsAPI 人員 gameLog**（`people/{id}/stats?stats=gameLog`，每位 tracked 球員、按季／群組 hitting·pitching／必要時 sportId）；整場 boxscore **不落庫**，需要時 by-case 取 | `game_*_lines` | morning／evening 各抓整個當季 gameLog（冪等；evening 補 morning 時未結束的場次）；歷史球季一次性 `etl backfill` |
 | 球季標準數據（全層級） | StatsAPI 人員 season stats（各 sportId；**上游直接提供累積 AVG/ERA/OPS 等，取計數欄落庫、比率仍由 services 推導**） | `season_*_stats` 計數欄 | morning（**2020 起整季重拉**，人數少可行） |
-| 球季進階數據（僅 MLB 層級） | **StatsAPI `stats=sabermetrics`**（打 `woba/wRcPlus/war`、投 `fip/fipMinus/xfip/war/eraMinus`，2026-07-23 實測確認）＋ **ETL 自算**（LOB%）＋ pybaseball Savant 可選補充（xwOBA 等 Statcast 系） | `season_*_stats` 進階欄 | morning；小聯盟不供應→留 NULL，best-effort |
+| 球季進階數據（僅 MLB 層級） | **StatsAPI `stats=sabermetrics`**（打 `woba/wRcPlus/war`、投 `fip/fipMinus/xfip/war/eraMinus`，2026-07-23 實測確認）＋ **ETL 自算**（LOB%）＋ Savant 官方 CSV 匯出（xwOBA） | `season_*_stats` 進階欄 | morning；小聯盟不供應→留 NULL，best-effort |
+
+> **Savant xwOBA 的抓取範圍與 raw 存法（2026-08-03）**——與 season stats 的「2020 起整季重拉」刻意**不同**：
+>
+> - **只抓需要的球季**：當季（會變）＋ **任何「寫得進去卻仍為 NULL」的過去球季**（該 tracked 球員該季 MLB 只有一列 `pa > 0` 且 `xwoba is null`）。已結束的球季在上游是凍結的，每天早上重抓 2020~去年只是白花請求與 raw 空間。白名單新增球員 → season stats 補出他的 MLB 歷史列 → 缺口自動出現 → 隔天早上自動補齊，**不需人工介入**。實測：改前每批 7 個請求，改後常態 1 個。
+>   - 已知代價：Savant 真的沒有值的球季（`est_woba` 空白、或該球員不在 bip leaderboard 上）會每天重查一次，上限就是原本固定的 7 個請求，不會更差。
+>   - 需要無視缺口掃描、強制全部重抓時走 `etl resync --season`（見 §7）。
+> - **raw 只存 tracked 球員的列**：CSV 匯出是全聯盟 577~946 列，但白名單只有 5 人、日後 reprocess 也只針對他們。實測一批 7 檔共 **1679 kB → 過濾後單檔約 1 kB**。
+> - **逐年容錯**：某一年抓取失敗只記 warning 並跳過，**成功的年份照樣寫入**（`batch.py` 一拋例外就整個 source rollback，所以部分失敗刻意不拋）；**全部年份都失敗才拋** `SavantError`，讓批次如實落成 partial／failed。例外訊息帶上底層 `repr`，`sync_runs.detail` 才看得出是 timeout、403 還是 DNS。
 
 > **來源可用性（ADR §6.4，2026-07-23 實測）**：pybaseball 的 FanGraphs／Baseball-Reference 接口因兩站 Cloudflare 防護一律 403，**不可用、不繞過**——一切以 **MLB Stats API 為主**，Savant 只當進階數據補充。Savant 更新較 MLB API 慢：進階欄允許**落後主資料一批**，不因 Savant 未更新而標整批失敗。wRC+/WAR/xFIP 已確認可由 StatsAPI `stats=sabermetrics` 取得（僅 MLB 層級、2020~ 可回查；為 MLB 官方自算版本，名詞頁延伸來源指向 MLB），見 §9 實測紀錄。
 | 異動 | StatsAPI `transactions` | `transaction_events` | evening（另 morning 補漏） |
 | roster / IL | StatsAPI roster 端點 | 僅當**對帳信號**（§6），不直接寫狀態 | evening |
 | 球員/球隊基本資料 | StatsAPI people / teams | `players`（非白名單欄位）、`teams` | 低頻（每週或手動） |
 
-> **逐場來源策略（2026-07-27 定案，球員中心）**：逐場成績一律走**人員 gameLog**（只抓 tracked 球員自己的比賽），**不再逐場掃全賽程 boxscore、也不把 boxscore 落庫**——服務聚焦關注球員，game-中心的完整 box 查詢**刻意取捨**（使用者可回官方站查）。`games` 表只留兩種來源的列：gameLog 補「球員打過的比賽」＋ schedule 補「即將/今日場次（含先發預告，前瞻功能保留）」。原始層 `raw_payloads` 保留 gameLog／schedule／people／teams 原檔、**不存 boxscore**。`career_high`/`season_high` 以歷史逐場為基準（引擎讀全 `game_*_lines` 歷史，2026-07-27 驗證無日期窗），故初期需一次性 **backfill 2020~今**才會正確。
+> **逐場來源策略（2026-07-27 定案，球員中心）**：逐場成績一律走**人員 gameLog**（只抓 tracked 球員自己的比賽），**不再逐場掃全賽程 boxscore、也不把 boxscore 落庫**。逐場表自帶日期／對手／主客場並永久保留；`games` 只保留現役球隊的短期前瞻賽程，gameLog 不再寫入它。原始層 `raw_payloads` 保留 gameLog／schedule／people／teams／Savant CSV 原檔、**不存 boxscore**。`career_high`/`season_high` 以歷史逐場為基準（引擎讀全 `game_*_lines` 歷史，無日期窗），故初期需一次性 **backfill 2020~今**才會正確。
 
 ### 4. sportId ↔ level 對照
 
@@ -72,7 +80,7 @@
 
 - 上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、`pybaseball.cache.enable()`。
 - 失敗語意：來源級失敗 → 該來源跳過、其餘照跑、`partial`；整批失敗 → `failed`，網站繼續供舊資料（spec-02 §5）。
-- 手動工具（CLI）：`resync --season`、`resync --gamelog --from DATE`（早於 lookback 的上游修正用）、`add-event`（補錄 manual 事件）、`reproject`（重放投影）。
+- 手動工具（CLI）：`resync --season`（球季數據 2020→當季整季重拉，**並強制重抓每一年的 Savant xwOBA**——batch 的缺口掃描正是這個指令要繞過的東西）、`resync --gamelog --from DATE`（回補早於當季的歷史逐場）、`add-event`（補錄 manual 事件）、`reproject`（重放投影）。
 
 ## 8. 測試決策
 

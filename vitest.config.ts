@@ -10,10 +10,10 @@ export default defineConfig({
     },
   },
   test: {
-    // Load DATABASE_URL (and friends) from .env before test modules evaluate,
-    // since lib/db/client.ts reads process.env at import time.
-    setupFiles: ["dotenv/config"],
-    // Integration tests share one real Postgres; run test files serially so
+    // Load the isolated test DATABASE_URL before test modules evaluate, since
+    // lib/db/client.ts reads process.env at import time.
+    setupFiles: ["./vitest.setup.ts"],
+    // Integration tests share the isolated test DB; run test files serially so
     // row-count / fixture assertions don't race across worker processes.
     fileParallelism: false,
   },

@@ -1,0 +1,74 @@
+# 01 — `raw_payloads` 保留策略：唯一真正佔空間的表，且只增不減
+
+**What to build:** `raw_payloads` 是 DB 裡唯一有體積問題的表——**6.0 MB，佔整個 DB（15 MB）的 40%**，而裡面只有 **4 天**的資料（2026-07-27 ~ 07-30）。寫入是集中式的（`etl/src/etl/statsapi.py:67`，每次 API 呼叫自動記一筆），append-only、無 FK、**沒有任何保留或清理機制**。
+
+定位見 `docs/adr/decisions.md:164`：
+
+> 上游格式可能隨時變動；有 raw layer，之後只要重寫轉換邏輯、reprocess 既有資料即可，不必重抓。
+
+**現況組成**（2026-08-03 重新量測，339 筆；payload 文字量合計 4921 kB，表總計 6152 kB 含 TOAST 與索引）：
+
+| endpoint | 筆數 | 合計 | 平均 | 佔比 | 說明 |
+|---|---:|---:|---:|---:|---|
+| `people/*/stats`（gameLog、季數據） | 240 | 3133 kB | 13 kB | 64% | 最大宗 |
+| `schedule` | 18 | 644 kB | 36 kB | 13% | 比賽結算後價值大幅下降 |
+| `teams` | 18 | 516 kB | 29 kB | 10% | 231 支球隊名冊，內容幾乎不變卻重複存 |
+| `people`（bio） | 48 | 333 kB | 7 kB | 7% | 球員基本資料，近乎靜態 |
+| `transactions` | 15 | 294 kB | 20 kB | 6% | 量小、reprocess 價值最高（投影的解讀基礎） |
+
+成長量級：4 天 4921 kB ≈ **每天 1.2 MB**（5 名球員）→ 一年數百 MB；15 名球員時 `people/*/stats` 那 64% 會等比放大。**這是 `games` 那 1133 筆殘留的同類問題，但規模大一個數量級。**
+
+**Blocked by:** None。獨立票。
+
+**Status:** ready-for-agent
+
+## reprocess 定位 —— 決策已定（2026-08-03，batu）
+
+**採「分級 TTL，暫不實作 `etl reprocess`」。** 各 endpoint 依價值設不同保留天數（高價值的 `transactions` 留久、量最大的 `people/*/stats` 留短），體積問題當場解決；同時保住日後真要 reprocess 時的高價值素材。`etl reprocess` 指令**不在本票範圍**，等真有需求再另開票。
+
+背景：全 repo 掃過，`raw_payloads` 有寫入端（`raw.py:29-37`）但**沒有任何 production 讀取端**——TS 只有 `lib/db/schema/operational.ts:26` 的 schema 定義、無查詢；ETL CLI 有 `resync`／`add-event`／`reproject`／`backfill`，**沒有 `reprocess`**。唯二會讀它的是 `scripts/db/snapshot.py:73-78` 的快照抽樣與 `etl/tests/test_integration_db.py` 的測試斷言，兩者都不是 reprocess 用途。也就是說 ADR §8.1 承諾的能力設計了但從未實作，今天真要 reprocess 仍得現寫腳本。
+
+**這個決策讓本票變成純粹的「加 TTL + 清存量」，實作量落在原先估的輕量端。**
+
+## 已排除的兩個方案（實測數據）
+
+動工前不必再試這兩條路，我量過了：
+
+- **內容雜湊去重** —— 對最大宗的 `people/*/stats` 幾乎無效：（07-29 量測）216 筆只有 60 筆相異，但去重後 2740 kB → **2701 kB（僅省 1.4%）**。因為重複的都是小 payload（球員未在該 sportId 出賽的空回應），真正佔空間的 gameLog 每次抓都多一場比賽、位元組必不相同。只有 `teams` 有效（516 → 172 kB，省 67%）
+- **每個 `(endpoint, params)` 只留最新一份** —— 全表 256 → 234 筆、3817 → 3270 kB，**僅省 14%**。因為 `params` 內嵌日期（`endDate: 2026-07-29`、`startDate`…），每天抓都是新 key，天然不會重複
+
+（上列兩項是 2026-07-29 的量測，樣本較小但結論與比例不隨規模改變，不必重測。）
+
+**結論：唯一有效的槓桿是「按 endpoint 類型設保留天數」（TTL）。**
+
+## Checklist
+
+- [ ] 保留策略以 endpoint 類型分級（決策已定為分級 TTL，天數在實作時定案）：
+  - `transactions` — 量最小（294 kB）、價值最高（投影解讀的基礎），留最久
+  - `people/*/stats` — 量最大（64%）；gameLog 每次回傳完整球季內容，**舊的一份被新的一份完全涵蓋**，可留最短
+  - `schedule` — 比賽結算後由 `games` 取代，價值最低
+  - `teams`／`people`（bio） — 近乎靜態卻重複存，最沒必要逐批留。註：`teams` 最新一筆停在 07-29（07-30 批次沒抓），實作前確認參考資料的實際抓取頻率再定天數
+- [ ] 清理實作放在批次收尾（比照 `games-role-split` 票 02 的位置），與 ingest 同一 transaction；**單純刪列，不做歸檔**
+- [ ] 一次性清掉存量
+- [ ] `docs/spec/spec-03-etl-pipeline.md` 與 `docs/adr/decisions.md` §8.1 補上保留策略——ADR 目前只說「有 raw layer 可 reprocess」，沒說留多久，是這個坑的源頭
+- [ ] 測試：各 endpoint 依自己的天數被清、未過期者不動、清理失敗不中斷批次
+- [ ] 跑一次批次後 `python3 scripts/db/snapshot.py` 確認體積下降
+
+## Comments
+
+- 這張表**已經被減量過一次**：`DEVLOG:227` 的 gamelog refactor 決策明確寫「raw 停存 boxscore」，當初 120 份整場 boxscore 就是那樣砍掉的。所以「什麼該進 raw」一直是有意識管理的，**只是從來沒有時間維度的管理**。本票補的是後者。
+- `etl reprocess` 指令**不做**（2026-08-03 決策），日後真有需求再另開票。但 TTL 的分級刻意讓高價值素材（`transactions`）留得久，就是為了不把那扇門關死。
+- 清理實作時記得：`scripts/db/snapshot.py` 會抽樣顯示 `raw_payloads` 最新幾筆，TTL 上線後快照內容會跟著變短——這是預期行為，不是快照壞了。
+
+### 新增 endpoint 類型：`savant`（2026-08-03，本票仍未動工）
+
+`xwoba-savant` 票上線後多了一個 `source='savant'` 的 raw 類型，設 TTL 時要涵蓋它。兩件事要知道：
+
+- **它一度讓本票的問題惡化一倍。** 初版每批把**整個聯盟**的 CSV 存進 raw——實測 7 筆／1679 kB，
+  日增從約 1.2 MB 變成約 2.9 MB。已在該票的後續修正裡改成**只存 tracked 球員的列**
+  （同一批 → 1 筆／約 1 kB），**日增回到原估**。本票的分級 TTL 設計不受影響。
+- **存量待掃**：改法只影響往後寫入，既有那 **7 筆全聯盟 CSV（合計約 1.68 MB，id 1278~1284）**
+  仍在表裡，屬本票「一次性清存量」的範圍。
+- TTL 分級的定位建議：savant 是**每批可重抓、且新的完全涵蓋舊的**（同一年重抓即最新），
+  性質接近 `people/*/stats`，可歸最短那一級。
+

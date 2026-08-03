@@ -7,17 +7,36 @@
 
 需求：Node 24+、pnpm、以及一個 Postgres 16。
 
+開發用 `phobos`、測試用 `phobos_test` **兩個資料庫**：`pnpm test` 走 `.env.test`，避免測試清掉開發資料（`sync_runs` 曾因此被清空）。
+
 ```bash
 pnpm install
 cp .env.example .env          # 預設連 localhost:5432 的 phobos/phobos/phobos
-docker compose up -d          # 起本地 Postgres（或用你自己的 Postgres，改 .env 即可）
-pnpm db:migrate               # 套用 migration（全新 DB 為乾淨 no-op）
+cp .env.example .env.test     # 再把 .env.test 的資料庫名改成 phobos_test
+
+# 起 Postgres：A) docker 用下面這行；B) 本機 Postgres 見下一節（建 DB 的方式不同）
+docker compose up -d          # phobos 與 phobos_test 兩個 DB 都會自動建好
+
+pnpm db:migrate               # 套用 migration 到 phobos（全新 DB 為乾淨 no-op）
 pnpm db:seed                  # 灌台灣球員白名單（幂等）
-pnpm test                     # 連線 smoke test（需 DB 在跑）
+pnpm test                     # vitest；連 phobos_test，測試自行 migrate、不需 seed
 pnpm dev                      # 起前端，開 http://localhost:3000
 ```
 
-> 沒有 Docker 也行：起任一本機 Postgres、建好 `phobos` role/db，讓 `.env` 的 `DATABASE_URL` 指過去即可——連線字串兩邊共用。
+### 本機 Postgres（Homebrew 等，不用 docker）
+
+**`createdb -U phobos …` 會失敗**（`ERROR: permission denied to create database`）——本機安裝的 `phobos` 是普通 role，沒有 `CREATEDB` 權限。docker 那條路之所以可行，是因為容器裡的 `POSTGRES_USER: phobos` 在該實例內本來就是 superuser；本機安裝沒有這回事。所以要用**安裝時的 superuser**（Homebrew 預設是你的登入帳號）來建：
+
+```bash
+psql -d postgres -c "create role phobos login password 'phobos'"  # 若尚未建
+createdb -O phobos phobos          # 以 superuser 身分執行（省略 -U）
+createdb -O phobos phobos_test
+```
+
+之後 `pnpm db:migrate` / `db:seed` / `test` / `dev` 與上面相同。
+
+> **docker 補建**：init script 只在 volume 全新時跑一次。若你的 volume 是舊的、沒有 `phobos_test`，補一行即可：
+> `docker compose exec postgres createdb -U phobos -O phobos phobos_test`
 
 ## Scripts
 

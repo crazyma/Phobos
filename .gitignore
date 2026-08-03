@@ -15,6 +15,7 @@ dist/
 
 # Env files (keep example files tracked)
 .env
+.env.test
 .env.local
 .env.development.local
 .env.test.local
@@ -104,6 +105,9 @@ logs/
 *.tsbuildinfo
 .turbo/
 .eslintcache
+
+# === 本機管理用產物（DB dump、快照筆記等，含實際資料，不進版控）===
+admin_private/
 
 # === Python / uv (etl/) ===
 # uv self-ignores .venv via .venv/.gitignore, but be explicit for the repo.

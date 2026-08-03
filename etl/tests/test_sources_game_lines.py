@@ -13,12 +13,10 @@ import pytest
 
 from etl.sources.game_lines import (
     BattingLineRow,
-    GameHeaderRow,
     PitchingLineRow,
     _ip_outs,
     transform_gamelog,
     upsert_batting_lines,
-    upsert_game_headers,
     upsert_pitching_lines,
 )
 
@@ -48,7 +46,7 @@ def _log(group, splits):
     }
 
 
-def test_transform_batting_split_and_home_header():
+def test_transform_batting_split_carries_home_context():
     payload = _log(
         "hitting",
         [
@@ -62,19 +60,21 @@ def test_transform_batting_split_and_home_header():
             )
         ],
     )
-    batting, pitching, headers = transform_gamelog(
+    batting, pitching = transform_gamelog(
         payload, player_id=691907, default_level="mlb"
     )
     assert pitching == []
+    assert batting[0].game_date_us == "2025-04-01"
+    assert batting[0].opponent_team_id == 121
+    assert batting[0].is_home is True
     assert batting == [
         BattingLineRow(691907, 100, 137, "mlb", pa=4, ab=4, h=2, doubles=1,
-                       triples=0, hr=1, rbi=3, r=2, bb=0, so=1, sb=0)
+                       triples=0, hr=1, rbi=3, r=2, bb=0, so=1, sb=0,
+                       game_date_us="2025-04-01", opponent_team_id=121, is_home=True)
     ]
-    # isHome → home = own team, away = opponent
-    assert headers == [GameHeaderRow(100, "mlb", "2025-04-01", 137, 121)]
 
 
-def test_transform_pitching_split_away_header_and_level_from_sport():
+def test_transform_pitching_split_carries_away_context_and_level_from_sport():
     payload = _log(
         "pitching",
         [
@@ -87,20 +87,22 @@ def test_transform_pitching_split_away_header_and_level_from_sport():
             )
         ],
     )
-    batting, pitching, headers = transform_gamelog(
+    batting, pitching = transform_gamelog(
         payload, player_id=678906, default_level="mlb"
     )
     assert batting == []
+    assert pitching[0].game_date_us == "2025-08-02"
+    assert pitching[0].opponent_team_id == 121
+    assert pitching[0].is_home is False
     assert pitching == [
         PitchingLineRow(678906, 200, 137, "aaa", started=True, ip_outs=10,
-                        h=4, r=5, er=5, bb=3, so=4, hr=1)
+                        h=4, r=5, er=5, bb=3, so=4, hr=1,
+                        game_date_us="2025-08-02", opponent_team_id=121, is_home=False)
     ]
     # level came from the split's own sport.id (11 → aaa), not default_level
-    # isHome False → home = opponent, away = own team
-    assert headers == [GameHeaderRow(200, "aaa", "2025-08-02", 121, 137)]
 
 
-def test_transform_two_way_player_both_rows_one_header():
+def test_transform_two_way_player_both_rows_keep_their_own_context():
     payload = {
         "stats": [
             {
@@ -115,11 +117,10 @@ def test_transform_two_way_player_both_rows_one_header():
             },
         ]
     }
-    batting, pitching, headers = transform_gamelog(
+    batting, pitching = transform_gamelog(
         payload, player_id=660271, default_level="mlb"
     )
     assert len(batting) == 1 and len(pitching) == 1
-    assert len(headers) == 1  # same game_pk deduped across groups
     assert batting[0].h == 2 and pitching[0].ip_outs == 15
 
 
@@ -131,7 +132,7 @@ def test_transform_minor_league_missing_keys_default_zero_and_ip_parse():
                    stat={"gamesStarted": 1, "inningsPitched": "5.2", "hits": 6})
         ],
     )
-    _, pitching, _ = transform_gamelog(payload, player_id=700002, default_level="a")
+    _, pitching = transform_gamelog(payload, player_id=700002, default_level="a")
     (row,) = pitching
     assert row.level == "a"
     assert row.h == 6
@@ -141,8 +142,8 @@ def test_transform_minor_league_missing_keys_default_zero_and_ip_parse():
 
 def test_transform_skips_split_without_game_pk():
     payload = _log("hitting", [{"date": "2025-04-01", "game": {}, "stat": {"hits": 2}}])
-    batting, _, headers = transform_gamelog(payload, player_id=1, default_level="mlb")
-    assert batting == [] and headers == []
+    batting, _ = transform_gamelog(payload, player_id=1, default_level="mlb")
+    assert batting == []
 
 
 def test_ip_outs_prefers_outs_field_over_innings_pitched():
@@ -159,44 +160,10 @@ def test_ip_outs_parses_innings_pitched_thirds():
 
 
 @pytest.mark.db
-def test_upsert_game_header_creates_game_and_preserves_schedule_columns(db_conn):
-    game_pk = 990300 + (uuid.uuid4().int % 100000)
-    try:
-        # First sighting: a header inserts the game.
-        upsert_game_headers(
-            db_conn, [GameHeaderRow(game_pk, "mlb", "2025-04-01", 137, 121)]
-        )
-        db_conn.commit()
-        # Schedule later sets a richer column (a score).
-        with db_conn.cursor() as cur:
-            cur.execute("update games set home_score = 5 where game_pk = %s", (game_pk,))
-        db_conn.commit()
-        # A re-sighting via gameLog must not clobber the score.
-        upsert_game_headers(
-            db_conn, [GameHeaderRow(game_pk, "mlb", "2025-04-01", 137, 121)]
-        )
-        db_conn.commit()
-
-        with db_conn.cursor() as cur:
-            cur.execute(
-                "select home_team_id, away_team_id, status, home_score from games where game_pk = %s",
-                (game_pk,),
-            )
-            assert cur.fetchone() == (137, 121, "final", 5)
-    finally:
-        with db_conn.cursor() as cur:
-            cur.execute("delete from games where game_pk = %s", (game_pk,))
-        db_conn.commit()
-
-
-@pytest.mark.db
 def test_upsert_lines_is_idempotent(db_conn):
     game_pk = 990200 + (uuid.uuid4().int % 100000)
     player_id = 970200 + (uuid.uuid4().int % 100000)
     try:
-        upsert_game_headers(
-            db_conn, [GameHeaderRow(game_pk, "mlb", "2026-07-26", None, None)]
-        )
         with db_conn.cursor() as cur:
             cur.execute(
                 "insert into players (mlb_player_id, name_en, lifecycle) values (%s, 'Test Two-Way', 'tracked')",
@@ -205,9 +172,11 @@ def test_upsert_lines_is_idempotent(db_conn):
         db_conn.commit()
 
         bat_row = BattingLineRow(player_id, game_pk, None, "mlb", pa=4, ab=4, h=2,
-                                 doubles=1, triples=0, hr=1, rbi=3, r=2, bb=0, so=1, sb=0)
+                                 doubles=1, triples=0, hr=1, rbi=3, r=2, bb=0, so=1, sb=0,
+                                 game_date_us="2026-07-26")
         pitch_row = PitchingLineRow(player_id, game_pk, None, "mlb", started=True,
-                                    ip_outs=18, h=4, r=2, er=2, bb=1, so=7, hr=1)
+                                    ip_outs=18, h=4, r=2, er=2, bb=1, so=7, hr=1,
+                                    game_date_us="2026-07-26")
         assert upsert_batting_lines(db_conn, [bat_row]) == 1
         assert upsert_pitching_lines(db_conn, [pitch_row]) == 1
         db_conn.commit()
@@ -232,5 +201,4 @@ def test_upsert_lines_is_idempotent(db_conn):
             cur.execute("delete from game_batting_lines where player_id = %s", (player_id,))
             cur.execute("delete from game_pitching_lines where player_id = %s", (player_id,))
             cur.execute("delete from players where mlb_player_id = %s", (player_id,))
-            cur.execute("delete from games where game_pk = %s", (game_pk,))
         db_conn.commit()

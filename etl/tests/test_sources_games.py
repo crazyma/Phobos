@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
 from etl.sources.games import (
     GameRow,
+    _schedule_window,
     _map_status,
     sanitize_team_refs,
     transform_schedule,
     upsert_games,
 )
+
+
+def test_schedule_window_keeps_seven_days_on_each_side():
+    assert _schedule_window(date(2026, 8, 3)) == (date(2026, 7, 27), date(2026, 8, 10))
 
 
 def _game_row(pk, home, away):

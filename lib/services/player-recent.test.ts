@@ -54,12 +54,12 @@ beforeAll(async () => {
     { gamePk: G2, level: "mlb", gameDateUs: "2026-07-22", homeTeamId: TEAM_B, awayTeamId: TEAM_A, status: "final" },
   ]);
   await db.insert(gameBattingLines).values([
-    { playerId: PID, gamePk: G1, teamId: TEAM_A, level: "mlb", ab: 4, h: 2, hr: 1, rbi: 2 },
-    { playerId: PID, gamePk: G2, teamId: TEAM_A, level: "mlb", ab: 3, h: 1 },
+    { playerId: PID, gamePk: G1, teamId: TEAM_A, gameDateUs: "2026-07-20", opponentTeamId: TEAM_B, isHome: true, level: "mlb", ab: 4, h: 2, hr: 1, rbi: 2 },
+    { playerId: PID, gamePk: G2, teamId: TEAM_A, gameDateUs: "2026-07-22", opponentTeamId: TEAM_B, isHome: false, level: "mlb", ab: 3, h: 1 },
   ]);
   // Two-way: also pitched in G1.
   await db.insert(gamePitchingLines).values([
-    { playerId: PID, gamePk: G1, teamId: TEAM_A, level: "mlb", started: true, ipOuts: 18, h: 4, r: 2, er: 2, bb: 1, so: 7 },
+    { playerId: PID, gamePk: G1, teamId: TEAM_A, gameDateUs: "2026-07-20", opponentTeamId: TEAM_B, isHome: true, level: "mlb", started: true, ipOuts: 18, h: 4, r: 2, er: 2, bb: 1, so: 7 },
   ]);
   await db.insert(transactionEvents).values([
     { playerId: PID, type: "call_up", effectiveDate: "2026-07-19", source: "statsapi", description: "Recalled" },

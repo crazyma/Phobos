@@ -4,11 +4,14 @@ Thin operator tools for corrections and backfills that fall outside the two
 scheduled batches:
 
   etl resync --season
-      Full 2020→current season-stats re-pull (same work the morning batch does).
+      Full 2020→current season-stats re-pull, plus a forced Savant xwOBA
+      re-pull for *every* season. (The morning batch only asks Savant for the
+      current season plus seasons still missing a writable xwOBA — this command
+      is the escape hatch when that gap scan needs overriding.)
 
   etl resync --gamelog --from YYYY-MM-DD
-      Re-fetch schedule + box lines from a date earlier than the batch lookback
-      (for upstream corrections older than GAMELOG_LOOKBACK_DAYS), then reproject.
+      Re-fetch historical gameLog data from before the current season (for
+      upstream corrections), then reproject.
 
   etl add-event --player-id N --type T --date YYYY-MM-DD [--to-team-id N]
                 [--from-team-id N] [--il-detail il_10] [--description "..."]
@@ -46,7 +49,8 @@ from .sources.game_lines import (
 )
 from .sources.projection import project_all_tracked
 from .sources.recent_form import recompute_all_tracked
-from .sources.season_stats import make_season_stats_source
+from .sources.savant import make_savant_source
+from .sources.season_stats import _season_range, make_season_stats_source
 from .sources.transactions import insert_manual_event
 from .sync import _build_client
 
@@ -86,8 +90,14 @@ def cmd_resync(args: argparse.Namespace, conn: psycopg.Connection) -> int:
     client = _build_client(conn)
     if args.season:
         make_season_stats_source(client, conn).run()
+        # xwOBA lives on the same rows and comes from a different host, so a
+        # "full season-stats re-pull" has to cover it too — with every season
+        # forced, since the batch's on-demand gap scan is precisely what an
+        # operator running `resync` wants to bypass.
+        seasons = _season_range()
+        make_savant_source(client, conn, seasons=seasons).run()
         conn.commit()
-        print("season stats resynced (2020→current)")
+        print(f"season stats + Savant xwOBA resynced ({seasons[0]}→{seasons[-1]})")
         return 0
     # --gamelog: re-pull each tracked player's gameLog for the affected seasons
     start = date.fromisoformat(args.from_date)

@@ -31,10 +31,11 @@ export const gameBattingLines = pgTable(
     playerId: integer("player_id")
       .notNull()
       .references(() => players.mlbPlayerId),
-    gamePk: integer("game_pk")
-      .notNull()
-      .references(() => games.gamePk),
+    gamePk: integer("game_pk").notNull(),
     teamId: integer("team_id").references(() => teams.mlbTeamId),
+    gameDateUs: date("game_date_us").notNull(),
+    opponentTeamId: integer("opponent_team_id").references(() => teams.mlbTeamId),
+    isHome: boolean("is_home"),
     level: teamLevel("level").notNull(),
     pa: integer("pa").notNull().default(0),
     ab: integer("ab").notNull().default(0),
@@ -58,10 +59,11 @@ export const gamePitchingLines = pgTable(
     playerId: integer("player_id")
       .notNull()
       .references(() => players.mlbPlayerId),
-    gamePk: integer("game_pk")
-      .notNull()
-      .references(() => games.gamePk),
+    gamePk: integer("game_pk").notNull(),
     teamId: integer("team_id").references(() => teams.mlbTeamId),
+    gameDateUs: date("game_date_us").notNull(),
+    opponentTeamId: integer("opponent_team_id").references(() => teams.mlbTeamId),
+    isHome: boolean("is_home"),
     level: teamLevel("level").notNull(),
     started: boolean("started").notNull().default(false),
     ipOuts: integer("ip_outs").notNull().default(0),
