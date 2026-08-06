@@ -9,6 +9,13 @@
 
 ### 2026-08-06
 
+- [x] **`sync-runs-test-isolation/02` 完成——Python ETL 測試不再寫開發 DB**（票 `.scratch/sync-runs-test-isolation/issues/02-python-etl-tests-still-write-to-dev-db.md`，分支 `fix/etl-test-db-isolation`）。
+  - **病灶**：票 01 只隔離了 TS 那側；`etl/tests/conftest.py` 的 `db_conn` 走 `get_database_url()` → repo 根 `.env` → **開發庫 `phobos`**，**23 個** `@pytest.mark.db` 測試（票面寫 21，開票後 `raw_retention` 又加了 2 個）全部在開發資料上 insert／commit／delete。已經漏出來過一次：`Test Two-Way`（`mlb_player_id=1041627`，來自 `test_sources_game_lines.py:169` 一次中斷的殘留）帶著 `lifecycle='tracked'` 站上正式名冊頁，每批 ETL 還替它打 StatsAPI（累積 12 筆 raw）。08-06 已手動清掉結果，本票清掉原因。
+  - **落地**：`db_conn` 不再呼叫 `get_database_url()`，改自己讀 repo 根 `.env.test` 的 `DATABASE_URL`（`…/phobos_test`，與 `pnpm test` 同一個庫）。**檔案為準、不吃環境變數**，比照 `vitest.setup.ts` 的 `override: true`；CI 要跑 db 測試就放一份 `.env.test`。
+  - **四條 skip 路徑都給可照做的指示、絕不退回開發庫**：① 沒有 `.env.test`／裡面沒 `DATABASE_URL`；② `.env.test` 與 `.env` 指向同一個庫（＝開發庫，直接拒跑）；③ 庫不存在（psycopg 3.3 在連線失敗時**不帶 sqlstate**，`3D000` 只能從訊息認）；④ 庫在但沒有 curated schema（`to_regclass('public.players')` 為 NULL）。四條逐一實測過。
+  - **schema 來源寫進文件**（本票的隱性依賴）：Python 這側不跑 migration，Drizzle 單一擁有 schema；`phobos_test` 有表是因為 vitest 每次 `beforeEach` 都 `migrate()`。`etl/README.md` 明寫「先跑一次 `pnpm test` 或 `DATABASE_URL=…phobos_test pnpm db:migrate`」，`config.py` docstring 也標明 `get_database_url()` 只供真批次。
+  - **不動任何測試邏輯**（開票時已實測不需要）。驗收：`uv run pytest` **149 passed**（無 skip，代表 23 個 db 測試真的在 `phobos_test` 上跑完；`-m db` 單獨跑為 23 passed／126 deselected），跑完後開發庫 `phobos` 的 `players` 維持 **5 筆**不變。反向驗證：把 `.env.test` 暫時移走 → **23 skipped**、每筆都印出建庫與 migrate 指示，沒有任何一筆退回 `phobos`。
+
 - [x] **執行 ETL `morning`＋`evening` 全量同步（`sync_run #424`／`#425`，皆 `success`）**——兩張票上線後的第一次真實批次，資料全部更新到今天。
   - **兩張票在真實批次裡同時驗證了**：`raw_retention` 以最後一棒跑在兩批的 `sources_ok` 尾端；warning 首次真的落進 `sync_runs.detail.sources_warnings`——`season_stats` 的 `team_rows_dropped`（5579、6038）與 `transactions` 的 `team_refs_sanitized`（15 個 team ref），批次狀態仍是 `success`。**這正是 07-30 那次「兩個 WARNING 只在終端機看得到、事後翻 sync_runs 查不到」的情境，現在查得到了。**
   - 對帳（`reconciliation`）無 mismatch；`raw_retention` 本次刪 0 筆（表裡最舊一筆仍在 14 天內），符合預期。
@@ -295,17 +302,14 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **`sync-runs-test-isolation/02`（`.scratch/sync-runs-test-isolation/issues/`）——Python ETL 測試仍寫在開發 DB 上**。票 01 只隔離了 TS 那側（`pnpm test` → `.env.test` → `phobos_test`），`etl/tests/conftest.py` 走的是 `get_database_url()` → repo 根 `.env` → **開發用的 `phobos`**；`etl/README.md:19` 自己就寫著共用根 `.env`。21 個 `@pytest.mark.db` 測試全部在開發 DB 上 insert／commit／delete。
-  - **已經漏出來過**：08-06 開 dev server 時 `/players` 名冊上多出第 6 位球員 `Test Two-Way`（`mlb_player_id=1041627`），來自 `test_sources_game_lines.py:169`，08-03 某次中斷沒被 `finally` 收掉。它 `lifecycle='tracked'`，所以**每批 ETL 都為它打 StatsAPI**（累積 12 筆 raw），還進了 `player_recent_form` 與正式頁面。已手動清除（players／form／raw 共 14 筆），但清掉的是結果不是原因。
-  - **嚴重度比 01 低**：Python 這側**沒有**無 `where` 的整表刪除或 truncate，21 個測試都用隨機 fixture id 圈住自己並在 `finally` 收拾。風險是中斷殘留與測試資料混進開發資料，不是大規模破壞。
-  - **可行性已實測**：`DATABASE_URL=…phobos_test uv run pytest` → **149 passed**，不需要改任何測試。要處理的前提只有一個：Python 這側不跑 migration（Drizzle 擁有 schema），`phobos_test` 今天有表是因為 vitest 每次 `beforeEach` 都 `migrate()`，這個隱性依賴要在文件講清楚。
+- [x] ~~**`sync-runs-test-isolation/02`（`.scratch/sync-runs-test-isolation/issues/`）——Python ETL 測試仍寫在開發 DB 上**~~（2026-08-06 完成，見已完成區）——`uv run pytest` 改連 `phobos_test`，找不到就 skip、不退回開發庫。
 
 - [x] ~~**`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）**~~（2026-08-06 完成，見已完成區）——分級 TTL 每批收尾清一次；`raw_payloads` 6200 kB → 1376 kB、DB 16 MB → 11 MB。
 
 - [x] ~~**`batch-warnings`（1 票，`.scratch/batch-warnings/issues/`）**~~（2026-08-06 完成，見已完成區）——六個 warning 產生者全數接上 `sync_runs.detail.sources_warnings`，`derive_status` 未動。
 - [x] ~~**`games-role-split` slice（2 票，`.scratch/games-role-split/issues/`）**~~（2026-08-03 完成，見已完成區）——`games` 2877→275 筆，逐場表自帶日期／對手／主客場。
 - [x] ~~**`xwoba-savant`（1 票，`.scratch/xwoba-savant/issues/`）**~~（2026-08-03 完成，見已完成區）——含同日四項後續修正。
-- [x] ~~**`sync-runs-test-isolation`（1 票，`.scratch/sync-runs-test-isolation/issues/`）**~~（2026-08-03 完成，見已完成區）。
+- [x] ~~**`sync-runs-test-isolation`（2 票，`.scratch/sync-runs-test-isolation/issues/`）**~~（01 於 2026-08-03、02 於 2026-08-06 完成，見已完成區）。
 - [x] ~~**`doc-drift-fixes`（1 票，`.scratch/doc-drift-fixes/issues/`）**~~（2026-08-03 完成，見已完成區）。
 - [x] ~~執行 ETL `morning` 同步批次~~（2026-07-30 完成，見已完成區）。
 - [x] ~~執行 ETL `manual` 同步批次~~（2026-07-29 完成，見已完成區）。

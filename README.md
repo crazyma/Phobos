@@ -7,7 +7,7 @@
 
 需求：Node 24+、pnpm、以及一個 Postgres 16。
 
-開發用 `phobos`、測試用 `phobos_test` **兩個資料庫**：`pnpm test` 走 `.env.test`，避免測試清掉開發資料（`sync_runs` 曾因此被清空）。
+開發用 `phobos`、測試用 `phobos_test` **兩個資料庫**：`pnpm test` 與 ETL 的 `uv run pytest` 都走 `.env.test`，避免測試動到開發資料（`sync_runs` 曾因此被清空、測試球員曾因此上了名冊頁）。ETL 那側細節見 `etl/README.md`。
 
 ```bash
 pnpm install
