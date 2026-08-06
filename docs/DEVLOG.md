@@ -295,6 +295,11 @@
 
 ## ▶️ 進行中 / 下一步
 
+- [ ] **`sync-runs-test-isolation/02`（`.scratch/sync-runs-test-isolation/issues/`）——Python ETL 測試仍寫在開發 DB 上**。票 01 只隔離了 TS 那側（`pnpm test` → `.env.test` → `phobos_test`），`etl/tests/conftest.py` 走的是 `get_database_url()` → repo 根 `.env` → **開發用的 `phobos`**；`etl/README.md:19` 自己就寫著共用根 `.env`。21 個 `@pytest.mark.db` 測試全部在開發 DB 上 insert／commit／delete。
+  - **已經漏出來過**：08-06 開 dev server 時 `/players` 名冊上多出第 6 位球員 `Test Two-Way`（`mlb_player_id=1041627`），來自 `test_sources_game_lines.py:169`，08-03 某次中斷沒被 `finally` 收掉。它 `lifecycle='tracked'`，所以**每批 ETL 都為它打 StatsAPI**（累積 12 筆 raw），還進了 `player_recent_form` 與正式頁面。已手動清除（players／form／raw 共 14 筆），但清掉的是結果不是原因。
+  - **嚴重度比 01 低**：Python 這側**沒有**無 `where` 的整表刪除或 truncate，21 個測試都用隨機 fixture id 圈住自己並在 `finally` 收拾。風險是中斷殘留與測試資料混進開發資料，不是大規模破壞。
+  - **可行性已實測**：`DATABASE_URL=…phobos_test uv run pytest` → **149 passed**，不需要改任何測試。要處理的前提只有一個：Python 這側不跑 migration（Drizzle 擁有 schema），`phobos_test` 今天有表是因為 vitest 每次 `beforeEach` 都 `migrate()`，這個隱性依賴要在文件講清楚。
+
 - [x] ~~**`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）**~~（2026-08-06 完成，見已完成區）——分級 TTL 每批收尾清一次；`raw_payloads` 6200 kB → 1376 kB、DB 16 MB → 11 MB。
 
 - [x] ~~**`batch-warnings`（1 票，`.scratch/batch-warnings/issues/`）**~~（2026-08-06 完成，見已完成區）——六個 warning 產生者全數接上 `sync_runs.detail.sources_warnings`，`derive_status` 未動。
