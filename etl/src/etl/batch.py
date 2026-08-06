@@ -51,16 +51,31 @@ def run_batch(kind: str, sources: list[Source], store: SyncRunStore) -> BatchOut
     results: list[SourceResult] = []
     try:
         for source in sources:
-            try:
-                with collect_warnings() as reported_warnings:
+            # The collector is opened outside the try so warnings reported before
+            # a source blew up (upstream retries, say) survive into its result —
+            # that context is what explains the failure.
+            with collect_warnings() as reported_warnings:
+                try:
                     source_warnings = source.run() or []
-                warnings = source_warnings + reported_warnings
-                store.commit()
-                results.append(SourceResult(source.name, ok=True, warnings=warnings))
-            except Exception as exc:  # noqa: BLE001 — isolate the failing source
-                store.rollback()
-                logger.warning("source %s failed: %r", source.name, exc)
-                results.append(SourceResult(source.name, ok=False, error=repr(exc)))
+                    store.commit()
+                    results.append(
+                        SourceResult(
+                            source.name,
+                            ok=True,
+                            warnings=source_warnings + reported_warnings,
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001 — isolate the failing source
+                    store.rollback()
+                    logger.warning("source %s failed: %r", source.name, exc)
+                    results.append(
+                        SourceResult(
+                            source.name,
+                            ok=False,
+                            error=repr(exc),
+                            warnings=list(reported_warnings),
+                        )
+                    )
 
         status = derive_status(results)
         store.close_run(run_id, status, build_detail(results))

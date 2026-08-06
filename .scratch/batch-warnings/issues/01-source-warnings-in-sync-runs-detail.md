@@ -79,3 +79,4 @@ class SourceResult:
 - `sync_runs` 一天兩批、`detail` 才幾百 bytes，加 warning 後仍然微不足道（`sync-runs-test-isolation` 票已算過：五年三千多列）。不需要擔心體積。
 - 順帶效益：`sync-runs-test-isolation` 票保住批次歷史，圖的就是「哪個 source 常掛、partial 出現過幾次」的稽核能力。本票讓那份歷史真正**有東西可稽核**——目前就算留住了，例行 sanitize 與對帳結果一樣看不到。
 - 2026-08-06：完成；`detail.sources_warnings` 採新增 top-level key，warning-free run 保留舊 detail 形狀。
+- 2026-08-06 驗收後續：**失敗的 source 原本會丟掉它已回報的 warning**（collector 開在 `try` 內，except 分支取不到），最有價值的「上游重試了三次才掛」就此消失。已改成 collector 開在 `try` 外，失敗結果一併帶上 warning；spec-03 §7 補記，新增 `test_failing_source_keeps_the_warnings_it_reported_before_blowing_up`。另補真 jsonb round-trip 實測（見 DEVLOG 2026-08-06）。

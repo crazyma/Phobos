@@ -169,6 +169,7 @@
     <li>接上 six warning producers：對帳 mismatch（含 player／欄位／投影值／觀測值／建議 manual event）、games／transactions team ref sanitize、season stats 丟棄未知球隊、Savant 跳過年份、StatsAPI 重試。後者由 batch-scoped collector 歸屬當前 source。</li>
     <li><code>derive_status</code> 不變：warning 一律資訊性，成功但帶 warning 仍是 <code>success</code>；來源拋例外才維持既有的 rollback／<code>partial</code>／<code>failed</code> 語意。</li>
     <li>測試：ETL 針對 warning detail、status、不同行為來源與 StatsAPI 重試的單測；完整 suite 見本次提交驗證。</li>
+    <li><strong>同日驗收後續修正兩項</strong>：① <strong>失敗的 source 不再丟掉 warning</strong>——原本 collector 開在 <code>try</code> 內，走 except 分支就取不到，上游重試那幾筆（最能解釋失敗原因的線索）會消失；改成 collector 開在 <code>try</code> 外，失敗的 <code>SourceResult</code> 一併帶上已回報的 warning，spec-03 §7 補記此語意。② 驗收時補做<strong>真 jsonb round-trip</strong>（單測全走 FakeStore，沒人驗過真的寫得進 <code>sync_runs.detail</code>）：在 <code>phobos_test</code> 跑帶 warning 的批次，<code>detail.sources_warnings</code> 原樣存回、<code>None</code> 正常、status 仍是 <code>success</code>。ETL suite 138 passed。</li>
     </ul></li>
     </ul>
     <h3 id="sec-1-2">2026-08-03</h3>
@@ -544,6 +545,7 @@
     </ul></li>
     </ul>
     <ul class="todo">
+    <li class="done">~~<strong><code>batch-warnings</code>（1 票，<code>.scratch/batch-warnings/issues/</code>）</strong>~~（2026-08-06 完成，見已完成區）——六個 warning 產生者全數接上 <code>sync_runs.detail.sources_warnings</code>，<code>derive_status</code> 未動。</li>
     <li class="done">~~<strong><code>games-role-split</code> slice（2 票，<code>.scratch/games-role-split/issues/</code>）</strong>~~（2026-08-03 完成，見已完成區）——<code>games</code> 2877→275 筆，逐場表自帶日期／對手／主客場。</li>
     <li class="done">~~<strong><code>xwoba-savant</code>（1 票，<code>.scratch/xwoba-savant/issues/</code>）</strong>~~（2026-08-03 完成，見已完成區）——含同日四項後續修正。</li>
     <li class="done">~~<strong><code>sync-runs-test-isolation</code>（1 票，<code>.scratch/sync-runs-test-isolation/issues/</code>）</strong>~~（2026-08-03 完成，見已完成區）。</li>

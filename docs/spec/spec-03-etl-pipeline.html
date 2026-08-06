@@ -231,7 +231,7 @@
     <ul>
     <li>上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、<code>pybaseball.cache.enable()</code>。</li>
     <li>失敗語意：來源級失敗 → 該來源跳過、其餘照跑、<code>partial</code>；整批失敗 → <code>failed</code>，網站繼續供舊資料（spec-02 §5）。</li>
-    <li><strong>告警語意</strong>：source 正常完成時可回傳結構化 warning；批次將其依 source 寫入 <code>sync_runs.detail.sources_warnings</code>。warning 純供稽核，<strong>不影響</strong> <code>success</code>／<code>partial</code>／<code>failed</code>（<code>derive_status</code> 只依來源是否失敗判定）。既有無 warning 的 detail 保持原形狀，讀取端須容忍沒有 <code>sources_warnings</code>。</li>
+    <li><strong>告警語意</strong>：source 正常完成時可回傳結構化 warning；批次將其依 source 寫入 <code>sync_runs.detail.sources_warnings</code>。<strong>失敗的 source 也會保留它在拋例外前已回報的 warning</strong>（例如上游重試紀錄——那正是解釋失敗原因的線索），與 <code>sources_failed</code> 的 error 並存。warning 純供稽核，<strong>不影響</strong> <code>success</code>／<code>partial</code>／<code>failed</code>（<code>derive_status</code> 只依來源是否失敗判定）。既有無 warning 的 detail 保持原形狀，讀取端須容忍沒有 <code>sources_warnings</code>。</li>
     <li>手動工具（CLI）：<code>resync --season</code>（球季數據 2020→當季整季重拉，<strong>並強制重抓每一年的 Savant xwOBA</strong>——batch 的缺口掃描正是這個指令要繞過的東西）、<code>resync --gamelog --from DATE</code>（回補早於當季的歷史逐場）、<code>add-event</code>（補錄 manual 事件）、<code>reproject</code>（重放投影）。</li>
     </ul>
   </section>
