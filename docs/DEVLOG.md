@@ -9,6 +9,12 @@
 
 ### 2026-08-06
 
+- [x] **執行 ETL `morning`＋`evening` 全量同步（`sync_run #424`／`#425`，皆 `success`）**——兩張票上線後的第一次真實批次，資料全部更新到今天。
+  - **兩張票在真實批次裡同時驗證了**：`raw_retention` 以最後一棒跑在兩批的 `sources_ok` 尾端；warning 首次真的落進 `sync_runs.detail.sources_warnings`——`season_stats` 的 `team_rows_dropped`（5579、6038）與 `transactions` 的 `team_refs_sanitized`（15 個 team ref），批次狀態仍是 `success`。**這正是 07-30 那次「兩個 WARNING 只在終端機看得到、事後翻 sync_runs 查不到」的情境，現在查得到了。**
+  - 對帳（`reconciliation`）無 mismatch；`raw_retention` 本次刪 0 筆（表裡最舊一筆仍在 14 天內），符合預期。
+  - 資料現況：players 6／games 245／transaction_events 238／game_batting_lines 1530／season_batting_stats 42／player_recent_form 6；五名追蹤球員狀態皆 `active`，近況句全部有真值（如「連續 3 場有安打」「上一場優質先發」）。
+  - 體積：兩批寫入 98 筆 raw 後 `raw_payloads` 1376 → **1736 kB**、DB 維持 **11 MB**（清理前是 6200 kB／16 MB）。
+
 - [x] **`raw-payloads-retention/01` 完成——raw 從此有時間維度的管理**（票 `.scratch/raw-payloads-retention/issues/01-raw-retention-policy.md`）。
   - **分級 TTL**（天數 batu 定案）：`transactions` 365／`people`(bio) 90／`teams` 60／`schedule` 30／`people/*/stats` 14／`savant` 14。`teams` 從原提的 30 上調到 60，因為實測它只在 evening／manual 抓、已 8 天沒進新的一筆，30 天有把唯一一份清空的風險。**未分類的 `(source, endpoint)` 保留不刪並發 warning**（沒有 catch-all 預設天數）——新 endpoint 必須有意識分類，不能被預設值默默清掉。那個 warning 正好走 `batch-warnings` 剛做好的通道落進 `sync_runs.detail`。
   - 實作 `sources/raw_retention.py`：撈 `(id, source, endpoint, fetched_at)`（**不 select payload**）→ 純函式 `plan_prune` 判定 → 依 id 刪。規則只有一份實作、可不接 DB 純測。排在 `build_sources` **最後一棒**，靠 batch 的 per-source 隔離達成「清理失敗不影響當批 ingest」。另加 `etl prune-raw [--dry-run]`。

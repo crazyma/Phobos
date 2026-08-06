@@ -163,6 +163,15 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-08-06</h3>
     <ul class="todo">
+    <li class="done"><strong>執行 ETL <code>morning</code>＋<code>evening</code> 全量同步（<code>sync_run #424</code>／<code>#425</code>，皆 <code>success</code>）</strong>——兩張票上線後的第一次真實批次，資料全部更新到今天。
+    <ul>
+    <li><strong>兩張票在真實批次裡同時驗證了</strong>：<code>raw_retention</code> 以最後一棒跑在兩批的 <code>sources_ok</code> 尾端；warning 首次真的落進 <code>sync_runs.detail.sources_warnings</code>——<code>season_stats</code> 的 <code>team_rows_dropped</code>（5579、6038）與 <code>transactions</code> 的 <code>team_refs_sanitized</code>（15 個 team ref），批次狀態仍是 <code>success</code>。<strong>這正是 07-30 那次「兩個 WARNING 只在終端機看得到、事後翻 sync_runs 查不到」的情境，現在查得到了。</strong></li>
+    <li>對帳（<code>reconciliation</code>）無 mismatch；<code>raw_retention</code> 本次刪 0 筆（表裡最舊一筆仍在 14 天內），符合預期。</li>
+    <li>資料現況：players 6／games 245／transaction_events 238／game_batting_lines 1530／season_batting_stats 42／player_recent_form 6；五名追蹤球員狀態皆 <code>active</code>，近況句全部有真值（如「連續 3 場有安打」「上一場優質先發」）。</li>
+    <li>體積：兩批寫入 98 筆 raw 後 <code>raw_payloads</code> 1376 → <strong>1736 kB</strong>、DB 維持 <strong>11 MB</strong>（清理前是 6200 kB／16 MB）。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong><code>raw-payloads-retention/01</code> 完成——raw 從此有時間維度的管理</strong>（票 <code>.scratch/raw-payloads-retention/issues/01-raw-retention-policy.md</code>）。
     <ul>
     <li><strong>分級 TTL</strong>（天數 batu 定案）：<code>transactions</code> 365／<code>people</code>(bio) 90／<code>teams</code> 60／<code>schedule</code> 30／<code>people/*/stats</code> 14／<code>savant</code> 14。<code>teams</code> 從原提的 30 上調到 60，因為實測它只在 evening／manual 抓、已 8 天沒進新的一筆，30 天有把唯一一份清空的風險。<strong>未分類的 <code>(source, endpoint)</code> 保留不刪並發 warning</strong>（沒有 catch-all 預設天數）——新 endpoint 必須有意識分類，不能被預設值默默清掉。那個 warning 正好走 <code>batch-warnings</code> 剛做好的通道落進 <code>sync_runs.detail</code>。</li>
