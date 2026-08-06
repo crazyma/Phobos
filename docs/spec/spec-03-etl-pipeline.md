@@ -74,12 +74,13 @@
 ## 6. 狀態投影與對帳
 
 - 每批收尾以事件流全量重放（球員數 × 事件數都小）寫 `player_current_status`（規則＝spec-01 B.3）。
-- **對帳**：evening 批抓的 roster/IL 快照與投影結果比對；不一致 → log 告警（`sync_runs.detail`），提示補錄 manual 事件——**不自動改投影**（維持事件為真相）。
+- **對帳**：evening 批抓的 roster/IL 快照與投影結果比對；不一致 → 記錄結構化告警到 `sync_runs.detail.sources_warnings`（含 `player_id`、欄位、投影值、觀測值與建議的 manual event），提示補錄 manual 事件——**不自動改投影**（維持事件為真相）。
 
 ## 7. 錯誤處理與韌性
 
 - 上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、`pybaseball.cache.enable()`。
 - 失敗語意：來源級失敗 → 該來源跳過、其餘照跑、`partial`；整批失敗 → `failed`，網站繼續供舊資料（spec-02 §5）。
+- **告警語意**：source 正常完成時可回傳結構化 warning；批次將其依 source 寫入 `sync_runs.detail.sources_warnings`。**失敗的 source 也會保留它在拋例外前已回報的 warning**（例如上游重試紀錄——那正是解釋失敗原因的線索），與 `sources_failed` 的 error 並存。warning 純供稽核，**不影響** `success`／`partial`／`failed`（`derive_status` 只依來源是否失敗判定）。既有無 warning 的 detail 保持原形狀，讀取端須容忍沒有 `sources_warnings`。
 - 手動工具（CLI）：`resync --season`（球季數據 2020→當季整季重拉，**並強制重抓每一年的 Savant xwOBA**——batch 的缺口掃描正是這個指令要繞過的東西）、`resync --gamelog --from DATE`（回補早於當季的歷史逐場）、`add-event`（補錄 manual 事件）、`reproject`（重放投影）。
 
 ## 8. 測試決策

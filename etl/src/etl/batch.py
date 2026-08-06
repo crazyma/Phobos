@@ -16,9 +16,11 @@ from .syncrun import (
     FAILED,
     SourceResult,
     SyncRunStore,
+    WarningDetail,
     build_detail,
     derive_status,
 )
+from .warnings import collect_warnings
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class Source:
     """A named unit of ingest work. `run` closes over whatever it needs (conn)."""
 
     name: str
-    run: Callable[[], None]
+    run: Callable[[], list[WarningDetail] | None]
 
 
 @dataclass(frozen=True)
@@ -49,14 +51,31 @@ def run_batch(kind: str, sources: list[Source], store: SyncRunStore) -> BatchOut
     results: list[SourceResult] = []
     try:
         for source in sources:
-            try:
-                source.run()
-                store.commit()
-                results.append(SourceResult(source.name, ok=True))
-            except Exception as exc:  # noqa: BLE001 — isolate the failing source
-                store.rollback()
-                logger.warning("source %s failed: %r", source.name, exc)
-                results.append(SourceResult(source.name, ok=False, error=repr(exc)))
+            # The collector is opened outside the try so warnings reported before
+            # a source blew up (upstream retries, say) survive into its result —
+            # that context is what explains the failure.
+            with collect_warnings() as reported_warnings:
+                try:
+                    source_warnings = source.run() or []
+                    store.commit()
+                    results.append(
+                        SourceResult(
+                            source.name,
+                            ok=True,
+                            warnings=source_warnings + reported_warnings,
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001 — isolate the failing source
+                    store.rollback()
+                    logger.warning("source %s failed: %r", source.name, exc)
+                    results.append(
+                        SourceResult(
+                            source.name,
+                            ok=False,
+                            error=repr(exc),
+                            warnings=list(reported_warnings),
+                        )
+                    )
 
         status = derive_status(results)
         store.close_run(run_id, status, build_detail(results))

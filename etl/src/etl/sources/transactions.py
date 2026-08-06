@@ -362,7 +362,7 @@ def make_transactions_source(client: StatsApiClient, conn: psycopg.Connection) -
     sportIds, and those FKs must not abort the source (spec-03 §7).
     """
 
-    def run() -> None:
+    def run() -> list[dict[str, Any]] | None:
         ids = _tracked_player_ids(conn)
         if not ids:
             return
@@ -386,6 +386,12 @@ def make_transactions_source(client: StatsApiClient, conn: psycopg.Connection) -
                 len(dropped),
                 sorted(dropped),
             )
+        warnings = (
+            [{"kind": "team_refs_sanitized", "team_ids": sorted(dropped)}]
+            if dropped
+            else []
+        )
         upsert_transaction_events(conn, cleaned)
+        return warnings or None
 
     return Source("transactions", run)

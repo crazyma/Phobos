@@ -10,10 +10,8 @@ Three pieces:
     table-driven incl. out-of-order replay (spec-01 §E);
   * `project_all_tracked(conn)` — full replay for every tracked player at batch
     end (small N) writing `player_current_status`;
-  * reconciliation — compares a roster/IL snapshot to the projection and *logs a
-    warning* on mismatch; it never auto-corrects (spec-03 §6). Surfacing into
-    `sync_runs.detail` is out of reach of the per-source batch API, so a logged
-    warning is the signal (see module note below).
+  * reconciliation — compares a roster/IL snapshot to the projection and logs
+    structured warnings on mismatch; it never auto-corrects (spec-03 §6).
 """
 
 from __future__ import annotations
@@ -379,7 +377,7 @@ def make_reconciliation_source(
     (spec-03 §6), which a human does out-of-band.
     """
 
-    def run() -> None:
+    def run() -> list[dict[str, Any]] | None:
         ids = _tracked_player_ids(conn)
         if not ids:
             return
@@ -389,7 +387,11 @@ def make_reconciliation_source(
         )
         observed = transform_roster_snapshot(payload)
         projected = _load_status_refs(conn, ids)
+        warnings: list[dict[str, Any]] = []
         for m in reconcile(projected, observed):
+            suggested_manual_event = (
+                "depart/trade" if m.field == "team" else "il_on/il_off"
+            )
             logger.warning(
                 "reconciliation mismatch: player %s %s projected=%r observed=%r "
                 "(events are truth; add a manual '%s' event if upstream is right)",
@@ -397,7 +399,18 @@ def make_reconciliation_source(
                 m.field,
                 m.projected,
                 m.observed,
-                "depart/trade" if m.field == "team" else "il_on/il_off",
+                suggested_manual_event,
             )
+            warnings.append(
+                {
+                    "kind": "reconciliation_mismatch",
+                    "player_id": m.player_id,
+                    "field": m.field,
+                    "projected": m.projected,
+                    "observed": m.observed,
+                    "suggested_manual_event": suggested_manual_event,
+                }
+            )
+        return warnings or None
 
     return Source("reconciliation", run)

@@ -7,6 +7,15 @@
 
 ## ✅ 已完成
 
+### 2026-08-06
+
+- [x] **`batch-warnings/01` 完成——source warning 已寫入 `sync_runs.detail`**（票 `.scratch/batch-warnings/issues/01-source-warnings-in-sync-runs-detail.md`）。
+  - `SourceResult` 新增結構化 `warnings`；source 成功後 warning 以 `detail.sources_warnings` 依 source 歸檔。無 warning 的 detail 維持既有形狀，jsonb schema 不需 migration。
+  - 接上 six warning producers：對帳 mismatch（含 player／欄位／投影值／觀測值／建議 manual event）、games／transactions team ref sanitize、season stats 丟棄未知球隊、Savant 跳過年份、StatsAPI 重試。後者由 batch-scoped collector 歸屬當前 source。
+  - `derive_status` 不變：warning 一律資訊性，成功但帶 warning 仍是 `success`；來源拋例外才維持既有的 rollback／`partial`／`failed` 語意。
+  - 測試：ETL 針對 warning detail、status、不同行為來源與 StatsAPI 重試的單測；完整 suite 見本次提交驗證。
+  - **同日驗收後續修正兩項**：① **失敗的 source 不再丟掉 warning**——原本 collector 開在 `try` 內，走 except 分支就取不到，上游重試那幾筆（最能解釋失敗原因的線索）會消失；改成 collector 開在 `try` 外，失敗的 `SourceResult` 一併帶上已回報的 warning，spec-03 §7 補記此語意。② 驗收時補做**真 jsonb round-trip**（單測全走 FakeStore，沒人驗過真的寫得進 `sync_runs.detail`）：在 `phobos_test` 跑帶 warning 的批次，`detail.sources_warnings` 原樣存回、`None` 正常、status 仍是 `success`。ETL suite 138 passed。
+
 ### 2026-08-03
 
 - [x] **`sync-runs-test-isolation/01` 完成——測試改連獨立 DB，批次歷史從此留得住**（票 `.scratch/sync-runs-test-isolation/issues/01`，commit `43ed9f2`）。
@@ -279,6 +288,7 @@
   - **2026-08-03 更新（savant source 的插曲）**：新上線的 Savant source 原本每批把**整個聯盟**的 CSV 存進 raw（實測 7 筆／1679 kB，日增一度變成約 2.9 MB），已在 xwoba 票的後續修正裡改成只存 tracked 球員的列（同一批 → 1 筆／約 1 kB），**日增回到約 1.2 MB 的原估**。本票的分級 TTL 設計不受影響；只是**存量多了 7 筆全聯盟 CSV（合計約 1.68 MB）待一併掃掉**，`savant` 是新增的一個 endpoint 類型，設 TTL 時記得涵蓋。
   - 另記：這張表**已被減量過一次**（`DEVLOG:227` gamelog refactor 的「raw 停存 boxscore」砍掉 120 份整場 boxscore）。「什麼該進 raw」一直有意識管理，**缺的是時間維度的管理**——ADR §8.1 只說可 reprocess、沒說留多久，是這個坑的源頭。
 
+- [x] ~~**`batch-warnings`（1 票，`.scratch/batch-warnings/issues/`）**~~（2026-08-06 完成，見已完成區）——六個 warning 產生者全數接上 `sync_runs.detail.sources_warnings`，`derive_status` 未動。
 - [x] ~~**`games-role-split` slice（2 票，`.scratch/games-role-split/issues/`）**~~（2026-08-03 完成，見已完成區）——`games` 2877→275 筆，逐場表自帶日期／對手／主客場。
 - [x] ~~**`xwoba-savant`（1 票，`.scratch/xwoba-savant/issues/`）**~~（2026-08-03 完成，見已完成區）——含同日四項後續修正。
 - [x] ~~**`sync-runs-test-isolation`（1 票，`.scratch/sync-runs-test-isolation/issues/`）**~~（2026-08-03 完成，見已完成區）。

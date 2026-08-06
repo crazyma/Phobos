@@ -19,6 +19,7 @@ from typing import Any, Callable, Optional, Protocol
 import requests
 
 from .config import MAX_RETRIES, REQUEST_DELAY_SECONDS, STATSAPI_BASE_URL
+from .warnings import report_warning
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,15 @@ class StatsApiClient:
                     attempt,
                     attempts,
                     exc,
+                )
+                report_warning(
+                    {
+                        "kind": "statsapi_retry",
+                        "endpoint": endpoint,
+                        "attempt": attempt,
+                        "attempts": attempts,
+                        "error": repr(exc),
+                    }
                 )
         raise StatsApiError(
             f"statsapi {endpoint} failed after {attempts} attempts"

@@ -12,6 +12,7 @@ from typing import Any, Optional
 import pytest
 
 from etl.batch import Source, run_batch
+from etl.warnings import report_warning
 
 
 @dataclass
@@ -77,6 +78,60 @@ def test_all_sources_ok_commits_each():
     # one commit for the placeholder, one per ok source, one on close
     assert store.commits == 4
     assert store.rollbacks == 0
+
+
+def test_source_warnings_are_persisted_without_changing_success_status():
+    store = FakeStore()
+    warning = {"kind": "team_refs_sanitized", "team_ids": [999]}
+    source = Source("games", lambda: [warning])
+
+    outcome = run_batch("morning", [source], store)
+
+    assert outcome.status == "success"
+    assert outcome.results[0].warnings == [warning]
+    assert store.closed == (
+        1,
+        "success",
+        {
+            "sources_ok": ["games"],
+            "sources_failed": [],
+            "sources_warnings": [{"source": "games", "warnings": [warning]}],
+        },
+    )
+
+
+def test_helper_warnings_are_attributed_to_the_source_that_emits_them():
+    store = FakeStore()
+    warning = {"kind": "statsapi_retry", "endpoint": "people", "attempt": 1}
+
+    def run() -> None:
+        report_warning(warning)
+
+    outcome = run_batch("morning", [Source("season_stats", run)], store)
+
+    assert outcome.results[0].warnings == [warning]
+    assert store.closed[2]["sources_warnings"] == [
+        {"source": "season_stats", "warnings": [warning]}
+    ]
+
+
+def test_failing_source_keeps_the_warnings_it_reported_before_blowing_up():
+    store = FakeStore()
+    warning = {"kind": "statsapi_retry", "endpoint": "people", "attempt": 1}
+
+    def run() -> None:
+        report_warning(warning)
+        raise RuntimeError("boom")
+
+    outcome = run_batch("morning", [Source("season_stats", run)], store)
+
+    assert outcome.status == "failed"
+    assert outcome.results[0].warnings == [warning]
+    detail = store.closed[2]
+    assert detail["sources_failed"][0]["source"] == "season_stats"
+    assert detail["sources_warnings"] == [
+        {"source": "season_stats", "warnings": [warning]}
+    ]
 
 
 def test_failing_source_does_not_abort_and_yields_partial():

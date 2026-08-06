@@ -11,11 +11,13 @@ from etl.sources.projection import (
     Mismatch,
     RosterSnapshotEntry,
     StatusRef,
+    make_reconciliation_source,
     project_all_tracked,
     project_status,
     reconcile,
     transform_roster_snapshot,
 )
+import etl.sources.projection as projection_module
 
 # sportId levels: MLB team 147, AAA affiliate 235.
 LEVELS = {147: "mlb", 235: "aaa"}
@@ -217,6 +219,36 @@ def test_reconcile_ignores_unknown_fields_and_players():
         RosterSnapshotEntry(99, team_id=235, on_il=True),  # not in projection → skip
     ]
     assert reconcile(projected, observed) == []
+
+
+def test_reconciliation_source_returns_structured_mismatch_warnings(monkeypatch):
+    class Client:
+        def get(self, endpoint, params):
+            assert (endpoint, params) == (
+                "people",
+                {"personIds": "1", "hydrate": "currentTeam"},
+            )
+            return {"people": [{"id": 1, "currentTeam": {"id": 235}}]}
+
+    monkeypatch.setattr(projection_module, "_tracked_player_ids", lambda _conn: [1])
+    monkeypatch.setattr(
+        projection_module,
+        "_load_status_refs",
+        lambda _conn, _ids: {1: StatusRef(team_id=147, health="active")},
+    )
+
+    warnings = make_reconciliation_source(Client(), object()).run()
+
+    assert warnings == [
+        {
+            "kind": "reconciliation_mismatch",
+            "player_id": 1,
+            "field": "team",
+            "projected": 147,
+            "observed": 235,
+            "suggested_manual_event": "depart/trade",
+        }
+    ]
 
 
 def test_transform_roster_snapshot_reads_current_team_and_il():

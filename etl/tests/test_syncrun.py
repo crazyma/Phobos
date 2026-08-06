@@ -47,3 +47,22 @@ def test_detail_lists_ok_and_failed_sources():
             {"source": "gamelog", "error": "RuntimeError('502')"}
         ],
     }
+
+
+def test_warnings_are_recorded_without_changing_success_status():
+    warning = {
+        "kind": "reconciliation_mismatch",
+        "player_id": 123,
+        "field": "team",
+        "projected": 147,
+        "observed": 121,
+        "suggested_manual_event": "depart/trade",
+    }
+    results = [SourceResult("reconciliation", True, warnings=[warning])]
+
+    assert derive_status(results) == SUCCESS
+    assert build_detail(results) == {
+        "sources_ok": ["reconciliation"],
+        "sources_failed": [],
+        "sources_warnings": [{"source": "reconciliation", "warnings": [warning]}],
+    }

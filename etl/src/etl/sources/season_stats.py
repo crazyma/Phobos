@@ -469,7 +469,7 @@ def make_season_stats_source(client: StatsApiClient, conn: psycopg.Connection) -
     player count.
     """
 
-    def run() -> None:
+    def run() -> list[dict[str, Any]] | None:
         ids = _tracked_player_ids(conn)
         if not ids:
             return
@@ -503,8 +503,14 @@ def make_season_stats_source(client: StatsApiClient, conn: psycopg.Connection) -
                 len(dropped),
                 sorted(dropped),
             )
+        warnings = (
+            [{"kind": "team_rows_dropped", "team_ids": sorted(dropped)}]
+            if dropped
+            else []
+        )
 
         upsert_season_batting(conn, batting_rows)
         upsert_season_pitching(conn, pitching_rows)
+        return warnings or None
 
     return Source("season_stats", run)
