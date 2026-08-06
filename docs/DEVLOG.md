@@ -7,6 +7,14 @@
 
 ## ✅ 已完成
 
+### 2026-08-06
+
+- [x] **`batch-warnings/01` 完成——source warning 已寫入 `sync_runs.detail`**（票 `.scratch/batch-warnings/issues/01-source-warnings-in-sync-runs-detail.md`）。
+  - `SourceResult` 新增結構化 `warnings`；source 成功後 warning 以 `detail.sources_warnings` 依 source 歸檔。無 warning 的 detail 維持既有形狀，jsonb schema 不需 migration。
+  - 接上 six warning producers：對帳 mismatch（含 player／欄位／投影值／觀測值／建議 manual event）、games／transactions team ref sanitize、season stats 丟棄未知球隊、Savant 跳過年份、StatsAPI 重試。後者由 batch-scoped collector 歸屬當前 source。
+  - `derive_status` 不變：warning 一律資訊性，成功但帶 warning 仍是 `success`；來源拋例外才維持既有的 rollback／`partial`／`failed` 語意。
+  - 測試：ETL 針對 warning detail、status、不同行為來源與 StatsAPI 重試的單測；完整 suite 見本次提交驗證。
+
 ### 2026-08-03
 
 - [x] **`sync-runs-test-isolation/01` 完成——測試改連獨立 DB，批次歷史從此留得住**（票 `.scratch/sync-runs-test-isolation/issues/01`，commit `43ed9f2`）。
@@ -271,14 +279,6 @@
 ---
 
 ## ▶️ 進行中 / 下一步
-
-- [ ] **`batch-warnings`（1 票，`.scratch/batch-warnings/issues/`）——讓 source 能回報 warning，落進 `sync_runs.detail`**。目前 per-source 結果是二元的（`syncrun.py:24-29` 的 `SourceResult` 只有 `ok`／`error`），`batch.py:53-59` 只有「成功並保留資料」或「失敗並回滾」兩種結局，**沒有「成功但有話要說」**。
-  - **這是規格債、不是新功能**：`docs/spec/spec-03-etl-pipeline.md:77`（§6）明文指定對帳告警要進 `sync_runs.detail`，但 `sources/projection.py:393` 現在只是 `logger.warning`，**從來沒接上**。
-  - **六個 warning 產生者全部落空**：`projection.py:393`（對帳，spec 指名）、`transactions.py:383`／`season_stats.py:500`／`games.py:258`（team ref sanitize，例行）、`savant.py:262`（年份跳過）、`statsapi.py:102`（重試）。07-30 批次紀錄裡的「兩個 WARNING」是當下看終端機才知道的，事後翻 `sync_runs` 查不到。
-  - **⚠️ 關鍵約束：`derive_status` 不能動。** warning 必須純資訊性、不影響 `success`／`partial`。上述六個裡有四個是例行告警（sanitize 每批都發生），若 warning 會讓批次落成 partial，那每批都是 partial、欄位就失去意義。
-  - **範圍小**：前端對 `sync_runs.detail` **零讀取**（`grep -rn "detail" lib/ --include="*.ts"` 唯一命中是無關測試），`detail` 是 jsonb **不需 migration**，純 ETL Python 內部改動。
-  - **觸發來源**：`xwoba-savant` 驗收時，savant 多年份抓取遇到「一年失敗要不要拖垮全部」——因 `batch.py` 拋例外就回滾整個 source，要保住已成功年份就不能拋，導致部分失敗的批次顯示成 `success`。那個取捨撞的正是本票要補的牆，本票完成後 savant 應改回報 warning。
-  - 建議順序：先接 `projection.py` 補完 spec-03 §6，其餘五處可分批。
 
 - [ ] **`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）——`raw_payloads` 保留策略**。DB 裡唯一有體積問題的表：**6.0 MB、佔全庫（15 MB）40%，而裡面只有 4 天資料**（2026-07-27~30）。寫入集中在 `statsapi.py:67`（每次 API 呼叫自動記一筆），append-only、無 FK、**無任何清理機制**。組成（2026-08-03 重測，339 筆／4921 kB）：`people/*/stats` 240 筆 3133 kB（64%）、`schedule` 18 筆 644 kB、`teams` 18 筆 516 kB、`people`(bio) 48 筆 333 kB、`transactions` 15 筆 294 kB。**日增約 1.2 MB**（5 名球員）。與 `games` 那 1133 筆殘留同類，但規模大一個數量級。
   - **reprocess 定位——決策已定（2026-08-03，batu）：採「分級 TTL，暫不實作 `etl reprocess`」。** 各 endpoint 依價值設不同天數（`transactions` 量最小價值最高、留最久；`people/*/stats` 佔 64% 且新的完全涵蓋舊的、留最短），體積問題當場解決，同時保住日後真要 reprocess 的高價值素材。`etl reprocess` 指令不在本票範圍，等真有需求再另開票。本票因此落在輕量端：**純粹加 TTL + 清存量**。

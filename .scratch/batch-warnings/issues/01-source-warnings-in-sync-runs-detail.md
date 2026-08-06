@@ -16,7 +16,7 @@ class SourceResult:
 
 **Blocked by:** None。純 ETL 內部改動，與其他票無相依。
 
-**Status:** ready-for-agent
+**Status:** done（2026-08-06）
 
 ---
 
@@ -63,18 +63,19 @@ class SourceResult:
 
 ## Checklist
 
-- [ ] `etl/src/etl/syncrun.py`：`SourceResult` 加 `warnings` 欄位（預設空）。**建議結構化而非純字串**——spec-03 §6 要求對帳告警得「提示補錄 manual 事件」，需要 `player_id`／`field`／`projected`／`observed`，字串不夠用。`projection.py` 那邊本來就有結構化的 mismatch 物件可直接帶出
-- [ ] `syncrun.py`：`build_detail`（:48-57）把 warnings 帶進輸出。既有形狀是 `{"sources_ok": [...], "sources_failed": [{source, error}]}`，**注意 `sources_ok` 目前是純字串陣列**，要帶 warning 得改形狀——改的時候想一下舊資料（現有 4 筆 `sync_runs` 的 detail 是舊形狀），讀取端要能容忍兩種
-- [ ] `syncrun.py`：**`derive_status` 保持不動**，並補一行註解說明「warning 不影響 status」的理由，免得日後有人好心改壞
-- [ ] `etl/src/etl/batch.py`：讓 source 能回報 warning。`Source.run` 現在是 `Callable[[], None]`（:29），改成回傳 `Optional[...]` 的話**既有 source 一行都不用改**（它們本來就隱式回 `None`）；`run_batch`（:41）把回傳值收進 `SourceResult`
-- [ ] **先接 `sources/projection.py:393`**——這是 spec-03 §6 指名的那一個，補完規格債
-- [ ] 其餘五處逐步接上（可分批，不必一次做完）；`sources/savant.py:262` 接上後，把該票留下的「部分年份失敗只留 log」取捨一併解掉
-- [ ] `docs/spec/spec-03-etl-pipeline.md` §7 補上 warning 的語意：**warning ≠ 失敗**，不影響批次 status；§6 的對帳告警確認與實作一致
-- [ ] 測試：warning 不改變 `derive_status` 的結果（含「全部 ok 但有 warning → 仍是 success」）、`build_detail` 的形狀、舊形狀 detail 不會讓讀取端炸掉
-- [ ] `docs/DEVLOG.md` 記錄完成
+- [x] `etl/src/etl/syncrun.py`：`SourceResult` 加結構化 `warnings` 欄位（預設空）。
+- [x] `syncrun.py`：`build_detail` 以 `sources_warnings` 依 source 輸出；無 warning 時維持舊 detail 形狀。
+- [x] `syncrun.py`：`derive_status` 保持不動，並註明 warning 不影響 status 的理由。
+- [x] `etl/src/etl/batch.py`：source 可回傳 warning；`run_batch` 寫入 `SourceResult`。
+- [x] `sources/projection.py`：對帳 mismatch 以結構化 warning 回報，補完 spec-03 §6。
+- [x] 其餘五處：transactions、season_stats、games、savant 與 StatsAPI retry 全數接上。
+- [x] `docs/spec/spec-03-etl-pipeline.md`：§6／§7 記錄 warning 落點與不影響 status 的語意。
+- [x] 測試：warning 不改變 `derive_status`，`build_detail` 形狀與 StatsAPI retry 已覆蓋。
+- [x] `docs/DEVLOG.md`：完成紀錄已回寫。
 
 ## Comments
 
 - 本票**不做**告警的通知／推播，只是讓它有地方落。要不要在網站或別處呈現是另一件事。
 - `sync_runs` 一天兩批、`detail` 才幾百 bytes，加 warning 後仍然微不足道（`sync-runs-test-isolation` 票已算過：五年三千多列）。不需要擔心體積。
 - 順帶效益：`sync-runs-test-isolation` 票保住批次歷史，圖的就是「哪個 source 常掛、partial 出現過幾次」的稽核能力。本票讓那份歷史真正**有東西可稽核**——目前就算留住了，例行 sanitize 與對帳結果一樣看不到。
+- 2026-08-06：完成；`detail.sources_warnings` 採新增 top-level key，warning-free run 保留舊 detail 形狀。

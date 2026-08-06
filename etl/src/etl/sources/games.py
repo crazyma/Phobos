@@ -233,7 +233,12 @@ def _schedule_window(today: date) -> tuple[date, date]:
 
 
 def ingest_schedule(
-    client: StatsApiClient, conn: psycopg.Connection, start: date, end: date
+    client: StatsApiClient,
+    conn: psycopg.Connection,
+    start: date,
+    end: date,
+    *,
+    warnings: Optional[list[dict[str, Any]]] = None,
 ) -> int:
     """Fetch each tracked team's schedule for [start, end], then upsert it."""
     by_game_pk: dict[int, GameRow] = {}
@@ -261,6 +266,10 @@ def ingest_schedule(
             len(dropped),
             sorted(dropped),
         )
+        if warnings is not None:
+            warnings.append(
+                {"kind": "team_refs_sanitized", "team_ids": sorted(dropped)}
+            )
     return upsert_games(conn, cleaned)
 
 
@@ -277,10 +286,12 @@ def delete_games_outside_window(conn: psycopg.Connection, start: date, end: date
 def make_games_source(
     client: StatsApiClient, conn: psycopg.Connection, *, today: Optional[date] = None
 ) -> Source:
-    def run() -> None:
+    def run() -> list[dict[str, Any]] | None:
         pacific_today = today or datetime.now(ZoneInfo("America/Los_Angeles")).date()
         start, end = _schedule_window(pacific_today)
-        ingest_schedule(client, conn, start, end)
+        warnings: list[dict[str, Any]] = []
+        ingest_schedule(client, conn, start, end, warnings=warnings)
         delete_games_outside_window(conn, start, end)
+        return warnings or None
 
     return Source("games", run)

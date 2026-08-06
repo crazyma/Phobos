@@ -16,9 +16,11 @@ from .syncrun import (
     FAILED,
     SourceResult,
     SyncRunStore,
+    WarningDetail,
     build_detail,
     derive_status,
 )
+from .warnings import collect_warnings
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class Source:
     """A named unit of ingest work. `run` closes over whatever it needs (conn)."""
 
     name: str
-    run: Callable[[], None]
+    run: Callable[[], list[WarningDetail] | None]
 
 
 @dataclass(frozen=True)
@@ -50,9 +52,11 @@ def run_batch(kind: str, sources: list[Source], store: SyncRunStore) -> BatchOut
     try:
         for source in sources:
             try:
-                source.run()
+                with collect_warnings() as reported_warnings:
+                    source_warnings = source.run() or []
+                warnings = source_warnings + reported_warnings
                 store.commit()
-                results.append(SourceResult(source.name, ok=True))
+                results.append(SourceResult(source.name, ok=True, warnings=warnings))
             except Exception as exc:  # noqa: BLE001 — isolate the failing source
                 store.rollback()
                 logger.warning("source %s failed: %r", source.name, exc)

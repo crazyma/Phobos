@@ -241,7 +241,16 @@ def test_source_keeps_the_seasons_that_succeeded_when_one_year_fails(db_conn):
                 raise TimeoutError("savant flaked")
             return _csv_for(fx.pid, season, "0.345")
 
-        make_savant_source(None, db_conn, fetcher=fetcher, seasons=[2024, 2025]).run()
+        warnings = make_savant_source(
+            None, db_conn, fetcher=fetcher, seasons=[2024, 2025]
+        ).run()
+        assert warnings == [
+            {
+                "kind": "season_skipped",
+                "season": 2024,
+                "error": "TimeoutError('savant flaked')",
+            }
+        ]
         db_conn.commit()
 
         with db_conn.cursor() as cur:

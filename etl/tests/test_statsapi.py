@@ -13,6 +13,7 @@ from typing import Any, Optional
 import pytest
 
 from etl.statsapi import StatsApiClient, StatsApiError, _cache_key
+from etl.warnings import collect_warnings
 
 
 class FakeResponse:
@@ -106,6 +107,24 @@ def test_retries_twice_then_succeeds():
     assert result == {"ok": True}
     assert len(session.calls) == 3  # 1 + 2 retries
     assert len(sleeps) == 3
+
+
+def test_retries_report_structured_warnings_to_the_active_source():
+    session = FakeSession([RuntimeError("timeout"), FakeResponse({"ok": True})])
+    client, _ = _client(session)
+
+    with collect_warnings() as warnings:
+        assert client.get("schedule") == {"ok": True}
+
+    assert warnings == [
+        {
+            "kind": "statsapi_retry",
+            "endpoint": "schedule",
+            "attempt": 1,
+            "attempts": 3,
+            "error": "RuntimeError('timeout')",
+        }
+    ]
 
 
 def test_raises_after_exhausting_retries():

@@ -151,7 +151,7 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">✅ 已完成</a><ul class="sub"><li><a href="#sec-1-1">2026-08-03</a></li><li><a href="#sec-1-2">2026-07-30</a></li><li><a href="#sec-1-3">2026-07-29</a></li><li><a href="#sec-1-4">2026-07-28</a></li><li><a href="#sec-1-5">2026-07-27</a></li><li><a href="#sec-1-6">2026-07-24</a></li><li><a href="#sec-1-7">2026-07-23</a></li><li><a href="#sec-1-8">2026-07-22</a></li><li><a href="#sec-1-9">2026-07-21</a></li></ul></li><li><a href="#sec-2">▶️ 進行中 / 下一步</a></li><li><a href="#sec-3">❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）</a></li><li><a href="#sec-4">🔮 未來 Phase（先記著，這版不做）</a></li><li><a href="#sec-5">🗂️ 雜項 / 待整理</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">✅ 已完成</a><ul class="sub"><li><a href="#sec-1-1">2026-08-06</a></li><li><a href="#sec-1-2">2026-08-03</a></li><li><a href="#sec-1-3">2026-07-30</a></li><li><a href="#sec-1-4">2026-07-29</a></li><li><a href="#sec-1-5">2026-07-28</a></li><li><a href="#sec-1-6">2026-07-27</a></li><li><a href="#sec-1-7">2026-07-24</a></li><li><a href="#sec-1-8">2026-07-23</a></li><li><a href="#sec-1-9">2026-07-22</a></li><li><a href="#sec-1-10">2026-07-21</a></li></ul></li><li><a href="#sec-2">▶️ 進行中 / 下一步</a></li><li><a href="#sec-3">❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）</a></li><li><a href="#sec-4">🔮 未來 Phase（先記著，這版不做）</a></li><li><a href="#sec-5">🗂️ 雜項 / 待整理</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
@@ -161,7 +161,17 @@
 
   <section>
     <h2 id="sec-1">✅ 已完成</h2>
-    <h3 id="sec-1-1">2026-08-03</h3>
+    <h3 id="sec-1-1">2026-08-06</h3>
+    <ul class="todo">
+    <li class="done"><strong><code>batch-warnings/01</code> 完成——source warning 已寫入 <code>sync_runs.detail</code></strong>（票 <code>.scratch/batch-warnings/issues/01-source-warnings-in-sync-runs-detail.md</code>）。
+    <ul>
+    <li><code>SourceResult</code> 新增結構化 <code>warnings</code>；source 成功後 warning 以 <code>detail.sources_warnings</code> 依 source 歸檔。無 warning 的 detail 維持既有形狀，jsonb schema 不需 migration。</li>
+    <li>接上 six warning producers：對帳 mismatch（含 player／欄位／投影值／觀測值／建議 manual event）、games／transactions team ref sanitize、season stats 丟棄未知球隊、Savant 跳過年份、StatsAPI 重試。後者由 batch-scoped collector 歸屬當前 source。</li>
+    <li><code>derive_status</code> 不變：warning 一律資訊性，成功但帶 warning 仍是 <code>success</code>；來源拋例外才維持既有的 rollback／<code>partial</code>／<code>failed</code> 語意。</li>
+    <li>測試：ETL 針對 warning detail、status、不同行為來源與 StatsAPI 重試的單測；完整 suite 見本次提交驗證。</li>
+    </ul></li>
+    </ul>
+    <h3 id="sec-1-2">2026-08-03</h3>
     <ul class="todo">
     <li class="done"><strong><code>sync-runs-test-isolation/01</code> 完成——測試改連獨立 DB，批次歷史從此留得住</strong>（票 <code>.scratch/sync-runs-test-isolation/issues/01</code>，commit <code>43ed9f2</code>）。
     <ul>
@@ -249,11 +259,11 @@
     <ul class="todo">
     <li class="done"><strong>順修 <code>lib/services/home.ts</code> 的 dead import</strong>：票 01 移掉 8 處 join 後 <code>games</code> 已無使用處，但 <code>pnpm typecheck</code> 沒開 <code>noUnusedLocals</code> 所以擋不下來。已移除。</li>
     </ul>
-    <h3 id="sec-1-2">2026-07-30</h3>
+    <h3 id="sec-1-3">2026-07-30</h3>
     <ul class="todo">
     <li class="done"><strong>執行 ETL <code>morning</code> 同步批次</strong>（2026-07-30）：<code>sync_run #383 → success</code>，約 2 分鐘。變化：<code>games</code> 2691→2877（<strong>+186，其中僅 8 筆對應實際出賽</strong>——印證 <code>games-role-split</code> 票 02 的殘留成長速率比原估更快，929→1107）、<code>raw_payloads</code> 256→339（<strong>日增 83 筆</strong>，印證 <code>raw-payloads-retention</code> 的緊迫性）、逐場 +8、<code>transaction_events</code> +1、<code>season_pitching_stats</code> +1。近況句全部重算出真值（林昱珉升級為 <code>single_game</code>「上一場優質先發」）。兩個 WARNING 皆既有 sanitize 規則正常運作（<code>season_stats</code> 丟 2 支非納入 sportId 球隊、<code>transactions</code> 15 個 team ref 設 NULL），與 07-29 同模式。</li>
     </ul>
-    <h3 id="sec-1-3">2026-07-29</h3>
+    <h3 id="sec-1-4">2026-07-29</h3>
     <ul class="todo">
     <li class="done"><strong>DB 現況快照工具 <code>scripts/db/snapshot.py</code></strong>（零依賴 Python 3 + <code>psql</code>，比照 <code>build_docs.py</code> 的路線）。把 12 張表的欄位表、筆數、示範資料、enum、索引寫進 <code>admin_private/current_table.md</code>（新增 <code>admin_private/</code> 到 <code>.gitignore</code>——內含實際資料，不進版控）。
     <ul>
@@ -264,7 +274,7 @@
     </ul></li>
     <li class="done">執行 ETL <code>manual</code> 同步批次：<code>sync_run #382 → success</code>。transactions 有 15 個不屬於納入 sportId 的 team ref，依既有 sanitize 規則設為 <code>NULL</code>，未影響批次完成。</li>
     </ul>
-    <h3 id="sec-1-4">2026-07-28</h3>
+    <h3 id="sec-1-5">2026-07-28</h3>
     <ul class="todo">
     <li class="done"><strong>首頁 polish 票 <code>homepage-digest/05</code> 完成——digest 錨定改 wall-clock + 即將出賽效率</strong>（<code>.scratch/homepage-digest/issues/05</code>，分支 <code>feat/homepage-digest-05</code>；接 homepage slice code-review 兩項低嚴重度觀察）。皆為首頁 service 內部修正，<code>/api/home</code> 對外 Zod 合約不變：
     <ul>
@@ -322,7 +332,7 @@
     <li><strong>未跑正式 <code>/code-review</code></strong>（使用者觸發、計費，我無法代跑）；以逐檔自審＋全測試＋真連線把關代之。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-5">2026-07-27</h3>
+    <h3 id="sec-1-6">2026-07-27</h3>
     <ul class="todo">
     <li class="done"><strong>修正下放小聯盟球員顯示錯隊 — 新增 <code>assign</code> 事件型別 + B.3 投影規則</strong>（2026-07-27，票 <code>.scratch/projection-assign-fix/issues/01</code>）。小聯盟「assigned to [隊]」異動（typeCode ASG）原被歸 <code>other</code>、投影不動隊，導致被下放者卡在上一個 MLB 事件。作法：(1) Drizzle enum 加 <code>assign</code>（migration <code>0002_aberrant_doorman.sql</code>，<code>ADD VALUE &#x27;assign&#x27; BEFORE &#x27;il_on&#x27;</code>）；(2) 分類以 <strong>description 的「assigned to」片語</strong> 判定（非 typeDesc-前綴 haystack——避免「Assigned 」+「To…」如 Toledo 誤命中），與 invited-non-roster（春訓邀請、to_team 常為 MLB，不設 rostered）、rehab（「assignment to」）、國家隊 activate（SC）區分；(3) 投影 <code>assign</code>→rostered 取 to_team 隊/層級，<strong>to_team 無法解析（冬季/秋季聯盟、alt-site）→ no-op 不清隊</strong>，最後一筆可解析者勝。重投影後費爾柴德(656413)→Tacoma(529/3A)、林昱珉(801179)→Reno(2310/3A) 修正，evening 對帳對這兩位不再告警。測試 etl 122／node 41／typecheck 綠。spec-01 B.3/C.3 早前已更新。</li>
     <li class="done"><strong>spec-03 ETL slice 併回 <code>main</code>（merge <code>3aa1a08</code>, <code>--no-ff</code>）＋維運收尾</strong>（2026-07-27，batu）。review 通過（pytest 118／node 41／typecheck 綠；<code>game_*_lines</code> 1513/269、近況全轉真值、<code>/players</code> 點亮）後合併，遠端分支 <code>feat/spec-03-etl-skeleton</code> 已刪。收尾兩件：
@@ -427,7 +437,7 @@
     <li>收尾：<code>.gitignore</code> 補 Python 段；<code>docs/spec/spec-03</code> §9 的 transactions typeDesc／小聯盟 boxscore 兩個 open item 留給票 03/04 實作時實測回填。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-6">2026-07-24</h3>
+    <h3 id="sec-1-7">2026-07-24</h3>
     <ul class="todo">
     <li class="done"><strong>frontend-shell-and-roster slice（spec-02 切片 1+2）全 4 票完成</strong>（<code>.scratch/frontend-shell-and-roster/issues/</code>）。Next 端已與資料層同 repo 共存，<code>/players</code> 可在瀏覽器看到白名單 5 人：
     <ul>
@@ -438,7 +448,7 @@
     <li>全測 37 綠；<code>vitest.config</code> 加 <code>fileParallelism:false</code>（共用 Postgres 序列化）與 <code>@</code> alias。ETL 未跑 → 目前所有球員 <code>team=null</code>／狀態同步中，待 spec-03 slice 供 <code>player_current_status</code>/<code>player_recent_form</code> 後自動生效。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-7">2026-07-23</h3>
+    <h3 id="sec-1-8">2026-07-23</h3>
     <ul class="todo">
     <li class="done"><strong>票 01（bootstrap 資料層骨架）實作完成</strong>（<code>.scratch/curated-schema-and-seed/issues/01</code>）：pnpm+TS+Drizzle+drizzle-kit+vitest 骨架、<code>docker-compose.yml</code>（Postgres 16）、<code>lib/db</code>（client+空 schema barrel）、<code>scripts/db/migrate.ts</code>、連線 smoke test 通過、<code>db:migrate</code> 對全新 DB 乾淨 no-op、README 啟動步驟。本機無 Docker→smoke test 走 homebrew pg（連線字串與 docker 共用）；pnpm 11 build 核准移至 <code>pnpm-workspace.yaml</code></li>
     <li class="done"><strong>票 02（curated schema + 首版 migration）實作完成</strong>：spec-01 §C 全 12 表 + 11 enum 以 Drizzle 定義（<code>lib/db/schema/</code> 分 6 檔）、20 FK、複合主鍵、只存不可推導比率；<code>drizzle/0000_*.sql</code> 對全新 DB 乾淨套用；schema introspection 測試 6 案例全綠（TDD：先 red 後 green，斷言取自 spec）</li>
@@ -465,7 +475,7 @@
     <li class="done"><strong>小 grilling：進階數據來源應變定案</strong>（requirements §9.1 決策樹）——①先實測 StatsAPI <code>stats=sabermetrics</code>（命中全解）；②未命中預案：打者頭號欄<strong>遞補鏈 wRC+→xwOBA→wOBA</strong>（退至 wOBA 清單縮 6）、<strong>WAR 移除不補</strong>、口袋替補換血（K-BB%/xERA/WHIP，原 xFIP/SIERA 同為 403 系）；③名詞頁不連動：wRC+/WAR 照寫當純知識、xwOBA 進清單時名詞頁先行。spec-01（xwoba 預留欄）/spec-03（實測任務規格）/spec-04（連動注記）同步修訂</li>
     <li class="done"><strong>實測 <code>stats=sabermetrics</code> → 命中，預案封存</strong>：hitting 供 <code>woba/wRc/wRcPlus/war</code>、pitching 供 <code>fip/fipMinus/xfip/war/eraMinus</code>；<strong>僅 MLB 層級</strong>（三位台灣球員 2025 AAA 對照：season 有 split、sabermetrics 回空）；2020~ 可回查；抽樣 Judge 2024 與 FanGraphs 同量級（MLB 官方自算版本）。→ 維持進階清單、口袋 xFIP 復活（SIERA 仍除名）；requirements §7.3/§9.1、adr §6.4、spec-01 C.7/§F、spec-03 §3/§9 收斂為定案版</li>
     </ul>
-    <h3 id="sec-1-8">2026-07-22</h3>
+    <h3 id="sec-1-9">2026-07-22</h3>
     <ul class="todo">
     <li class="done"><code>scripts/build_docs.py</code> 加上<strong>側邊欄目錄（TOC）</strong>：自動從 <code>##</code>/<code>###</code> 標題產生 sticky 左側導覽，可快速前往章節
     <ul>
@@ -491,7 +501,7 @@
     <li class="done">開 <strong>spec-02（頁面/路由 IA + 對外 API 合約）初稿</strong>：路由/sitemap、5 頁規格（顯示/資料源/渲染）、<code>/api/*</code> endpoint + 代表性 Zod 回傳形狀、時區/OG/ISR 橫向處理；6 項 open items（URL slug、revalidation 觸發、動態 OG、逐場 N…）</li>
     <li class="done">開 <strong>spec-03（ETL / 資料同步管線）初稿</strong>：管線總覽、來源→表對照、pybaseball/StatsAPI 各模組、一天兩次排程（早/晚班）、upsert 原則、<strong>近況一句話生成規則</strong>、時區存 UTC、錯誤處理；6 項 open items（排程時刻、roster 推導、生涯基準…）</li>
     </ul>
-    <h3 id="sec-1-9">2026-07-21</h3>
+    <h3 id="sec-1-10">2026-07-21</h3>
     <ul class="todo">
     <li class="done">比對兩份規劃文件（<code>plan/棒球網站技術選型討論.md</code> vs <code>plan/baseball-tracker-plan.md</code>），整理相同 / 不同之處</li>
     <li class="done">收斂三項分歧決策：
@@ -523,17 +533,6 @@
   </section>
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
-    <ul class="todo">
-    <li class=""><strong><code>batch-warnings</code>（1 票，<code>.scratch/batch-warnings/issues/</code>）——讓 source 能回報 warning，落進 <code>sync_runs.detail</code></strong>。目前 per-source 結果是二元的（<code>syncrun.py:24-29</code> 的 <code>SourceResult</code> 只有 <code>ok</code>／<code>error</code>），<code>batch.py:53-59</code> 只有「成功並保留資料」或「失敗並回滾」兩種結局，<strong>沒有「成功但有話要說」</strong>。
-    <ul>
-    <li><strong>這是規格債、不是新功能</strong>：<code>docs/spec/spec-03-etl-pipeline.md:77</code>（§6）明文指定對帳告警要進 <code>sync_runs.detail</code>，但 <code>sources/projection.py:393</code> 現在只是 <code>logger.warning</code>，<strong>從來沒接上</strong>。</li>
-    <li><strong>六個 warning 產生者全部落空</strong>：<code>projection.py:393</code>（對帳，spec 指名）、<code>transactions.py:383</code>／<code>season_stats.py:500</code>／<code>games.py:258</code>（team ref sanitize，例行）、<code>savant.py:262</code>（年份跳過）、<code>statsapi.py:102</code>（重試）。07-30 批次紀錄裡的「兩個 WARNING」是當下看終端機才知道的，事後翻 <code>sync_runs</code> 查不到。</li>
-    <li><strong>⚠️ 關鍵約束：<code>derive_status</code> 不能動。</strong> warning 必須純資訊性、不影響 <code>success</code>／<code>partial</code>。上述六個裡有四個是例行告警（sanitize 每批都發生），若 warning 會讓批次落成 partial，那每批都是 partial、欄位就失去意義。</li>
-    <li><strong>範圍小</strong>：前端對 <code>sync_runs.detail</code> <strong>零讀取</strong>（<code>grep -rn &quot;detail&quot; lib/ --include=&quot;*.ts&quot;</code> 唯一命中是無關測試），<code>detail</code> 是 jsonb <strong>不需 migration</strong>，純 ETL Python 內部改動。</li>
-    <li><strong>觸發來源</strong>：<code>xwoba-savant</code> 驗收時，savant 多年份抓取遇到「一年失敗要不要拖垮全部」——因 <code>batch.py</code> 拋例外就回滾整個 source，要保住已成功年份就不能拋，導致部分失敗的批次顯示成 <code>success</code>。那個取捨撞的正是本票要補的牆，本票完成後 savant 應改回報 warning。</li>
-    <li>建議順序：先接 <code>projection.py</code> 補完 spec-03 §6，其餘五處可分批。</li>
-    </ul></li>
-    </ul>
     <ul class="todo">
     <li class=""><strong><code>raw-payloads-retention</code>（1 票，<code>.scratch/raw-payloads-retention/issues/</code>）——<code>raw_payloads</code> 保留策略</strong>。DB 裡唯一有體積問題的表：<strong>6.0 MB、佔全庫（15 MB）40%，而裡面只有 4 天資料</strong>（2026-07-27~30）。寫入集中在 <code>statsapi.py:67</code>（每次 API 呼叫自動記一筆），append-only、無 FK、<strong>無任何清理機制</strong>。組成（2026-08-03 重測，339 筆／4921 kB）：<code>people/*/stats</code> 240 筆 3133 kB（64%）、<code>schedule</code> 18 筆 644 kB、<code>teams</code> 18 筆 516 kB、<code>people</code>(bio) 48 筆 333 kB、<code>transactions</code> 15 筆 294 kB。<strong>日增約 1.2 MB</strong>（5 名球員）。與 <code>games</code> 那 1133 筆殘留同類，但規模大一個數量級。
     <ul>

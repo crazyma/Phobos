@@ -14,11 +14,12 @@ from typing import Any, Optional, Protocol
 import psycopg
 from psycopg.types.json import Json
 
+from .warnings import WarningDetail
+
 # sync_runs.status values (mirror the Drizzle enum `sync_status`).
 SUCCESS = "success"
 PARTIAL = "partial"
 FAILED = "failed"
-
 
 @dataclass(frozen=True)
 class SourceResult:
@@ -27,13 +28,16 @@ class SourceResult:
     name: str
     ok: bool
     error: Optional[str] = None
+    warnings: list[WarningDetail] = field(default_factory=list)
 
 
 def derive_status(results: list[SourceResult]) -> str:
     """Map per-source outcomes to a batch status.
 
     Empty (no sources) or all-ok → success; a mix → partial; every source
-    failed → failed. A framework-level crash is handled by the runner, not here.
+    failed → failed. Warnings are informational, so they never affect status:
+    routine reconciliation and data-sanitization warnings must not make every
+    batch partial. A framework-level crash is handled by the runner, not here.
     """
     if not results:
         return SUCCESS
@@ -49,12 +53,22 @@ def build_detail(results: list[SourceResult]) -> Optional[dict[str, Any]]:
     """A jsonb-friendly summary for `sync_runs.detail`, or None when empty."""
     if not results:
         return None
-    return {
+    detail: dict[str, Any] = {
         "sources_ok": [r.name for r in results if r.ok],
         "sources_failed": [
             {"source": r.name, "error": r.error} for r in results if not r.ok
         ],
     }
+    sources_warnings = [
+        {"source": r.name, "warnings": r.warnings}
+        for r in results
+        if r.warnings
+    ]
+    # Omit the new key for warning-free runs so existing detail consumers retain
+    # their exact old shape; readers can safely accept both historical shapes.
+    if sources_warnings:
+        detail["sources_warnings"] = sources_warnings
+    return detail
 
 
 class SyncRunStore(Protocol):

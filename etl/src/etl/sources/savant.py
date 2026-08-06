@@ -25,7 +25,7 @@ import io
 import logging
 import time
 from datetime import date
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -236,7 +236,7 @@ def make_savant_source(
     --season`` re-pulls every season).
     """
 
-    def run() -> None:
+    def run() -> list[dict[str, Any]] | None:
         tracked_ids = set(_tracked_player_ids(conn))
         if not tracked_ids:
             return
@@ -250,6 +250,7 @@ def make_savant_source(
 
         all_rows: list[SavantRow] = []
         failed: list[int] = []
+        warnings: list[dict[str, Any]] = []
         for season in wanted:
             # Per-season isolation: one bad year must not throw away the years
             # that did come back.  `batch.py` rolls the whole source back on an
@@ -261,6 +262,13 @@ def make_savant_source(
             except Exception as exc:  # noqa: BLE001 — one season, not the source
                 logger.warning("savant: season %s skipped: %r", season, exc)
                 failed.append(season)
+                warnings.append(
+                    {
+                        "kind": "season_skipped",
+                        "season": season,
+                        "error": repr(exc),
+                    }
+                )
                 continue
             store_raw_payload(
                 conn,
@@ -274,5 +282,6 @@ def make_savant_source(
         if failed and len(failed) == len(wanted):
             raise SavantError(f"Savant CSV failed for every requested season: {failed}")
         update_xwoba(conn, all_rows)
+        return warnings or None
 
     return Source("savant", run)
