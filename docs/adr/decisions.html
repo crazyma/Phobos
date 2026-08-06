@@ -302,6 +302,7 @@
          ↓ 轉換 / 正規化
     [Curated layer] 自訂、穩定的 schema，Node.js 服務只讀這層</div>
     <p>理由：上游格式可能隨時變動；有 raw layer，之後只要重寫轉換邏輯、reprocess 既有資料即可，不必重抓。</p>
+    <p><strong>保留期限（2026-08-06 補）</strong>：raw 不是永久保存。原本只寫「可 reprocess」沒寫「留多久」，結果 <code>raw_payloads</code> 一週就佔掉全庫 40%。改為<strong>依 endpoint 分級 TTL</strong>，每批收尾清一次（規則見 <code>spec-03 §7</code>，實作在 <code>etl/src/etl/sources/raw_retention.py</code>）：解讀價值高、量小的（<code>transactions</code> 365 天）留久；可隨時重抓、且新的完全涵蓋舊的（球員數據／Savant 14 天）留短。<strong>未分類的 endpoint 一律保留並告警</strong>，不設 catch-all 預設值——新 endpoint 必須有意識地決定它值多久，而不是被預設值默默清掉。（去重不是解方：實測內容雜湊只省 1.4%、每組 <code>(endpoint, params)</code> 留最新只省 14%。）</p>
     <h3 id="sec-8-2">8.2 Curated schema 草案</h3>
     <table>
     <thead><tr><th>資料表</th><th>說明</th></tr></thead>

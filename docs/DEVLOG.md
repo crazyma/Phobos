@@ -9,6 +9,14 @@
 
 ### 2026-08-06
 
+- [x] **`raw-payloads-retention/01` 完成——raw 從此有時間維度的管理**（票 `.scratch/raw-payloads-retention/issues/01-raw-retention-policy.md`）。
+  - **分級 TTL**（天數 batu 定案）：`transactions` 365／`people`(bio) 90／`teams` 60／`schedule` 30／`people/*/stats` 14／`savant` 14。`teams` 從原提的 30 上調到 60，因為實測它只在 evening／manual 抓、已 8 天沒進新的一筆，30 天有把唯一一份清空的風險。**未分類的 `(source, endpoint)` 保留不刪並發 warning**（沒有 catch-all 預設天數）——新 endpoint 必須有意識分類，不能被預設值默默清掉。那個 warning 正好走 `batch-warnings` 剛做好的通道落進 `sync_runs.detail`。
+  - 實作 `sources/raw_retention.py`：撈 `(id, source, endpoint, fetched_at)`（**不 select payload**）→ 純函式 `plan_prune` 判定 → 依 id 刪。規則只有一份實作、可不接 DB 純測。排在 `build_sources` **最後一棒**，靠 batch 的 per-source 隔離達成「清理失敗不影響當批 ingest」。另加 `etl prune-raw [--dry-run]`。
+  - **一次性清存量與 TTL 是兩件事**：上線當天 dry-run 是 `would delete 0`（最舊一筆 07-27、才 10 天，連最短的 14 天都沒到）。真正的存量是 `xwoba-savant` 初版留下的 7 筆全聯盟 CSV（id 1278~1284），TTL 對它們無效（08-03 才寫入），需手動刪。
+  - **體積**：`raw_payloads` **6200 kB → 1376 kB**、DB **16 MB → 11 MB**（刪 7 筆 + `vacuum full`）。降幅遠大於刪掉的文字量——jsonb 磁碟上是 TOAST 壓縮的，而 `length(payload::text)` 量的是解壓後大小，加上 dead tuple 膨脹一併回收。**本票一路引用的「文字量」高估了實際磁碟佔用**，往後改看 `pg_total_relation_size`。
+  - 測試 9 項（`etl/tests/test_raw_retention.py`）：各級依自己的天數到期、`people` 不被 `people/*/stats` 誤掃、未分類保留並告警、當批寫入不會自清、DB 端到端、三種 batch kind 都以 sweep 收尾。ETL suite 149 passed。
+  - 文件：`spec-03 §7` 新增「Raw 保留策略（TTL）」、`ADR §8.1` 補保留期限——ADR 原本只說「可 reprocess」沒說留多久，正是這個坑的源頭。
+
 - [x] **`batch-warnings/01` 完成——source warning 已寫入 `sync_runs.detail`**（票 `.scratch/batch-warnings/issues/01-source-warnings-in-sync-runs-detail.md`）。
   - `SourceResult` 新增結構化 `warnings`；source 成功後 warning 以 `detail.sources_warnings` 依 source 歸檔。無 warning 的 detail 維持既有形狀，jsonb schema 不需 migration。
   - 接上 six warning producers：對帳 mismatch（含 player／欄位／投影值／觀測值／建議 manual event）、games／transactions team ref sanitize、season stats 丟棄未知球隊、Savant 跳過年份、StatsAPI 重試。後者由 batch-scoped collector 歸屬當前 source。
@@ -281,12 +289,7 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）——`raw_payloads` 保留策略**。DB 裡唯一有體積問題的表：**6.0 MB、佔全庫（15 MB）40%，而裡面只有 4 天資料**（2026-07-27~30）。寫入集中在 `statsapi.py:67`（每次 API 呼叫自動記一筆），append-only、無 FK、**無任何清理機制**。組成（2026-08-03 重測，339 筆／4921 kB）：`people/*/stats` 240 筆 3133 kB（64%）、`schedule` 18 筆 644 kB、`teams` 18 筆 516 kB、`people`(bio) 48 筆 333 kB、`transactions` 15 筆 294 kB。**日增約 1.2 MB**（5 名球員）。與 `games` 那 1133 筆殘留同類，但規模大一個數量級。
-  - **reprocess 定位——決策已定（2026-08-03，batu）：採「分級 TTL，暫不實作 `etl reprocess`」。** 各 endpoint 依價值設不同天數（`transactions` 量最小價值最高、留最久；`people/*/stats` 佔 64% 且新的完全涵蓋舊的、留最短），體積問題當場解決，同時保住日後真要 reprocess 的高價值素材。`etl reprocess` 指令不在本票範圍，等真有需求再另開票。本票因此落在輕量端：**純粹加 TTL + 清存量**。
-  - 背景：`raw_payloads` 有寫入端但**沒有任何 production 讀取端**（TS 只有 schema 定義無查詢；ETL CLI 有 `resync`／`add-event`／`reproject`／`backfill`，**沒有 `reprocess`**）。唯二會讀它的是 `scripts/db/snapshot.py:73-78` 的快照抽樣與 `etl/tests/test_integration_db.py` 的測試斷言，都不是 reprocess 用途。ADR §8.1 承諾的能力設計了但從未實作。（初版寫「零讀取端」措辭過滿，2026-08-03 收緊。）
-  - **已用實測排除兩個方案**（不必再試）：①**內容雜湊去重**對最大宗的 `people` 幾乎無效（216 筆→60 筆相異，但 2740 kB 只降到 2701 kB、省 1.4%——重複的都是空回應小 payload，真正佔空間的 gameLog 每次多一場比賽、位元組必不同）；只有 `teams` 有效（省 67%）。②**每個 `(endpoint, params)` 留最新一份**全表僅省 14%——`params` 內嵌日期，每天都是新 key。**唯一有效槓桿是按 endpoint 類型設保留天數。**
-  - **2026-08-03 更新（savant source 的插曲）**：新上線的 Savant source 原本每批把**整個聯盟**的 CSV 存進 raw（實測 7 筆／1679 kB，日增一度變成約 2.9 MB），已在 xwoba 票的後續修正裡改成只存 tracked 球員的列（同一批 → 1 筆／約 1 kB），**日增回到約 1.2 MB 的原估**。本票的分級 TTL 設計不受影響；只是**存量多了 7 筆全聯盟 CSV（合計約 1.68 MB）待一併掃掉**，`savant` 是新增的一個 endpoint 類型，設 TTL 時記得涵蓋。
-  - 另記：這張表**已被減量過一次**（`DEVLOG:227` gamelog refactor 的「raw 停存 boxscore」砍掉 120 份整場 boxscore）。「什麼該進 raw」一直有意識管理，**缺的是時間維度的管理**——ADR §8.1 只說可 reprocess、沒說留多久，是這個坑的源頭。
+- [x] ~~**`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）**~~（2026-08-06 完成，見已完成區）——分級 TTL 每批收尾清一次；`raw_payloads` 6200 kB → 1376 kB、DB 16 MB → 11 MB。
 
 - [x] ~~**`batch-warnings`（1 票，`.scratch/batch-warnings/issues/`）**~~（2026-08-06 完成，見已完成區）——六個 warning 產生者全數接上 `sync_runs.detail.sources_warnings`，`derive_status` 未動。
 - [x] ~~**`games-role-split` slice（2 票，`.scratch/games-role-split/issues/`）**~~（2026-08-03 完成，見已完成區）——`games` 2877→275 筆，逐場表自帶日期／對手／主客場。

@@ -163,6 +163,17 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-08-06</h3>
     <ul class="todo">
+    <li class="done"><strong><code>raw-payloads-retention/01</code> 完成——raw 從此有時間維度的管理</strong>（票 <code>.scratch/raw-payloads-retention/issues/01-raw-retention-policy.md</code>）。
+    <ul>
+    <li><strong>分級 TTL</strong>（天數 batu 定案）：<code>transactions</code> 365／<code>people</code>(bio) 90／<code>teams</code> 60／<code>schedule</code> 30／<code>people/*/stats</code> 14／<code>savant</code> 14。<code>teams</code> 從原提的 30 上調到 60，因為實測它只在 evening／manual 抓、已 8 天沒進新的一筆，30 天有把唯一一份清空的風險。<strong>未分類的 <code>(source, endpoint)</code> 保留不刪並發 warning</strong>（沒有 catch-all 預設天數）——新 endpoint 必須有意識分類，不能被預設值默默清掉。那個 warning 正好走 <code>batch-warnings</code> 剛做好的通道落進 <code>sync_runs.detail</code>。</li>
+    <li>實作 <code>sources/raw_retention.py</code>：撈 <code>(id, source, endpoint, fetched_at)</code>（<strong>不 select payload</strong>）→ 純函式 <code>plan_prune</code> 判定 → 依 id 刪。規則只有一份實作、可不接 DB 純測。排在 <code>build_sources</code> <strong>最後一棒</strong>，靠 batch 的 per-source 隔離達成「清理失敗不影響當批 ingest」。另加 <code>etl prune-raw [--dry-run]</code>。</li>
+    <li><strong>一次性清存量與 TTL 是兩件事</strong>：上線當天 dry-run 是 <code>would delete 0</code>（最舊一筆 07-27、才 10 天，連最短的 14 天都沒到）。真正的存量是 <code>xwoba-savant</code> 初版留下的 7 筆全聯盟 CSV（id 1278~1284），TTL 對它們無效（08-03 才寫入），需手動刪。</li>
+    <li><strong>體積</strong>：<code>raw_payloads</code> <strong>6200 kB → 1376 kB</strong>、DB <strong>16 MB → 11 MB</strong>（刪 7 筆 + <code>vacuum full</code>）。降幅遠大於刪掉的文字量——jsonb 磁碟上是 TOAST 壓縮的，而 <code>length(payload::text)</code> 量的是解壓後大小，加上 dead tuple 膨脹一併回收。<strong>本票一路引用的「文字量」高估了實際磁碟佔用</strong>，往後改看 <code>pg_total_relation_size</code>。</li>
+    <li>測試 9 項（<code>etl/tests/test_raw_retention.py</code>）：各級依自己的天數到期、<code>people</code> 不被 <code>people/*/stats</code> 誤掃、未分類保留並告警、當批寫入不會自清、DB 端到端、三種 batch kind 都以 sweep 收尾。ETL suite 149 passed。</li>
+    <li>文件：<code>spec-03 §7</code> 新增「Raw 保留策略（TTL）」、<code>ADR §8.1</code> 補保留期限——ADR 原本只說「可 reprocess」沒說留多久，正是這個坑的源頭。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong><code>batch-warnings/01</code> 完成——source warning 已寫入 <code>sync_runs.detail</code></strong>（票 <code>.scratch/batch-warnings/issues/01-source-warnings-in-sync-runs-detail.md</code>）。
     <ul>
     <li><code>SourceResult</code> 新增結構化 <code>warnings</code>；source 成功後 warning 以 <code>detail.sources_warnings</code> 依 source 歸檔。無 warning 的 detail 維持既有形狀，jsonb schema 不需 migration。</li>
@@ -535,14 +546,7 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
-    <li class=""><strong><code>raw-payloads-retention</code>（1 票，<code>.scratch/raw-payloads-retention/issues/</code>）——<code>raw_payloads</code> 保留策略</strong>。DB 裡唯一有體積問題的表：<strong>6.0 MB、佔全庫（15 MB）40%，而裡面只有 4 天資料</strong>（2026-07-27~30）。寫入集中在 <code>statsapi.py:67</code>（每次 API 呼叫自動記一筆），append-only、無 FK、<strong>無任何清理機制</strong>。組成（2026-08-03 重測，339 筆／4921 kB）：<code>people/*/stats</code> 240 筆 3133 kB（64%）、<code>schedule</code> 18 筆 644 kB、<code>teams</code> 18 筆 516 kB、<code>people</code>(bio) 48 筆 333 kB、<code>transactions</code> 15 筆 294 kB。<strong>日增約 1.2 MB</strong>（5 名球員）。與 <code>games</code> 那 1133 筆殘留同類，但規模大一個數量級。
-    <ul>
-    <li><strong>reprocess 定位——決策已定（2026-08-03，batu）：採「分級 TTL，暫不實作 <code>etl reprocess</code>」。</strong> 各 endpoint 依價值設不同天數（<code>transactions</code> 量最小價值最高、留最久；<code>people/*/stats</code> 佔 64% 且新的完全涵蓋舊的、留最短），體積問題當場解決，同時保住日後真要 reprocess 的高價值素材。<code>etl reprocess</code> 指令不在本票範圍，等真有需求再另開票。本票因此落在輕量端：<strong>純粹加 TTL + 清存量</strong>。</li>
-    <li>背景：<code>raw_payloads</code> 有寫入端但<strong>沒有任何 production 讀取端</strong>（TS 只有 schema 定義無查詢；ETL CLI 有 <code>resync</code>／<code>add-event</code>／<code>reproject</code>／<code>backfill</code>，<strong>沒有 <code>reprocess</code></strong>）。唯二會讀它的是 <code>scripts/db/snapshot.py:73-78</code> 的快照抽樣與 <code>etl/tests/test_integration_db.py</code> 的測試斷言，都不是 reprocess 用途。ADR §8.1 承諾的能力設計了但從未實作。（初版寫「零讀取端」措辭過滿，2026-08-03 收緊。）</li>
-    <li><strong>已用實測排除兩個方案</strong>（不必再試）：①<strong>內容雜湊去重</strong>對最大宗的 <code>people</code> 幾乎無效（216 筆→60 筆相異，但 2740 kB 只降到 2701 kB、省 1.4%——重複的都是空回應小 payload，真正佔空間的 gameLog 每次多一場比賽、位元組必不同）；只有 <code>teams</code> 有效（省 67%）。②<strong>每個 <code>(endpoint, params)</code> 留最新一份</strong>全表僅省 14%——<code>params</code> 內嵌日期，每天都是新 key。<strong>唯一有效槓桿是按 endpoint 類型設保留天數。</strong></li>
-    <li><strong>2026-08-03 更新（savant source 的插曲）</strong>：新上線的 Savant source 原本每批把<strong>整個聯盟</strong>的 CSV 存進 raw（實測 7 筆／1679 kB，日增一度變成約 2.9 MB），已在 xwoba 票的後續修正裡改成只存 tracked 球員的列（同一批 → 1 筆／約 1 kB），<strong>日增回到約 1.2 MB 的原估</strong>。本票的分級 TTL 設計不受影響；只是<strong>存量多了 7 筆全聯盟 CSV（合計約 1.68 MB）待一併掃掉</strong>，<code>savant</code> 是新增的一個 endpoint 類型，設 TTL 時記得涵蓋。</li>
-    <li>另記：這張表<strong>已被減量過一次</strong>（<code>DEVLOG:227</code> gamelog refactor 的「raw 停存 boxscore」砍掉 120 份整場 boxscore）。「什麼該進 raw」一直有意識管理，<strong>缺的是時間維度的管理</strong>——ADR §8.1 只說可 reprocess、沒說留多久，是這個坑的源頭。</li>
-    </ul></li>
+    <li class="done">~~<strong><code>raw-payloads-retention</code>（1 票，<code>.scratch/raw-payloads-retention/issues/</code>）</strong>~~（2026-08-06 完成，見已完成區）——分級 TTL 每批收尾清一次；<code>raw_payloads</code> 6200 kB → 1376 kB、DB 16 MB → 11 MB。</li>
     </ul>
     <ul class="todo">
     <li class="done">~~<strong><code>batch-warnings</code>（1 票，<code>.scratch/batch-warnings/issues/</code>）</strong>~~（2026-08-06 完成，見已完成區）——六個 warning 產生者全數接上 <code>sync_runs.detail.sources_warnings</code>，<code>derive_status</code> 未動。</li>

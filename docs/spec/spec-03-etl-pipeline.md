@@ -81,6 +81,7 @@
 - 上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、`pybaseball.cache.enable()`。
 - 失敗語意：來源級失敗 → 該來源跳過、其餘照跑、`partial`；整批失敗 → `failed`，網站繼續供舊資料（spec-02 §5）。
 - **告警語意**：source 正常完成時可回傳結構化 warning；批次將其依 source 寫入 `sync_runs.detail.sources_warnings`。**失敗的 source 也會保留它在拋例外前已回報的 warning**（例如上游重試紀錄——那正是解釋失敗原因的線索），與 `sources_failed` 的 error 並存。warning 純供稽核，**不影響** `success`／`partial`／`failed`（`derive_status` 只依來源是否失敗判定）。既有無 warning 的 detail 保持原形狀，讀取端須容忍沒有 `sources_warnings`。
+- **Raw 保留策略（TTL）**：`raw_payloads` 依 endpoint 分級保留，**每批收尾**由 `raw_retention` source 清一次（排在最後：清理失敗只回滾清理本身，不影響當批 ingest）。天數＝`transactions` 365／`people`(bio) 90／`teams` 60／`schedule` 30／`people/*/stats` 14／`savant` 14；分級依據是「重抓得回來嗎、新的是否涵蓋舊的」。**未分類的 `(source, endpoint)` 保留不刪，並以 warning 落進 `sync_runs.detail`**（無 catch-all 預設天數）。單純刪列、不歸檔；`etl prune-raw [--dry-run]` 可手動觸發。
 - 手動工具（CLI）：`resync --season`（球季數據 2020→當季整季重拉，**並強制重抓每一年的 Savant xwOBA**——batch 的缺口掃描正是這個指令要繞過的東西）、`resync --gamelog --from DATE`（回補早於當季的歷史逐場）、`add-event`（補錄 manual 事件）、`reproject`（重放投影）。
 
 ## 8. 測試決策
