@@ -28,6 +28,11 @@ scheduled batches:
       highs have a real base. Idempotent, interruption-safe (commits per
       player), then reprojects.
 
+  etl prune-raw [--dry-run]
+      Apply the raw_payloads retention rules now. Every batch already ends with
+      this sweep; the command is for clearing a backlog or checking what the
+      rules would remove.
+
 Each command manages its own transaction; commands that hit upstream open a
 StatsAPI client exactly like the batch runner (local cache + raw recording).
 """
@@ -48,6 +53,7 @@ from .sources.game_lines import (
     ingest_player_gamelogs,
 )
 from .sources.projection import project_all_tracked
+from .sources.raw_retention import prune_raw_payloads
 from .sources.recent_form import recompute_all_tracked
 from .sources.savant import make_savant_source
 from .sources.season_stats import _season_range, make_season_stats_source
@@ -158,6 +164,22 @@ def cmd_add_event(args: argparse.Namespace, conn: psycopg.Connection) -> int:
     return 0
 
 
+def cmd_prune_raw(args: argparse.Namespace, conn: psycopg.Connection) -> int:
+    """Run the retention sweep on demand (the batches run it themselves)."""
+    plan = prune_raw_payloads(conn, dry_run=args.dry_run)
+    if args.dry_run:
+        conn.rollback()
+        print(f"[dry-run] would delete {len(plan.expired_ids)} payload(s)")
+    else:
+        conn.commit()
+        print(f"deleted {len(plan.expired_ids)} payload(s)")
+    for name, count in sorted(plan.deleted_by_rule.items()):
+        print(f"  {name}: {count}")
+    for source, endpoint in plan.unclassified:
+        print(f"  ! unclassified, kept: source={source} endpoint={endpoint}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="etl", description="Phobos ETL maintenance CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -190,6 +212,14 @@ def build_parser() -> argparse.ArgumentParser:
     when.add_argument("--from", dest="from_date", help="start date YYYY-MM-DD")
     when.add_argument("--season", type=int, help="a single season YYYY")
     p_back.set_defaults(func=cmd_backfill)
+
+    p_prune = sub.add_parser(
+        "prune-raw", help="age out raw_payloads per the retention rules"
+    )
+    p_prune.add_argument(
+        "--dry-run", action="store_true", help="report what would be deleted, delete nothing"
+    )
+    p_prune.set_defaults(func=cmd_prune_raw)
 
     return parser
 

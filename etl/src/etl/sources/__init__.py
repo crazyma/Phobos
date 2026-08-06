@@ -25,6 +25,7 @@ from .game_lines import make_game_lines_source
 from .games import make_games_source
 from .players_bio import make_player_bio_source
 from .projection import make_projection_source, make_reconciliation_source
+from .raw_retention import make_raw_retention_source
 from .recent_form import make_recent_form_source
 from .season_stats import make_season_stats_source
 from .savant import make_savant_source
@@ -86,5 +87,10 @@ def build_sources(
     # the snapshot is fetched in the evening sweep; manual runs it too.
     if kind in ("evening", "manual"):
         sources.append(make_reconciliation_source(client, conn))
+
+    # Raw retention runs last, on every batch: this batch's own payloads are
+    # brand new, so the sweep only ever ages out earlier ones. Deliberately the
+    # tail — a sweep failure must not cost us the ingest that preceded it.
+    sources.append(make_raw_retention_source(conn))
 
     return sources

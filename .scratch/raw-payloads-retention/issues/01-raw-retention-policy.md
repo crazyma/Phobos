@@ -20,7 +20,7 @@
 
 **Blocked by:** None。獨立票。
 
-**Status:** ready-for-agent
+**Status:** done（2026-08-06）
 
 ## reprocess 定位 —— 決策已定（2026-08-03，batu）
 
@@ -43,16 +43,17 @@
 
 ## Checklist
 
-- [ ] 保留策略以 endpoint 類型分級（決策已定為分級 TTL，天數在實作時定案）：
-  - `transactions` — 量最小（294 kB）、價值最高（投影解讀的基礎），留最久
-  - `people/*/stats` — 量最大（64%）；gameLog 每次回傳完整球季內容，**舊的一份被新的一份完全涵蓋**，可留最短
-  - `schedule` — 比賽結算後由 `games` 取代，價值最低
-  - `teams`／`people`（bio） — 近乎靜態卻重複存，最沒必要逐批留。註：`teams` 最新一筆停在 07-29（07-30 批次沒抓），實作前確認參考資料的實際抓取頻率再定天數
-- [ ] 清理實作放在批次收尾（比照 `games-role-split` 票 02 的位置），與 ingest 同一 transaction；**單純刪列，不做歸檔**
-- [ ] 一次性清掉存量
-- [ ] `docs/spec/spec-03-etl-pipeline.md` 與 `docs/adr/decisions.md` §8.1 補上保留策略——ADR 目前只說「有 raw layer 可 reprocess」，沒說留多久，是這個坑的源頭
-- [ ] 測試：各 endpoint 依自己的天數被清、未過期者不動、清理失敗不中斷批次
-- [ ] 跑一次批次後 `python3 scripts/db/snapshot.py` 確認體積下降
+- [x] 保留策略以 endpoint 類型分級（天數 2026-08-06 由 batu 定案，`RETENTION_RULES`）：
+  - `transactions` **365 天** — 量最小、價值最高（投影解讀的基礎）
+  - `people`（bio）**90 天**、`teams` **60 天** — 60 是實測後上調的：`teams` 只在 evening／manual 抓、實測 8 天沒進新的一筆，30 天有清空風險
+  - `schedule` **30 天** — 結算後由 `games` 取代
+  - `people/*/stats` **14 天**、`savant` **14 天** — 佔 85% 的量，且新的完全涵蓋舊的
+  - **未分類的 `(source, endpoint)` 保留不刪並告警**，不設 catch-all 預設天數
+- [x] 清理實作放在批次收尾（`raw_retention` source，排在 `build_sources` 最後）。註：與 ingest **不是**同一 transaction——batch 的 per-source 隔離讓清理自己 commit，清理失敗只回滾清理本身，正好滿足「清理失敗不中斷批次」
+- [x] 一次性清掉存量：刪除 id 1278~1284 那 7 筆全聯盟 CSV（1679 kB）＋ `vacuum full`
+- [x] `docs/spec/spec-03-etl-pipeline.md` §7 與 `docs/adr/decisions.md` §8.1 補上保留策略
+- [x] 測試：`etl/tests/test_raw_retention.py` 9 項（分級到期、`people` 不被 `people/*/stats` 誤掃、未分類保留並告警、當批寫入不自清、DB 端到端、每批最後一棒）
+- [x] 體積驗證：`raw_payloads` 6200 kB → **1376 kB**、DB 16 MB → **11 MB**
 
 ## Comments
 
@@ -72,3 +73,15 @@
 - TTL 分級的定位建議：savant 是**每批可重抓、且新的完全涵蓋舊的**（同一年重抓即最新），
   性質接近 `people/*/stats`，可歸最短那一級。
 
+
+### 完成紀錄（2026-08-06）
+
+實作 `etl/src/etl/sources/raw_retention.py`：先把 `(id, source, endpoint, fetched_at)` 撈出來（**刻意不 select `payload`**），在 Python 端純函式 `plan_prune` 判定到期，再依 id 刪除。之所以不寫成一句 SQL DELETE，是為了讓「分級規則」只有一份實作、能不接 DB 純測，順帶讓「未分類 endpoint」自然浮出來。
+
+**TTL 掃不到的東西才是存量的重點。** 上線當天 dry-run 的結果是 **would delete 0** —— 表裡最舊的一筆是 07-27（10 天），連最短的 14 天都還沒到。真正的存量問題不是「舊資料沒清」，是那 7 筆 bug 產物；TTL 對它們無效（08-03 才寫入）。所以「一次性清存量」是**獨立於 TTL 的一次手動刪除**，不是跑一次 sweep 就好——這點原票沒說清楚。
+
+**體積驗證**：刪 7 筆（1679 kB 文字量）+ `vacuum full` 後，`raw_payloads` **6200 kB → 1376 kB**、DB **16 MB → 11 MB**。降幅遠大於刪掉的文字量，因為 ① jsonb 在磁碟上是 TOAST 壓縮的，`length(payload::text)` 量的是解壓後的大小；② 表本身累積了 dead tuple 膨脹，`vacuum full` 一併回收。**換句話說：本票量測用的「文字量」數字一路都高估了磁碟佔用**，raw 佔全庫 40% 有相當部分是膨脹而非資料。往後看體積要以 `pg_total_relation_size` 為準。
+
+刪除前已把那 7 筆 dump 成 `savant_legacy_rows.sql`（1.6 MB，session scratchpad，非 repo）備查；內容是可從 Savant 重抓的全聯盟 CSV，不具保存價值。
+
+`etl prune-raw [--dry-run]` 為手動觸發用；批次每次收尾都會自己掃。

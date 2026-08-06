@@ -163,6 +163,8 @@ lib/
 
 理由：上游格式可能隨時變動；有 raw layer，之後只要重寫轉換邏輯、reprocess 既有資料即可，不必重抓。
 
+**保留期限（2026-08-06 補）**：raw 不是永久保存。原本只寫「可 reprocess」沒寫「留多久」，結果 `raw_payloads` 一週就佔掉全庫 40%。改為**依 endpoint 分級 TTL**，每批收尾清一次（規則見 `spec-03 §7`，實作在 `etl/src/etl/sources/raw_retention.py`）：解讀價值高、量小的（`transactions` 365 天）留久；可隨時重抓、且新的完全涵蓋舊的（球員數據／Savant 14 天）留短。**未分類的 endpoint 一律保留並告警**，不設 catch-all 預設值——新 endpoint 必須有意識地決定它值多久，而不是被預設值默默清掉。（去重不是解方：實測內容雜湊只省 1.4%、每組 `(endpoint, params)` 留最新只省 14%。）
+
 ### 8.2 Curated schema 草案
 
 | 資料表 | 說明 |
