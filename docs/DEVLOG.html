@@ -573,6 +573,15 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
+    <li class=""><strong><code>team-names-zh</code>（1 票，<code>.scratch/team-names-zh/issues/</code>）——球隊中文名</strong>。<code>teams</code> 231 筆 <code>name_zh</code> <strong>全是 NULL</strong>，中文網站上球隊名一律英文（名冊頁現在長這樣：<code>大聯盟・Seattle Mariners</code>、<code>3A・Worcester Red Sox</code>）。決策（2026-08-07，batu）：<strong>大聯盟 30 支手寫中文名；小聯盟不逐支翻譯，用「母隊中文名 + 層級（原名）」推導</strong>——例如「紅襪 3A（Worcester）」。
+    <ul>
+    <li>為何推導而非逐支翻：小聯盟隊名中文無既定譯法（翻什麼都是自創），且會改名增隊；台灣媒體本來就講「紅襪 3A」。已驗證 <strong>201 支小聯盟隊全部都有 <code>parent_org_team_id</code></strong>、MLB 剛好 30 支無母隊，規則可完整覆蓋，<strong>未來新增的對手球隊也自動有中文名</strong>。</li>
+    <li>露出量測：現役所屬 5、季數據 29／13、異動時間軸 44（合計不重複 <strong>44</strong>）、賽程對手 <strong>201</strong>——那 201 支正是推導要解決的長尾。</li>
+    <li>已查證的實作前提：<code>teams.py:81-85</code> 的 upsert <strong>不覆蓋 <code>name_zh</code></strong>（seed 進去不會被批次洗掉）；<code>lib/services/team-map.ts</code> 的 <code>loadTeamMap()</code> 是天然單一落點，另有 <code>players.ts:87</code>、<code>player-seasons.ts:163</code> 兩處自製 fallback 要一併收斂。</li>
+    <li><strong>待定一個細節</strong>：括號裡的原名要放完整 <code>name_en</code>（建議）還是 <code>abbrev</code>；<strong>不做</strong>城市切割（沒有城市欄位、切法不可靠）。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done">~~<strong><code>sync-runs-test-isolation/02</code>（<code>.scratch/sync-runs-test-isolation/issues/</code>）——Python ETL 測試仍寫在開發 DB 上</strong>~~（2026-08-06 完成，見已完成區）——<code>uv run pytest</code> 改連 <code>phobos_test</code>，找不到就 skip、不退回開發庫。</li>
     </ul>
     <ul class="todo">
@@ -634,7 +643,7 @@
     <li class="done">~~小聯盟成績資料源細節：StatsAPI <code>sportId=11/12</code> 端點回傳欄位與 pybaseball 欄位對齊表~~ → <strong>已決策（2026-08-07，batu）：小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示</strong>（→ spec-03 §9 有完整實測）。原題目失效——<strong>pybaseball 從未被使用</strong>（全 repo 無 import，ADR §6.4 於 07-23 實測 FanGraphs／B-R 全 403），沒有第二來源要對齊。實測結論：計數欄（<code>hbp</code>／<code>sf</code>／<code>cs</code>／<code>bf</code>／<code>hld</code>）在 3A/2A 以下<strong>全部有值</strong>，可推導指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立；<code>lob_pct</code> 也全層級有值。缺的只有那四個 MLB-only 的（<code>stats=sabermetrics</code> 對 sportId≠1 回空、xwOBA 只有 Savant MLB）。不自算：MiLB 無公開權威的線性權重／league constants，FIP 又需 HBP 而投手表無此欄。<strong>連帶</strong>：<code>woba</code>／<code>wrc-plus</code>／<code>fip</code>／<code>war</code> 四則名詞頁的 <code>aaa</code>／<code>aa</code> 級距永遠對不到人，spec-04 §G 校訂時一併處理。</li>
     <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。<strong>部分回填（2026-07-27 票 03 實作）</strong>：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。<strong>waiver claim 已於 2026-08-07 收斂</strong>（見下條）。仍待辦的是 typeDesc 字串<strong>全集</strong>的實測——目前 <code>_TYPEDESC_RULES</code> 是 best-effort，未匹配一律落 <code>other</code>。</li>
     <li class="done">~~waiver claim 歸 <code>trade</code> 還是 <code>other</code>~~ → <strong>已決策（2026-08-07，batu）：兩者皆不採，新增 enum <code>waiver_claim</code></strong>（migration <code>0004</code>，比照 <code>declare_fa</code>／<code>assign</code>）。<code>other</code> 在投影是 no-op，而 <code>dfa</code> 保留原隊參考——鄭宗哲 2026-01~02 連四次 claim＋DFA，網站曾兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他（3/19 的 <code>send_down</code> 蓋掉才看似正常）。<code>trade</code> 投影對但標籤會變成「交易」，而他一次都沒被交易過。詳見 spec-03 §9。</li>
-    <li class=""><code>name_zh</code> 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。</li>
+    <li class="done">~~<code>name_zh</code> 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。~~ → <strong>已釐清並決策（2026-08-07，batu）</strong>。<strong>球員這邊沒有缺口</strong>：5/5 都有 <code>name_zh</code>，白名單人工維護（新增球員時本來就得手寫）、ETL bio source 刻意不碰（<code>players_bio.py:7</code>）；沒有中文名的台裔球員照 Fairchild 前例音譯即可。<strong>真正 0 覆蓋的是球隊</strong>：<code>teams</code> 231 筆 <code>name_zh</code> 全 NULL，站上球隊名一律英文。決策：<strong>大聯盟 30 支手寫中文名、小聯盟不逐支翻譯，改用「母隊中文名 + 層級（原名）」推導</strong>（已驗證 201 支小聯盟隊全都有 <code>parent_org_team_id</code>，且 <code>teams.py</code> 的 upsert 不覆蓋 <code>name_zh</code>）。→ 開票 <code>team-names-zh/01</code>。</li>
     <li class="done">~~實測 StatsAPI <code>stats=sabermetrics</code> 端點~~ → 已實測（2026-07-23）：<strong>命中、維持原清單、預案封存</strong>（結果見 spec-03 §9）</li>
     <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>affiliation</code> enum 的 <code>free_agent</code> 不可達</strong>~~ → <strong>已定：補對照</strong>（2026-07-27，batu）。新增 <code>transaction_type</code> enum 值 <code>declare_fa</code>（migration <code>0001</code>），StatsAPI「Declared Free Agency」/typeCode <code>DFA</code> → <code>declare_fa</code> → 投影 <code>free_agent</code>（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。</li>
     <li class="done">~~<strong>（2026-07-27 ETL 整合浮現）<code>season_pitching_stats.lob_pct</code> 的層級範圍</strong>~~ → <strong>已定：所有層級皆算</strong>（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 <code>hbp</code> 欄故 services 無法事後重算 → 必須 ETL 落庫。</li>

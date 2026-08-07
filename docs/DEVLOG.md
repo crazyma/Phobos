@@ -308,6 +308,12 @@
 
 ## ▶️ 進行中 / 下一步
 
+- [ ] **`team-names-zh`（1 票，`.scratch/team-names-zh/issues/`）——球隊中文名**。`teams` 231 筆 `name_zh` **全是 NULL**，中文網站上球隊名一律英文（名冊頁現在長這樣：`大聯盟・Seattle Mariners`、`3A・Worcester Red Sox`）。決策（2026-08-07，batu）：**大聯盟 30 支手寫中文名；小聯盟不逐支翻譯，用「母隊中文名 + 層級（原名）」推導**——例如「紅襪 3A（Worcester）」。
+  - 為何推導而非逐支翻：小聯盟隊名中文無既定譯法（翻什麼都是自創），且會改名增隊；台灣媒體本來就講「紅襪 3A」。已驗證 **201 支小聯盟隊全部都有 `parent_org_team_id`**、MLB 剛好 30 支無母隊，規則可完整覆蓋，**未來新增的對手球隊也自動有中文名**。
+  - 露出量測：現役所屬 5、季數據 29／13、異動時間軸 44（合計不重複 **44**）、賽程對手 **201**——那 201 支正是推導要解決的長尾。
+  - 已查證的實作前提：`teams.py:81-85` 的 upsert **不覆蓋 `name_zh`**（seed 進去不會被批次洗掉）；`lib/services/team-map.ts` 的 `loadTeamMap()` 是天然單一落點，另有 `players.ts:87`、`player-seasons.ts:163` 兩處自製 fallback 要一併收斂。
+  - **待定一個細節**：括號裡的原名要放完整 `name_en`（建議）還是 `abbrev`；**不做**城市切割（沒有城市欄位、切法不可靠）。
+
 - [x] ~~**`sync-runs-test-isolation/02`（`.scratch/sync-runs-test-isolation/issues/`）——Python ETL 測試仍寫在開發 DB 上**~~（2026-08-06 完成，見已完成區）——`uv run pytest` 改連 `phobos_test`，找不到就 skip、不退回開發庫。
 
 - [x] ~~**`raw-payloads-retention`（1 票，`.scratch/raw-payloads-retention/issues/`）**~~（2026-08-06 完成，見已完成區）——分級 TTL 每批收尾清一次；`raw_payloads` 6200 kB → 1376 kB、DB 16 MB → 11 MB。
@@ -361,7 +367,7 @@
 - [x] ~~小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表~~ → **已決策（2026-08-07，batu）：小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示**（→ spec-03 §9 有完整實測）。原題目失效——**pybaseball 從未被使用**（全 repo 無 import，ADR §6.4 於 07-23 實測 FanGraphs／B-R 全 403），沒有第二來源要對齊。實測結論：計數欄（`hbp`／`sf`／`cs`／`bf`／`hld`）在 3A/2A 以下**全部有值**，可推導指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立；`lob_pct` 也全層級有值。缺的只有那四個 MLB-only 的（`stats=sabermetrics` 對 sportId≠1 回空、xwOBA 只有 Savant MLB）。不自算：MiLB 無公開權威的線性權重／league constants，FIP 又需 HBP 而投手表無此欄。**連帶**：`woba`／`wrc-plus`／`fip`／`war` 四則名詞頁的 `aaa`／`aa` 級距永遠對不到人，spec-04 §G 校訂時一併處理。
 - [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。**waiver claim 已於 2026-08-07 收斂**（見下條）。仍待辦的是 typeDesc 字串**全集**的實測——目前 `_TYPEDESC_RULES` 是 best-effort，未匹配一律落 `other`。
 - [x] ~~waiver claim 歸 `trade` 還是 `other`~~ → **已決策（2026-08-07，batu）：兩者皆不採，新增 enum `waiver_claim`**（migration `0004`，比照 `declare_fa`／`assign`）。`other` 在投影是 no-op，而 `dfa` 保留原隊參考——鄭宗哲 2026-01~02 連四次 claim＋DFA，網站曾兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他（3/19 的 `send_down` 蓋掉才看似正常）。`trade` 投影對但標籤會變成「交易」，而他一次都沒被交易過。詳見 spec-03 §9。
-- [ ] `name_zh` 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。
+- [x] ~~`name_zh` 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。~~ → **已釐清並決策（2026-08-07，batu）**。**球員這邊沒有缺口**：5/5 都有 `name_zh`，白名單人工維護（新增球員時本來就得手寫）、ETL bio source 刻意不碰（`players_bio.py:7`）；沒有中文名的台裔球員照 Fairchild 前例音譯即可。**真正 0 覆蓋的是球隊**：`teams` 231 筆 `name_zh` 全 NULL，站上球隊名一律英文。決策：**大聯盟 30 支手寫中文名、小聯盟不逐支翻譯，改用「母隊中文名 + 層級（原名）」推導**（已驗證 201 支小聯盟隊全都有 `parent_org_team_id`，且 `teams.py` 的 upsert 不覆蓋 `name_zh`）。→ 開票 `team-names-zh/01`。
 - [x] ~~實測 StatsAPI `stats=sabermetrics` 端點~~ → 已實測（2026-07-23）：**命中、維持原清單、預案封存**（結果見 spec-03 §9）
 - [x] ~~**（2026-07-27 ETL 整合浮現）`affiliation` enum 的 `free_agent` 不可達**~~ → **已定：補對照**（2026-07-27，batu）。新增 `transaction_type` enum 值 `declare_fa`（migration `0001`），StatsAPI「Declared Free Agency」/typeCode `DFA` → `declare_fa` → 投影 `free_agent`（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。
 - [x] ~~**（2026-07-27 ETL 整合浮現）`season_pitching_stats.lob_pct` 的層級範圍**~~ → **已定：所有層級皆算**（2026-07-27，batu）。移除 MLB-only（sabermetrics）閘門；LOB% 由計數欄自算、每層級皆有輸入，且投手表無 `hbp` 欄故 services 無法事後重算 → 必須 ETL 落庫。
