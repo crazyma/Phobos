@@ -16,7 +16,21 @@ uv sync            # 建 .venv、裝相依
 uv run pytest      # 跑測試（純測試不需 DB；-m db 需 Postgres）
 ```
 
-`DATABASE_URL` 共用 repo 根的 `.env`（`postgres://phobos:phobos@localhost:5432/phobos`）。
+**跑批次**用的 `DATABASE_URL` 共用 repo 根的 `.env`（開發庫 `postgres://phobos:phobos@localhost:5432/phobos`）。
+
+### 測試連的是 `phobos_test`，不是開發庫
+
+`@pytest.mark.db` 的測試會真的 insert／commit（中斷過一次，測試球員 `Test Two-Way`
+一路留到正式名冊頁上），所以 `etl/tests/conftest.py` 的 `db_conn` **只讀 repo 根
+`.env.test` 的 `DATABASE_URL`**（`…/phobos_test`），與 Node 那側 `pnpm test` 同一個庫。
+找不到 `.env.test`、它指向的庫等同 `.env`、庫不存在、或庫裡沒有 curated schema 時，
+db 測試會**帶著指示 skip**——**不會**退回開發庫。命令列上 export 的 `DATABASE_URL`
+對測試無效（比照 `vitest.setup.ts` 的 `override: true`，檔案為準）；CI 要跑 db 測試就寫一份 `.env.test`。
+
+`phobos_test` 的 **schema 由 Drizzle 提供，Python 這側不跑 migration**。第一次要先讓
+Node 那側建好表——跑一次 `pnpm test`（vitest 每次 `beforeEach` 都 `migrate()`），或
+`DATABASE_URL="postgres://phobos:phobos@localhost:5432/phobos_test" pnpm db:migrate`。
+建庫本身見根 `README.md`（docker 首次啟動自動建；本機 Postgres 要 superuser `createdb`）。
 
 ## 跑一個批次
 

@@ -1,8 +1,10 @@
 """Environment + tunables.
 
 `DATABASE_URL` is shared with the Node side via the repo-root `.env` (the ETL
-never owns its own database config). Constants here are the conservative
-defaults for talking to StatsAPI (spec-03 §7).
+never owns its own database config). That is the **development** database and
+this module is only for real batches: the db-marked tests resolve their own DSN
+from `.env.test` in `tests/conftest.py` and never call `get_database_url()`.
+Constants here are the conservative defaults for talking to StatsAPI (spec-03 §7).
 """
 
 from __future__ import annotations
