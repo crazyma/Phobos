@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { db as defaultDb } from "../db/client.ts";
 import {
@@ -9,6 +10,7 @@ import {
 } from "../db/schema/index.ts";
 import { playerLifecycle, teamLevel } from "../db/schema/enums.ts";
 import { buildStatusSentence, levelLabel } from "./player-status.ts";
+import { teamDisplayName } from "./team-map.ts";
 
 /**
  * 球員總覽的對外合約（spec-02 §2.2 / §4）。頁面（票 04）與 `/api/players` 共用
@@ -45,6 +47,8 @@ export type PlayerSummary = z.infer<typeof PlayerSummarySchema>;
  * `db` 可注入（測試以 seed 好的 DB fixture 驗證）。
  */
 export async function getPlayerSummaries(db = defaultDb): Promise<PlayerSummary[]> {
+  // 小聯盟球隊的顯示名要用母隊中文名推導（spec-01 C.2），故自我 join 一次。
+  const parentTeams = alias(teams, "parent_teams");
   const rows = await db
     .select({
       playerId: players.mlbPlayerId,
@@ -61,11 +65,13 @@ export async function getPlayerSummaries(db = defaultDb): Promise<PlayerSummary[
       teamNameZh: teams.nameZh,
       teamAbbrev: teams.abbrev,
       teamLevel: teams.level,
+      parentNameZh: parentTeams.nameZh,
       recentForm: playerRecentForm.sentenceZh,
     })
     .from(players)
     .leftJoin(playerCurrentStatus, eq(playerCurrentStatus.playerId, players.mlbPlayerId))
     .leftJoin(teams, eq(teams.mlbTeamId, playerCurrentStatus.teamId))
+    .leftJoin(parentTeams, eq(parentTeams.mlbTeamId, teams.parentOrgTeamId))
     .leftJoin(playerRecentForm, eq(playerRecentForm.playerId, players.mlbPlayerId))
     // tracked 先於 archived（enum 定義序），同組再依英文名
     .orderBy(players.lifecycle, players.nameEn);
@@ -82,9 +88,18 @@ export async function getPlayerSummaries(db = defaultDb): Promise<PlayerSummary[
         row.teamId !== null && row.teamLevel !== null
           ? {
               id: row.teamId,
+              // 名冊列自己印 levelLabel 徽章，隊名不再重複帶層級。
               // teamNameEn is NOT NULL once a team row matched; ?? "" only
               // satisfies the nullable leftJoin type, never fires at runtime.
-              name: row.teamNameZh ?? row.teamNameEn ?? "",
+              name: teamDisplayName(
+                {
+                  nameZh: row.teamNameZh,
+                  nameEn: row.teamNameEn ?? "",
+                  level: row.teamLevel,
+                  parentNameZh: row.parentNameZh,
+                },
+                { withLevel: false },
+              ),
               abbrev: row.teamAbbrev,
               level: row.teamLevel,
               levelLabel: levelLabel(row.teamLevel) ?? "",

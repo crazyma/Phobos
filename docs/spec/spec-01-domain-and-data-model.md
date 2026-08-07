@@ -82,8 +82,8 @@ event（異動事件流）               ← 時間軸、狀態投影
 | 欄位 | 型別 | 說明 |
 |---|---|---|
 | `mlb_team_id` | int **PK** | StatsAPI team id（含小聯盟隊） |
-| `name_en` / `name_zh` | text（zh 可空） | |
-| `abbrev` | text | |
+| `name_en` / `name_zh` | text（zh 可空） | **只有大聯盟 30 支填 `name_zh`**（seed `lib/db/seed/teams.ts`，台灣慣用暱稱、不帶城市）。小聯盟球隊 `name_zh` 一律留空——顯示名由「母隊 `name_zh` + 層級（`name_en`）」推導（`lib/services/team-map.ts` 的 `teamDisplayName`），因為小聯盟隊名中文無既定譯法、且會改名增隊。ETL 的 teams upsert 不覆蓋 `name_zh` |
+| `abbrev` | text | 密集介面（季數據表隊伍欄、首頁卡片、即將出賽）顯示這個，不用中文名 |
 | `level` | enum `mlb,aaa,aa,a_plus,a,rookie` | sportId 對照見 spec-03 §4 |
 | `parent_org_team_id` | int，可空 | 所屬母球團（MLB 隊）；區分「球團」與「所屬球隊」 |
 
@@ -170,5 +170,5 @@ PK 皆 `(player_id, season, level, team_id)`——同季同層級跨隊分列；
 ## F. Open Items
 
 - [ ] StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）
-- [ ] `name_zh` 補齊方式（手動 seed；無中文名球員顯示英文）
+- [x] ~~`name_zh` 補齊方式（手動 seed；無中文名球員顯示英文）~~ → 已定（2026-08-07）：**球員**維持人工白名單 seed（5/5 有值，新增球員時本來就得手寫；無中文名的台裔球員照 Fairchild 前例音譯）；**球隊**改為「大聯盟 30 支手寫 + 小聯盟推導」，見 C.2 `teams.name_zh` 註
 - [x] ~~`wrc_plus`／`war` 欄位去留~~ → 已定（2026-07-23 實測命中）：欄位保留，來源＝StatsAPI `stats=sabermetrics`（僅 MLB 層級）

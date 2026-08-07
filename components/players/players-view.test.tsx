@@ -10,7 +10,7 @@ const tracked: PlayerSummary[] = [
     nameZh: "鄭宗哲",
     primaryPosition: "SS",
     lifecycle: "tracked",
-    team: { id: 10, name: "里諾王牌", abbrev: "RNO", level: "aaa", levelLabel: "3A" },
+    team: { id: 10, name: "響尾蛇（Reno Aces）", abbrev: "RNO", level: "aaa", levelLabel: "3A" },
     statusSentence: "3A",
     recentForm: "連三場猛打賞",
   },
@@ -44,7 +44,7 @@ describe("PlayersView (page smoke)", () => {
     const html = renderToStaticMarkup(<PlayersView tracked={tracked} archived={[]} />);
     expect(html).toContain("鄭宗哲");
     expect(html).toContain("林昱珉");
-    expect(html).toContain("里諾王牌");
+    expect(html).toContain("3A・響尾蛇（Reno Aces）"); // 層級徽章＋推導隊名，層級只出現一次
     expect(html).toContain("連三場猛打賞");
     // null recentForm → placeholder
     expect(html).toContain("近況同步中");

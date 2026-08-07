@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { db as defaultDb } from "../db/client.ts";
 import {
@@ -17,7 +18,7 @@ import {
   TimelineSchema,
 } from "./player-recent.ts";
 import { getPlayerUpcoming, UpcomingSchema } from "./player-upcoming.ts";
-import { loadTeamMap } from "./team-map.ts";
+import { loadTeamMap, teamDisplayName } from "./team-map.ts";
 
 /** Current team block, shared with the roster summary shape. */
 const TeamSchema = z
@@ -73,6 +74,8 @@ export async function getPlayerDetail(
   id: number,
   db = defaultDb,
 ): Promise<PlayerDetail | null> {
+  // 小聯盟顯示名要用母隊中文名推導（spec-01 C.2）。
+  const parentTeams = alias(teams, "parent_teams");
   const rows = await db
     .select({
       playerId: players.mlbPlayerId,
@@ -92,11 +95,13 @@ export async function getPlayerDetail(
       teamNameZh: teams.nameZh,
       teamAbbrev: teams.abbrev,
       teamLevel: teams.level,
+      parentNameZh: parentTeams.nameZh,
       recentForm: playerRecentForm.sentenceZh,
     })
     .from(players)
     .leftJoin(playerCurrentStatus, eq(playerCurrentStatus.playerId, players.mlbPlayerId))
     .leftJoin(teams, eq(teams.mlbTeamId, playerCurrentStatus.teamId))
+    .leftJoin(parentTeams, eq(parentTeams.mlbTeamId, teams.parentOrgTeamId))
     .leftJoin(playerRecentForm, eq(playerRecentForm.playerId, players.mlbPlayerId))
     .where(eq(players.mlbPlayerId, id))
     .limit(1);
@@ -131,7 +136,16 @@ export async function getPlayerDetail(
       row.teamId !== null && row.teamLevel !== null
         ? {
             id: row.teamId,
-            name: row.teamNameZh ?? row.teamNameEn ?? "",
+            // hero 自己印 levelLabel 徽章（player-hero.tsx），隊名不重複帶層級。
+            name: teamDisplayName(
+              {
+                nameZh: row.teamNameZh,
+                nameEn: row.teamNameEn ?? "",
+                level: row.teamLevel,
+                parentNameZh: row.parentNameZh,
+              },
+              { withLevel: false },
+            ),
             abbrev: row.teamAbbrev,
             level: row.teamLevel,
             levelLabel: levelLabel(row.teamLevel) ?? "",

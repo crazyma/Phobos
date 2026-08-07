@@ -4,7 +4,7 @@
 
 **Blocked by:** None。
 
-**Status:** ready-for-agent
+**Status:** done（2026-08-07）
 
 ## 現況量測（2026-08-07）
 
@@ -47,7 +47,7 @@ aaa~rookie  |   201 |  201      ← 全部都有母隊，可推導
 2025  2A   海盜 2A（Altoona）     .254
 ```
 
-## ⚠️ 括號裡的原名要放什麼，需要定案
+## 括號裡的原名 —— 已定：完整 `name_en`（2026-08-07，batu）
 
 上面示意圖裡的原名寫法其實**不一致**（`Reno Aces` 是全名、`Worcester`／`Sugar Land` 是城市），這是示意時隨手寫的，實作要挑一種：
 
@@ -71,15 +71,41 @@ aaa~rookie  |   201 |  201      ← 全部都有母隊，可推導
 
 ## Checklist
 
-- [ ] 30 支大聯盟球隊中文名 seed（沿用台灣慣用譯名；與現有 seed 檔同慣例，附來源或註記）
-- [ ] `teamDisplayName()` 單一 helper：MLB → 中文名；小聯盟 → 母隊中文 + 層級 +（原名）
-- [ ] `players.ts:87`、`player-seasons.ts:163` 兩處自製 fallback 收斂到該 helper
-- [ ] 括號原名的格式定案（見上表，建議完整 `name_en`）
-- [ ] 測試：MLB／小聯盟／母隊缺中文名 fallback 三條路徑；`loadTeamMap` 不因此多打 DB
-- [ ] 驗收：名冊、個人頁（bio／季數據表／逐場／即將出賽）、首頁四區、異動時間軸全部改用中文隊名
-- [ ] spec-01 C.2（`teams` 欄位語意）與 spec-02 顯示規則補上這條推導規則
+- [x] 30 支大聯盟球隊中文名 seed（`lib/db/seed/teams.ts`，台灣慣用暱稱、不帶城市）
+- [x] `teamDisplayName()` 單一 helper（`lib/services/team-map.ts`），`withLevel` 由呼叫端決定
+- [x] `players.ts`、`player-seasons.ts` 兩處自製 fallback 收斂到該 helper；**另外抓到第三處**：`player-detail.ts`（個人頁 hero），原票沒列到
+- [x] 括號原名＝完整 `name_en`（不做城市切割）
+- [x] 測試：`lib/services/team-map.test.ts` 6 項（MLB／小聯盟推導／`withLevel: false`／母隊缺中文名 fallback／小聯盟自己的 `name_zh` 不參與推導／各層級字樣）；`loadTeamMap` 用同一次全表掃描在記憶體解析母隊，**未增加 DB 往返**
+- [x] 驗收：名冊列與個人頁 hero 已顯示中文隊名（見完成紀錄）
+- [x] spec-01 C.2、spec-02 §2.2 補上規則
 
 ## Comments
 
 - **球員的 `name_zh` 沒有缺口，不在本票範圍**：5/5 都有值，而且白名單是人工維護的（新增球員時本來就得手寫），ETL 的 bio source 也刻意不碰（`players_bio.py:7`）。唯一算「策略」的是沒有中文名的台裔球員怎麼取名——已有前例：Stuart Fairchild → 「史都華·費爾柴德」，seed 檔註明「美國出生、台裔」。照前例即可。
 - 那 201 支對手球隊之所以不用管，正是因為推導規則涵蓋了它們；**未來新增的球隊與對手也自動有中文顯示**，不需要回頭補資料。這是選推導而非逐支翻譯的主要理由。
+
+## 完成紀錄（2026-08-07）
+
+實際上線的樣子（dev server 實查）：
+
+```
+名冊頁
+史都華·費爾柴德   大聯盟・水手
+李灝宇            大聯盟・老虎
+林昱珉            3A・響尾蛇（Reno Aces）
+鄧愷威            3A・太空人（Sugar Land Space Cowboys）
+鄭宗哲            3A・紅襪（Worcester Red Sox）
+
+個人頁 hero
+鄭宗哲  3A・紅襪（Worcester Red Sox）
+```
+
+`pnpm db:seed` → `Named 30/30 MLB teams in Chinese.`
+
+### 三件與原票預期不同的事
+
+1. **漏了一處**：原票只列 `players.ts` 與 `player-seasons.ts` 兩個自製 fallback，實際還有**第三處** `lib/services/player-detail.ts`（個人頁 hero）。已一併收斂。
+2. **季數據表根本不顯示隊名**：`components/player-detail/season-stats.tsx:70-72` 的 `teamCell` 是 `abbrev ?? name`，密集表格刻意只印三碼（BOS／WOR）。原票說「季數據表一列跨多層級、層級必須留在隊名裡」——這個理由對**資料合約**成立（`/api/players/[id]` 的 `team.name` 現在帶層級），但對**當前 UI** 不成立，因為那格根本沒顯示 name。`withLevel: true` 仍是預設值，未來若把該欄改成全名就直接可用。
+3. **仍是英文的兩處，不在本票範圍**：
+   - **異動時間軸的敘述文字**：那是 StatsAPI 原始 `description`（如 `Boston Red Sox claimed SS Tsung-Che Cheng off waivers from …`），是上游散文不是隊名欄位。要中文化等於自己組句，是另一個題目。
+   - **`abbrev` 介面**（首頁卡片、即將出賽「對 LHV」、季數據表隊伍欄）：`abbrev` 是語言中性的，但 `LHV`／`ELP`／`ABQ` 這類小聯盟三碼對中文讀者辨識度低。是否改成推導隊名是 UI 取捨，需另行決定。
