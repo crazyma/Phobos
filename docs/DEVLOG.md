@@ -352,7 +352,7 @@
 - [x] ~~進階數據要顯示到多細~~ → 已定：打/投各 7 項、只落不可推導欄（spec-01 C.7）
 - [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
 - [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
-- [ ] 小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表（→ spec-03 §9）
+- [x] ~~小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表~~ → **已決策（2026-08-07，batu）：小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示**（→ spec-03 §9 有完整實測）。原題目失效——**pybaseball 從未被使用**（全 repo 無 import，ADR §6.4 於 07-23 實測 FanGraphs／B-R 全 403），沒有第二來源要對齊。實測結論：計數欄（`hbp`／`sf`／`cs`／`bf`／`hld`）在 3A/2A 以下**全部有值**，可推導指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立；`lob_pct` 也全層級有值。缺的只有那四個 MLB-only 的（`stats=sabermetrics` 對 sportId≠1 回空、xwOBA 只有 Savant MLB）。不自算：MiLB 無公開權威的線性權重／league constants，FIP 又需 HBP 而投手表無此欄。**連帶**：`woba`／`wrc-plus`／`fip`／`war` 四則名詞頁的 `aaa`／`aa` 級距永遠對不到人，spec-04 §G 校訂時一併處理。
 - [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。**仍待定**：waiver claim 歸 `trade` 或 `other`（spec-03 §9）。
 - [ ] `name_zh` 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。
 - [x] ~~實測 StatsAPI `stats=sabermetrics` 端點~~ → 已實測（2026-07-23）：**命中、維持原清單、預案封存**（結果見 spec-03 §9）

@@ -9,7 +9,7 @@
 ## 1. 管線總覽
 
 ```
-[StatsAPI / pybaseball] → fetch（存 raw_payloads）→ transform（純函式）→ upsert curated
+[StatsAPI（＋Savant xwOBA）] → fetch（存 raw_payloads）→ transform（純函式）→ upsert curated
                                                         ↓ 每批收尾
                                     狀態投影（transaction_events → player_current_status）
                                     近況一句話（game lines → player_recent_form）
@@ -78,7 +78,7 @@
 
 ## 7. 錯誤處理與韌性
 
-- 上游呼叫：保守 delay（pybaseball 無內建 rate limit）、重試 2 次、`pybaseball.cache.enable()`。
+- 上游呼叫：保守 delay（上游未宣告 rate limit）、重試 2 次、本地檔案快取（`etl/src/etl/cache.py`）。（原訂的 pybaseball 從未採用，見 §9。）
 - 失敗語意：來源級失敗 → 該來源跳過、其餘照跑、`partial`；整批失敗 → `failed`，網站繼續供舊資料（spec-02 §5）。
 - **告警語意**：source 正常完成時可回傳結構化 warning；批次將其依 source 寫入 `sync_runs.detail.sources_warnings`。**失敗的 source 也會保留它在拋例外前已回報的 warning**（例如上游重試紀錄——那正是解釋失敗原因的線索），與 `sources_failed` 的 error 並存。warning 純供稽核，**不影響** `success`／`partial`／`failed`（`derive_status` 只依來源是否失敗判定）。既有無 warning 的 detail 保持原形狀，讀取端須容忍沒有 `sources_warnings`。
 - **Raw 保留策略（TTL）**：`raw_payloads` 依 endpoint 分級保留，**每批收尾**由 `raw_retention` source 清一次（排在最後：清理失敗只回滾清理本身，不影響當批 ingest）。天數＝`transactions` 365／`people`(bio) 90／`teams` 60／`schedule` 30／`people/*/stats` 14／`savant` 14；分級依據是「重抓得回來嗎、新的是否涵蓋舊的」。**未分類的 `(source, endpoint)` 保留不刪，並以 warning 落進 `sync_runs.detail`**（無 catch-all 預設天數）。單純刪列、不歸檔；`etl prune-raw [--dry-run]` 可手動觸發。
@@ -86,7 +86,7 @@
 
 ## 8. 測試決策
 
-- transform 純函式：**錄下的 StatsAPI/pybaseball fixture** → 斷言 curated 列（不打真網路）；每個來源模組至少一組正常＋一組欄位缺漏 fixture。
+- transform 純函式：**錄下的 StatsAPI／Savant fixture** → 斷言 curated 列（不打真網路）；每個來源模組至少一組正常＋一組欄位缺漏 fixture。
 - 一句話規則引擎：表驅動測試——輸入 game line 序列，斷言 pattern 與句子；覆蓋 §5 每列＋fallback 必中。
 - 投影：同 spec-01 §E（與 Node 側共用 seed 概念，合約=curated schema）。
 - 排程/IO 薄殼不測邏輯，只測「來源失敗不中斷整批、sync_runs 正確落帳」。
@@ -94,6 +94,11 @@
 ## 9. Open Items
 
 - [ ] 實測 StatsAPI `transactions` 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（含 waiver claim 歸到 `trade` 或 `other`）
-- [ ] 小聯盟 boxscore 欄位與 MLB 差異確認（缺欄留 NULL）
+- [x] ~~小聯盟成績資料源細節（原題：StatsAPI `sportId=11/12` 與 pybaseball 的欄位對齊表）~~ → **已實測、已決策（2026-08-07，batu）：小聯盟不提供 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示。** 原題目已失效——pybaseball **從未被使用**（ETL 全 repo 無 import，僅散文殘留；ADR §6.4 早在 07-23 就實測 FanGraphs／B-R 全 403），沒有第二個來源要對齊。實測全庫各層級的非空計數：
+  - **計數欄無缺口**：`hbp`／`sf`／`cs`／`bf`／`hld` 在 3A/2A/A+/A/Rk 全部有值 → 由計數欄推導的指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立。
+  - **`lob_pct` 全層級有值**（aaa 7/7、aa 4/4…）→ 07-27「所有層級皆算」的決策已落地。
+  - **只缺四個**：wOBA／xwOBA／wRC+／WAR（打擊）、FIP／WAR（投球），全為 MLB-only（來自 `stats=sabermetrics`，sportId≠1 回空；xwOBA 來自 Savant，亦僅 MLB）。
+  - 不自算的理由：wOBA/wRC+ 需各聯盟各年度線性權重與 league constants，MiLB 無公開權威版本；FIP 公式需 HBP，而 `season_pitching_stats` **無 `hbp` 欄**；WAR 需守備調整與 replacement level，MiLB 無可信來源。三者自算都等於自創數字掛在球員頁上。
+  - **連帶影響 spec-04 §G**：`woba`／`wrc-plus`／`fip`／`war` 四則名詞頁目前寫了 `aaa:`／`aa:` 級距，但這些指標在小聯盟永遠無值，該級距不可能被任何球員對上——校訂時應一併處理。
 - [ ] cron 時刻上線後依實際結算延遲微調（§2 為建議值）
 - [x] ~~實測 StatsAPI `stats=sabermetrics`~~ → **已實測（2026-07-23）：命中**——(a) hitting 供 `woba/wRc/wRcPlus/war`、pitching 供 `fip/fipMinus/xfip/war/eraMinus`；(b) **僅 MLB**：sportId≠1 回空（以三位台灣球員 2025 AAA「season 有 split、sabermetrics 回空」對照確認）；(c) 2020~ 可回查；(d) 抽樣 Judge 2024：wRC+ 219.8 vs FG 218、WAR 11.33 vs 11.2（wOBA .476 vs .458，MLB 自算權重）。→ 維持清單、requirements §9.1 預案封存
