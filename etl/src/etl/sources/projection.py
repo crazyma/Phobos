@@ -55,7 +55,13 @@ class ProjectedStatus:
 
 
 # Events that (re)assign the player to a roster; team/level follow `to_team`.
-_ROSTER_TYPES = frozenset({"sign", "trade", "call_up", "send_down"})
+_ROSTER_TYPES = frozenset(
+    # A waiver claim moves the player exactly like a trade does. Leaving it out
+    # (it used to fall into the no-op 'other') meant a following `dfa` kept the
+    # *previous* club's reference: Cheng's Jan 2026 chain of four claims each
+    # followed by a DFA projected him onto the club that had already lost him.
+    {"sign", "trade", "waiver_claim", "call_up", "send_down"}
+)
 
 
 def _sort_key(e: EventInput) -> tuple[str, str, int]:

@@ -73,6 +73,24 @@ def test_dfa_keeps_prior_team_reference():
     assert (s.team_id, s.level) == (147, "mlb")  # 保留原隊參考
 
 
+def test_waiver_claim_moves_the_player_so_a_following_dfa_names_the_new_club():
+    """Cheng, Jan 2026: PIT → claimed by TB → DFA'd by TB.
+
+    While claims were classified 'other' (a no-op) the DFA preserved the *old*
+    club, so the page read "Pittsburgh Pirates・指定讓渡" for two months while
+    Tampa Bay was the club that had actually designated him.
+    """
+    events = [
+        _ev(1, "send_down", "2025-08-01", to_team_id=235),  # with the old club
+        _ev(2, "waiver_claim", "2026-01-07", to_team_id=147),
+        _ev(3, "dfa", "2026-01-12"),
+    ]
+    s = project_status(1, events, LEVELS)
+    assert s.affiliation == "dfa"
+    assert (s.team_id, s.level) == (147, "mlb")  # 新東家，不是原隊
+    assert s.as_of_event_id == 3
+
+
 def test_release_resets_team_and_health():
     events = [
         _ev(1, "call_up", "2024-05-01", to_team_id=147),

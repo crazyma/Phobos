@@ -68,6 +68,7 @@ _TYPEDESC_RULES: tuple[tuple[str, str], ...] = (
     ("outrighted", "send_down"),
     ("signed as free agent", "sign"),
     ("signed", "sign"),
+    ("claimed off waivers", "waiver_claim"),  # → rostered 於 to_team（spec-01 B.3）
     ("traded", "trade"),
     ("trade", "trade"),
     ("retired", "depart"),
@@ -81,12 +82,13 @@ _TYPEDESC_RULES: tuple[tuple[str, str], ...] = (
 #   SC  = "Status Change" (IL rows handled above by description; other SC = other)
 #   ASG = "Assigned" (real minor-league assignments → 'assign' via the
 #         "assigned to [team]" phrase; spring-training invites / rehab
-#         assignments keep 'other'); CLW = "Claimed Off Waivers";
+#         assignments keep 'other');
 #   RTN = "Returned"; NUM = "Number Change".
 _TYPECODE_RULES: dict[str, str] = {
     "SFA": "sign",
     "SGN": "sign",
     "TR": "trade",
+    "CLW": "waiver_claim",  # Claimed Off Waivers — a roster move, not a trade
     "CU": "call_up",  # Recalled
     "SE": "call_up",  # Selected
     "PU": "call_up",  # Purchased

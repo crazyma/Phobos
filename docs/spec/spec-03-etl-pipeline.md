@@ -93,7 +93,11 @@
 
 ## 9. Open Items
 
-- [ ] 實測 StatsAPI `transactions` 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（含 waiver claim 歸到 `trade` 或 `other`）
+- [x] ~~waiver claim 歸到 `trade` 或 `other`~~ → **已決策（2026-08-07，batu）：兩者皆不採，新增 enum 值 `waiver_claim`**（migration `0004`，比照 `declare_fa`／`assign` 的前例）。實測上游形狀：typeCode `CLW`、typeDesc `Claimed Off Waivers`，`fromTeam`／`toTeam` 皆齊（raw transaction 630444）。
+  - **`other` 是錯的，不只是分類粗糙**：`other` 在投影是 no-op，而 `dfa` 的規則是「保留原隊參考」。鄭宗哲 2026-01~02 連續四次 claim＋DFA（PIT→TB→NYM→WSH→BOS），每次 DFA 都保留了**claim 之前**那一隊 → 網站曾有兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他。3/19 的 `send_down` 蓋掉才「看起來正常」——錯誤被後續事件掩蓋，不是沒發生。
+  - **`trade` 投影正確但呈現錯誤**：`lib/services/player-status.ts` 會把它標成「交易」，鄭宗哲時間軸就會出現四筆交易，而他一次都沒被交易過；站上又已有 `waiver`（讓渡）與 `dfa`（指定讓渡）兩則名詞頁分開講這件事。
+  - 落地：typeDesc/typeCode 對照、`_ROSTER_TYPES` 納入、標籤「讓渡挑選」、`waiver.mdx` 掛 `roster_event_types: [waiver_claim]`（名詞頁自動有實例回連）。重跑 transactions 後 5 筆既有事件已重新歸類（`on conflict … do update set type` 覆蓋）。
+- [ ] 實測 StatsAPI `transactions` 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（`_TYPEDESC_RULES` 目前是 best-effort，未匹配一律 `other`）
 - [x] ~~小聯盟成績資料源細節（原題：StatsAPI `sportId=11/12` 與 pybaseball 的欄位對齊表）~~ → **已實測、已決策（2026-08-07，batu）：小聯盟不提供 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示。** 原題目已失效——pybaseball **從未被使用**（ETL 全 repo 無 import，僅散文殘留；ADR §6.4 早在 07-23 就實測 FanGraphs／B-R 全 403），沒有第二個來源要對齊。實測全庫各層級的非空計數：
   - **計數欄無缺口**：`hbp`／`sf`／`cs`／`bf`／`hld` 在 3A/2A/A+/A/Rk 全部有值 → 由計數欄推導的指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立。
   - **`lob_pct` 全層級有值**（aaa 7/7、aa 4/4…）→ 07-27「所有層級皆算」的決策已落地。

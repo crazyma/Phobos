@@ -23,6 +23,7 @@ export const ROSTER_EVENT_TYPES = [
   "call_up",
   "send_down",
   "trade",
+  "waiver_claim",
   "dfa",
   "release",
   "declare_fa",

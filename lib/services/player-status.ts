@@ -30,6 +30,7 @@ const TRANSACTION_TYPE_LABELS: Record<string, string> = {
   call_up: "升上大聯盟",
   send_down: "下放小聯盟",
   trade: "交易",
+  waiver_claim: "讓渡挑選",
   dfa: "指定讓渡",
   release: "釋出",
   declare_fa: "宣告自由球員",

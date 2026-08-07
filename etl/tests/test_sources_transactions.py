@@ -83,10 +83,28 @@ def test_classify_injured_list_on_and_off_with_detail():
     assert reinstated == "il_off"
 
 
-def test_classify_unknown_and_waiver_default_to_other():
-    # Waiver claim explicitly falls to 'other' per the ticket.
-    assert classify("Claimed Off Waivers", "CLW", "")[0] == "other"
+def test_classify_unknown_defaults_to_other():
     assert classify("Some Novel Move", "ZZ", "")[0] == "other"
+
+
+def test_classify_waiver_claim_is_its_own_roster_move():
+    """Not 'other' (a projection no-op) and not 'trade' (mislabels the timeline).
+
+    Shape taken from live data (raw transaction 630444, Fairchild 2022-06-11):
+    typeDesc "Claimed Off Waivers" + typeCode CLW. Note the description splits
+    the phrase around the player's name ("claimed OF Stuart Fairchild and  off
+    waivers from …"), so typeDesc — not the prose — is what has to carry it.
+    """
+    assert (
+        classify(
+            "Claimed Off Waivers",
+            "CLW",
+            "Cincinnati Reds claimed OF Stuart Fairchild and  off waivers from "
+            "San Francisco Giants.",
+        )[0]
+        == "waiver_claim"
+    )
+    assert classify("", "CLW", "")[0] == "waiver_claim"  # typeCode fallback
 
 
 def test_classify_typecode_fallback_when_desc_blank():

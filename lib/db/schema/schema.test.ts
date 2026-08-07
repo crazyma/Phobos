@@ -92,6 +92,7 @@ describe("curated schema (spec-01 §C)", () => {
       "call_up",
       "send_down",
       "trade",
+      "waiver_claim",
       "dfa",
       "release",
       "declare_fa",

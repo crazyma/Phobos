@@ -248,7 +248,13 @@
   <section>
     <h2 id="sec-8" data-num="9">Open Items</h2>
     <ul class="todo">
-    <li class="">實測 StatsAPI <code>transactions</code> 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（含 waiver claim 歸到 <code>trade</code> 或 <code>other</code>）</li>
+    <li class="done">~~waiver claim 歸到 <code>trade</code> 或 <code>other</code>~~ → <strong>已決策（2026-08-07，batu）：兩者皆不採，新增 enum 值 <code>waiver_claim</code></strong>（migration <code>0004</code>，比照 <code>declare_fa</code>／<code>assign</code> 的前例）。實測上游形狀：typeCode <code>CLW</code>、typeDesc <code>Claimed Off Waivers</code>，<code>fromTeam</code>／<code>toTeam</code> 皆齊（raw transaction 630444）。
+    <ul>
+    <li><strong><code>other</code> 是錯的，不只是分類粗糙</strong>：<code>other</code> 在投影是 no-op，而 <code>dfa</code> 的規則是「保留原隊參考」。鄭宗哲 2026-01~02 連續四次 claim＋DFA（PIT→TB→NYM→WSH→BOS），每次 DFA 都保留了<strong>claim 之前</strong>那一隊 → 網站曾有兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他。3/19 的 <code>send_down</code> 蓋掉才「看起來正常」——錯誤被後續事件掩蓋，不是沒發生。</li>
+    <li><strong><code>trade</code> 投影正確但呈現錯誤</strong>：<code>lib/services/player-status.ts</code> 會把它標成「交易」，鄭宗哲時間軸就會出現四筆交易，而他一次都沒被交易過；站上又已有 <code>waiver</code>（讓渡）與 <code>dfa</code>（指定讓渡）兩則名詞頁分開講這件事。</li>
+    <li>落地：typeDesc/typeCode 對照、<code>_ROSTER_TYPES</code> 納入、標籤「讓渡挑選」、<code>waiver.mdx</code> 掛 <code>roster_event_types: [waiver_claim]</code>（名詞頁自動有實例回連）。重跑 transactions 後 5 筆既有事件已重新歸類（<code>on conflict … do update set type</code> 覆蓋）。</li>
+    </ul></li>
+    <li class="">實測 StatsAPI <code>transactions</code> 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（<code>_TYPEDESC_RULES</code> 目前是 best-effort，未匹配一律 <code>other</code>）</li>
     <li class="done">~~小聯盟成績資料源細節（原題：StatsAPI <code>sportId=11/12</code> 與 pybaseball 的欄位對齊表）~~ → <strong>已實測、已決策（2026-08-07，batu）：小聯盟不提供 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示。</strong> 原題目已失效——pybaseball <strong>從未被使用</strong>（ETL 全 repo 無 import，僅散文殘留；ADR §6.4 早在 07-23 就實測 FanGraphs／B-R 全 403），沒有第二個來源要對齊。實測全庫各層級的非空計數：
     <ul>
     <li><strong>計數欄無缺口</strong>：<code>hbp</code>／<code>sf</code>／<code>cs</code>／<code>bf</code>／<code>hld</code> 在 3A/2A/A+/A/Rk 全部有值 → 由計數欄推導的指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立。</li>

@@ -7,6 +7,12 @@
 
 ## ✅ 已完成
 
+### 2026-08-07
+
+- [x] **待決問題收斂兩題**（見「待決問題」區）。
+  - **小聯盟成績資料源**：原題（StatsAPI 與 pybaseball 欄位對齊表）失效——pybaseball 從未被使用。實測各層級非空計數後決策：**小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP**，計數欄與可推導指標全層級成立。順手清掉 spec-03 三處把 pybaseball 當現役來源的說法。
+  - **waiver claim** → 新增 enum `waiver_claim`（migration `0004_clammy_inhumans.sql`）。這題原本被歸為「分類美感」，實測後發現是投影 bug：`other` no-op ＋ `dfa` 保留原隊 ⇒ 鄭宗哲 2026 冬天連四次 claim 都把 DFA 記在**前一支**球隊頭上。落地：typeCode `CLW`／typeDesc `Claimed Off Waivers` 對照、`_ROSTER_TYPES` 納入、標籤「讓渡挑選」、`waiver.mdx` 掛 `roster_event_types` 讓名詞頁自動有實例回連。重跑 transactions（`sync_run #426`）後 5 筆既有事件已重新歸類，五名球員的投影結果不變（後續事件本就蓋掉了錯誤），驗證這是**歷史正確性**與**未來正確性**的修正。ETL 151 passed、vitest 140 passed、typecheck 綠。
+
 ### 2026-08-06
 
 - [x] **`sync-runs-test-isolation/02` 完成——Python ETL 測試不再寫開發 DB**（票 `.scratch/sync-runs-test-isolation/issues/02-python-etl-tests-still-write-to-dev-db.md`，分支 `fix/etl-test-db-isolation`）。
@@ -353,7 +359,8 @@
 - [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
 - [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
 - [x] ~~小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表~~ → **已決策（2026-08-07，batu）：小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示**（→ spec-03 §9 有完整實測）。原題目失效——**pybaseball 從未被使用**（全 repo 無 import，ADR §6.4 於 07-23 實測 FanGraphs／B-R 全 403），沒有第二來源要對齊。實測結論：計數欄（`hbp`／`sf`／`cs`／`bf`／`hld`）在 3A/2A 以下**全部有值**，可推導指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立；`lob_pct` 也全層級有值。缺的只有那四個 MLB-only 的（`stats=sabermetrics` 對 sportId≠1 回空、xwOBA 只有 Savant MLB）。不自算：MiLB 無公開權威的線性權重／league constants，FIP 又需 HBP 而投手表無此欄。**連帶**：`woba`／`wrc-plus`／`fip`／`war` 四則名詞頁的 `aaa`／`aa` 級距永遠對不到人，spec-04 §G 校訂時一併處理。
-- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。**仍待定**：waiver claim 歸 `trade` 或 `other`（spec-03 §9）。
+- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。**waiver claim 已於 2026-08-07 收斂**（見下條）。仍待辦的是 typeDesc 字串**全集**的實測——目前 `_TYPEDESC_RULES` 是 best-effort，未匹配一律落 `other`。
+- [x] ~~waiver claim 歸 `trade` 還是 `other`~~ → **已決策（2026-08-07，batu）：兩者皆不採，新增 enum `waiver_claim`**（migration `0004`，比照 `declare_fa`／`assign`）。`other` 在投影是 no-op，而 `dfa` 保留原隊參考——鄭宗哲 2026-01~02 連四次 claim＋DFA，網站曾兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他（3/19 的 `send_down` 蓋掉才看似正常）。`trade` 投影對但標籤會變成「交易」，而他一次都沒被交易過。詳見 spec-03 §9。
 - [ ] `name_zh` 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。
 - [x] ~~實測 StatsAPI `stats=sabermetrics` 端點~~ → 已實測（2026-07-23）：**命中、維持原清單、預案封存**（結果見 spec-03 §9）
 - [x] ~~**（2026-07-27 ETL 整合浮現）`affiliation` enum 的 `free_agent` 不可達**~~ → **已定：補對照**（2026-07-27，batu）。新增 `transaction_type` enum 值 `declare_fa`（migration `0001`），StatsAPI「Declared Free Agency」/typeCode `DFA` → `declare_fa` → 投影 `free_agent`（清隊、重設 active）。spec-01 §B.3/§C.3 已更新。
