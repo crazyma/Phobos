@@ -1,4 +1,5 @@
 import { and, desc, eq, gte } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { db as defaultDb } from "../db/client.ts";
 import {
@@ -7,7 +8,8 @@ import {
   teams,
 } from "../db/schema/index.ts";
 import { teamLevel } from "../db/schema/enums.ts";
-import { levelLabel } from "./player-status.ts";
+import { levelLabel, type TeamLevel } from "./player-status.ts";
+import { teamDisplayName } from "./team-map.ts";
 import {
   deriveBatting,
   derivePitching,
@@ -159,25 +161,49 @@ export function buildSeasons(
   }));
 }
 
-function teamOf(id: number | null, nameZh: string | null, nameEn: string | null, abbrev: string | null): Team | null {
-  return id !== null ? { id, name: nameZh ?? nameEn ?? "", abbrev } : null;
+type TeamCols = {
+  teamId: number | null;
+  teamNameEn: string | null;
+  teamNameZh: string | null;
+  teamAbbrev: string | null;
+  teamLevel: TeamLevel | null;
+  parentNameZh: string | null;
+};
+
+/** 季數據表一列跨多層級，所以隊名**保留**層級（「紅襪 3A（Worcester）」）。 */
+function teamOf(c: TeamCols): Team | null {
+  if (c.teamId === null || c.teamLevel === null) return null;
+  return {
+    id: c.teamId,
+    name: teamDisplayName({
+      nameZh: c.teamNameZh,
+      nameEn: c.teamNameEn ?? "",
+      level: c.teamLevel,
+      parentNameZh: c.parentNameZh,
+    }),
+    abbrev: c.teamAbbrev,
+  };
 }
 
 /** Load a player's season stats (2020+, per season × level × team) grouped. */
 export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Season[]> {
   const b = seasonBattingStats;
   const p = seasonPitchingStats;
+  // 小聯盟顯示名要用母隊中文名推導（spec-01 C.2）。
+  const parentTeams = alias(teams, "parent_teams");
 
   const battingRows = await db
     .select({
       season: b.season, level: b.level,
       teamId: b.teamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
+      teamLevel: teams.level, parentNameZh: parentTeams.nameZh,
       g: b.g, pa: b.pa, ab: b.ab, h: b.h, doubles: b.doubles, triples: b.triples, hr: b.hr,
       rbi: b.rbi, r: b.r, sb: b.sb, cs: b.cs, bb: b.bb, so: b.so, hbp: b.hbp, sf: b.sf,
       woba: b.woba, wrcPlus: b.wrcPlus, war: b.war,
     })
     .from(b)
     .leftJoin(teams, eq(teams.mlbTeamId, b.teamId))
+    .leftJoin(parentTeams, eq(parentTeams.mlbTeamId, teams.parentOrgTeamId))
     .where(and(eq(b.playerId, id), gte(b.season, SEASON_FLOOR)))
     .orderBy(desc(b.season));
 
@@ -185,23 +211,29 @@ export async function getPlayerSeasons(id: number, db = defaultDb): Promise<Seas
     .select({
       season: p.season, level: p.level,
       teamId: p.teamId, teamNameEn: teams.nameEn, teamNameZh: teams.nameZh, teamAbbrev: teams.abbrev,
+      teamLevel: teams.level, parentNameZh: parentTeams.nameZh,
       g: p.g, gs: p.gs, ipOuts: p.ipOuts, bf: p.bf, h: p.h, r: p.r, er: p.er, hr: p.hr,
       bb: p.bb, so: p.so, w: p.w, l: p.l, sv: p.sv, hld: p.hld,
       fip: p.fip, lobPct: p.lobPct, war: p.war,
     })
     .from(p)
     .leftJoin(teams, eq(teams.mlbTeamId, p.teamId))
+    .leftJoin(parentTeams, eq(parentTeams.mlbTeamId, teams.parentOrgTeamId))
     .where(and(eq(p.playerId, id), gte(p.season, SEASON_FLOOR)))
     .orderBy(desc(p.season));
 
-  const batting: BattingDbRow[] = battingRows.map(({ teamId, teamNameEn, teamNameZh, teamAbbrev, ...c }) => ({
-    ...c,
-    team: teamOf(teamId, teamNameZh, teamNameEn, teamAbbrev),
-  }));
-  const pitching: PitchingDbRow[] = pitchingRows.map(({ teamId, teamNameEn, teamNameZh, teamAbbrev, ...c }) => ({
-    ...c,
-    team: teamOf(teamId, teamNameZh, teamNameEn, teamAbbrev),
-  }));
+  const batting: BattingDbRow[] = battingRows.map(
+    ({ teamId, teamNameEn, teamNameZh, teamAbbrev, teamLevel, parentNameZh, ...c }) => ({
+      ...c,
+      team: teamOf({ teamId, teamNameEn, teamNameZh, teamAbbrev, teamLevel, parentNameZh }),
+    }),
+  );
+  const pitching: PitchingDbRow[] = pitchingRows.map(
+    ({ teamId, teamNameEn, teamNameZh, teamAbbrev, teamLevel, parentNameZh, ...c }) => ({
+      ...c,
+      team: teamOf({ teamId, teamNameEn, teamNameZh, teamAbbrev, teamLevel, parentNameZh }),
+    }),
+  );
 
   return z.array(SeasonSchema).parse(buildSeasons(batting, pitching));
 }

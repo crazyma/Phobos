@@ -233,8 +233,8 @@
     <thead><tr><th>欄位</th><th>型別</th><th>說明</th></tr></thead>
     <tbody>
     <tr><td data-label="欄位"><code>mlb_team_id</code></td><td data-label="型別">int <strong>PK</strong></td><td data-label="說明">StatsAPI team id（含小聯盟隊）</td></tr>
-    <tr><td data-label="欄位"><code>name_en</code> / <code>name_zh</code></td><td data-label="型別">text（zh 可空）</td><td data-label="說明"></td></tr>
-    <tr><td data-label="欄位"><code>abbrev</code></td><td data-label="型別">text</td><td data-label="說明"></td></tr>
+    <tr><td data-label="欄位"><code>name_en</code> / <code>name_zh</code></td><td data-label="型別">text（zh 可空）</td><td data-label="說明"><strong>只有大聯盟 30 支填 <code>name_zh</code></strong>（seed <code>lib/db/seed/teams.ts</code>，台灣慣用暱稱、不帶城市）。小聯盟球隊 <code>name_zh</code> 一律留空——顯示名由「母隊 <code>name_zh</code> + 層級（<code>name_en</code>）」推導（<code>lib/services/team-map.ts</code> 的 <code>teamDisplayName</code>），因為小聯盟隊名中文無既定譯法、且會改名增隊。ETL 的 teams upsert 不覆蓋 <code>name_zh</code></td></tr>
+    <tr><td data-label="欄位"><code>abbrev</code></td><td data-label="型別">text</td><td data-label="說明">密集介面（季數據表隊伍欄、首頁卡片、即將出賽）顯示這個，不用中文名</td></tr>
     <tr><td data-label="欄位"><code>level</code></td><td data-label="型別">enum <code>mlb,aaa,aa,a_plus,a,rookie</code></td><td data-label="說明">sportId 對照見 spec-03 §4</td></tr>
     <tr><td data-label="欄位"><code>parent_org_team_id</code></td><td data-label="型別">int，可空</td><td data-label="說明">所屬母球團（MLB 隊）；區分「球團」與「所屬球隊」</td></tr>
     </tbody>
@@ -307,7 +307,7 @@
     <h2 id="sec-6" data-num="F">Open Items</h2>
     <ul class="todo">
     <li class="">StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）</li>
-    <li class=""><code>name_zh</code> 補齊方式（手動 seed；無中文名球員顯示英文）</li>
+    <li class="done">~~<code>name_zh</code> 補齊方式（手動 seed；無中文名球員顯示英文）~~ → 已定（2026-08-07）：<strong>球員</strong>維持人工白名單 seed（5/5 有值，新增球員時本來就得手寫；無中文名的台裔球員照 Fairchild 前例音譯）；<strong>球隊</strong>改為「大聯盟 30 支手寫 + 小聯盟推導」，見 C.2 <code>teams.name_zh</code> 註</li>
     <li class="done">~~<code>wrc_plus</code>／<code>war</code> 欄位去留~~ → 已定（2026-07-23 實測命中）：欄位保留，來源＝StatsAPI <code>stats=sabermetrics</code>（僅 MLB 層級）</li>
     </ul>
   </section>

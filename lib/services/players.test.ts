@@ -14,6 +14,7 @@ import { getPlayerSummaries, PlayerSummarySchema } from "./players.ts";
 // Dedicated fixture ids well outside the whitelist range so this suite never
 // collides with the seed test's exact-count assertions.
 const AAA_TEAM_ID = 990001;
+const PARENT_TEAM_ID = 990002;
 const ROSTERED_ID = 900001;
 const ARCHIVED_ID = 900002;
 const TEST_PLAYER_IDS = [ROSTERED_ID, ARCHIVED_ID];
@@ -22,19 +23,28 @@ async function cleanup() {
   await db.delete(playerRecentForm).where(inArray(playerRecentForm.playerId, TEST_PLAYER_IDS));
   await db.delete(playerCurrentStatus).where(inArray(playerCurrentStatus.playerId, TEST_PLAYER_IDS));
   await db.delete(players).where(inArray(players.mlbPlayerId, TEST_PLAYER_IDS));
-  await db.delete(teams).where(inArray(teams.mlbTeamId, [AAA_TEAM_ID]));
+  await db.delete(teams).where(inArray(teams.mlbTeamId, [AAA_TEAM_ID, PARENT_TEAM_ID]));
 }
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./drizzle" });
   await cleanup();
 
+  // 小聯盟球隊**不**自帶中文名（spec-01 C.2）：顯示名由母隊中文名推導，
+  // 所以這裡刻意只給英文原名，母隊才是中文名的來源。
+  await db.insert(teams).values({
+    mlbTeamId: PARENT_TEAM_ID,
+    nameEn: "Test Parent Club",
+    nameZh: "測試母隊",
+    abbrev: "TPC",
+    level: "mlb",
+  });
   await db.insert(teams).values({
     mlbTeamId: AAA_TEAM_ID,
     nameEn: "Reno Aces",
-    nameZh: "里諾王牌",
     abbrev: "RNO",
     level: "aaa",
+    parentOrgTeamId: PARENT_TEAM_ID,
   });
 
   // Scenario A: rostered at AAA, on the 60-day IL, with a recent-form line.
@@ -81,9 +91,10 @@ describe("getPlayerSummaries", () => {
 
     expect(rostered).toBeDefined();
     expect(rostered?.statusSentence).toBe("3A・傷兵名單（IL-60）");
+    // 名冊列另外印 levelLabel 徽章，所以隊名不重複帶層級。
     expect(rostered?.team).toEqual({
       id: AAA_TEAM_ID,
-      name: "里諾王牌",
+      name: "測試母隊（Reno Aces）",
       abbrev: "RNO",
       level: "aaa",
       levelLabel: "3A",

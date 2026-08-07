@@ -192,6 +192,7 @@
     <h3 id="sec-2-2">2.2 球員總覽 <code>/players</code></h3>
     <ul>
     <li>每位 <code>tracked</code> 球員一列/卡：中英文名、目前隊伍＋層級、狀態一句（歸屬×健康組合，spec-01 B.2）、近況一句話。</li>
+    <li><strong>隊名顯示規則</strong>（spec-01 C.2）：大聯盟＝中文暱稱（「水手」）；小聯盟＝母隊中文名＋（原名）（「紅襪（Worcester Red Sox）」）。名冊列與個人頁 hero 自己印層級徽章，故隊名<strong>不</strong>重複帶層級（<code>teamDisplayName(..., { withLevel: false })</code>）；單獨出現隊名的地方才帶層級。密集介面（季數據表隊伍欄、首頁卡片、即將出賽對手）沿用 <code>abbrev</code>。</li>
     <li>可依層級/球隊篩選排序（client 端即可，資料量小）。<code>archived</code> 球員收在「歷史球員」折疊區。</li>
     </ul>
     <h3 id="sec-2-3">2.3 球員個人頁 <code>/players/[id]</code></h3>

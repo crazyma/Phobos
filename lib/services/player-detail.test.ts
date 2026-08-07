@@ -11,6 +11,7 @@ import {
 import { getPlayerDetail, PlayerDetailSchema } from "./player-detail.ts";
 
 const AAA_TEAM_ID = 990011;
+const PARENT_TEAM_ID = 990012;
 const ROSTERED_ID = 900011;
 const ARCHIVED_ID = 900012;
 const TEST_PLAYER_IDS = [ROSTERED_ID, ARCHIVED_ID];
@@ -19,19 +20,27 @@ async function cleanup() {
   await db.delete(playerRecentForm).where(inArray(playerRecentForm.playerId, TEST_PLAYER_IDS));
   await db.delete(playerCurrentStatus).where(inArray(playerCurrentStatus.playerId, TEST_PLAYER_IDS));
   await db.delete(players).where(inArray(players.mlbPlayerId, TEST_PLAYER_IDS));
-  await db.delete(teams).where(inArray(teams.mlbTeamId, [AAA_TEAM_ID]));
+  await db.delete(teams).where(inArray(teams.mlbTeamId, [AAA_TEAM_ID, PARENT_TEAM_ID]));
 }
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./drizzle" });
   await cleanup();
 
+  // 小聯盟球隊的中文顯示名由母隊推導（spec-01 C.2），自己不帶 name_zh。
+  await db.insert(teams).values({
+    mlbTeamId: PARENT_TEAM_ID,
+    nameEn: "Test Parent Club",
+    nameZh: "測試母隊",
+    abbrev: "TPC",
+    level: "mlb",
+  });
   await db.insert(teams).values({
     mlbTeamId: AAA_TEAM_ID,
     nameEn: "Reno Aces",
-    nameZh: "里諾王牌",
     abbrev: "RNO",
     level: "aaa",
+    parentOrgTeamId: PARENT_TEAM_ID,
   });
 
   await db.insert(players).values({
@@ -81,7 +90,7 @@ describe("getPlayerDetail", () => {
     expect(player!.birthdate).toBe("2001-07-26");
     expect(player!.team).toEqual({
       id: AAA_TEAM_ID,
-      name: "里諾王牌",
+      name: "測試母隊（Reno Aces）",
       abbrev: "RNO",
       level: "aaa",
       levelLabel: "3A",

@@ -163,6 +163,17 @@
     <h2 id="sec-1">✅ 已完成</h2>
     <h3 id="sec-1-1">2026-08-07</h3>
     <ul class="todo">
+    <li class="done"><strong><code>team-names-zh/01</code> 完成——球隊名終於是中文</strong>（票 <code>.scratch/team-names-zh/issues/01-team-names-in-chinese.md</code>）。<code>teams</code> 231 筆 <code>name_zh</code> 原本<strong>全是 NULL</strong>，中文站上球隊名一律英文。
+    <ul>
+    <li><strong>30 支手寫 + 201 支推導</strong>：<code>lib/db/seed/teams.ts</code> 放大聯盟 30 支台灣慣用暱稱（不帶城市——同城兩隊靠暱稱在中文就分得開）；小聯盟不逐支翻譯，由 <code>teamDisplayName()</code> 用「母隊中文名（原名）」推導。<strong>未來新增的球隊與對手自動涵蓋</strong>，不必回頭補資料。</li>
+    <li><strong><code>withLevel</code> 由呼叫端決定</strong>：名冊列與個人頁 hero 自己印層級徽章，隊名再帶一次會變成「3A・紅襪 3A（…）」，故傳 <code>withLevel: false</code>；單獨出現隊名處才帶層級。這是實作前討論時才發現的坑（<code>player-card.tsx:28</code> 的 <code>{levelLabel}・{name}</code>）。</li>
+    <li><strong>seed 只 update 不 insert</strong>：球隊列由 ETL 建立且 <code>name_en</code> NOT NULL，seed 插半列只會變成第二份英文名來源。改為只更新既有列並<strong>回報筆數</strong>，不足 30 時明確提示「先跑一次批次」——比照 conftest 那條「不要靜默 fallback」。實跑：<code>Named 30/30 MLB teams in Chinese.</code></li>
+    <li><strong>收斂了三處自製 fallback</strong>（原票只點名兩處）：<code>players.ts</code>、<code>player-seasons.ts</code>，加上實作時才抓到的 <code>player-detail.ts</code>（個人頁 hero）。<code>loadTeamMap</code> 用同一次全表掃描在記憶體解析母隊，<strong>未增加 DB 往返</strong>。</li>
+    <li>測試：新增 <code>lib/services/team-map.test.ts</code> 6 項；另修掉兩個測試 fixture 裡的「里諾王牌」——那是舊的「逐支翻譯小聯盟」模型留下的示範，與本次決策相反。vitest 146 passed、typecheck 綠。</li>
+    <li><strong>仍是英文的兩處</strong>（不在本票範圍，見票面）：異動時間軸的敘述是 StatsAPI 原始 <code>description</code>（上游散文，非隊名欄位）；<code>abbrev</code> 介面（首頁卡片、即將出賽「對 LHV」）沿用三碼代號。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>待決問題收斂兩題</strong>（見「待決問題」區）。
     <ul>
     <li><strong>小聯盟成績資料源</strong>：原題（StatsAPI 與 pybaseball 欄位對齊表）失效——pybaseball 從未被使用。實測各層級非空計數後決策：<strong>小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP</strong>，計數欄與可推導指標全層級成立。順手清掉 spec-03 三處把 pybaseball 當現役來源的說法。</li>
@@ -573,13 +584,7 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
-    <li class=""><strong><code>team-names-zh</code>（1 票，<code>.scratch/team-names-zh/issues/</code>）——球隊中文名</strong>。<code>teams</code> 231 筆 <code>name_zh</code> <strong>全是 NULL</strong>，中文網站上球隊名一律英文（名冊頁現在長這樣：<code>大聯盟・Seattle Mariners</code>、<code>3A・Worcester Red Sox</code>）。決策（2026-08-07，batu）：<strong>大聯盟 30 支手寫中文名；小聯盟不逐支翻譯，用「母隊中文名 + 層級（原名）」推導</strong>——例如「紅襪 3A（Worcester）」。
-    <ul>
-    <li>為何推導而非逐支翻：小聯盟隊名中文無既定譯法（翻什麼都是自創），且會改名增隊；台灣媒體本來就講「紅襪 3A」。已驗證 <strong>201 支小聯盟隊全部都有 <code>parent_org_team_id</code></strong>、MLB 剛好 30 支無母隊，規則可完整覆蓋，<strong>未來新增的對手球隊也自動有中文名</strong>。</li>
-    <li>露出量測：現役所屬 5、季數據 29／13、異動時間軸 44（合計不重複 <strong>44</strong>）、賽程對手 <strong>201</strong>——那 201 支正是推導要解決的長尾。</li>
-    <li>已查證的實作前提：<code>teams.py:81-85</code> 的 upsert <strong>不覆蓋 <code>name_zh</code></strong>（seed 進去不會被批次洗掉）；<code>lib/services/team-map.ts</code> 的 <code>loadTeamMap()</code> 是天然單一落點，另有 <code>players.ts:87</code>、<code>player-seasons.ts:163</code> 兩處自製 fallback 要一併收斂。</li>
-    <li><strong>待定一個細節</strong>：括號裡的原名要放完整 <code>name_en</code>（建議）還是 <code>abbrev</code>；<strong>不做</strong>城市切割（沒有城市欄位、切法不可靠）。</li>
-    </ul></li>
+    <li class="done">~~<strong><code>team-names-zh</code>（1 票，<code>.scratch/team-names-zh/issues/</code>）</strong>~~（2026-08-07 完成，見已完成區）——大聯盟 30 支手寫中文名、小聯盟由母隊推導。</li>
     </ul>
     <ul class="todo">
     <li class="done">~~<strong><code>sync-runs-test-isolation/02</code>（<code>.scratch/sync-runs-test-isolation/issues/</code>）——Python ETL 測試仍寫在開發 DB 上</strong>~~（2026-08-06 完成，見已完成區）——<code>uv run pytest</code> 改連 <code>phobos_test</code>，找不到就 skip、不退回開發庫。</li>
