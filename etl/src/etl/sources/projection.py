@@ -99,6 +99,12 @@ def project_status(
             affiliation = "rostered"
             team_id = e.to_team_id
             level = team_levels.get(e.to_team_id) if e.to_team_id is not None else None
+            # A recall/selection/purchase onto an MLB roster cannot coexist with
+            # an IL designation. Do not extend this reset to the other roster
+            # moves: trade, sign, send_down and waiver claims may occur on IL.
+            if t == "call_up":
+                health = "active"
+                il_detail = None
             as_of = e.id
         elif t == "assign":
             # Minor-league assignment (spec-01 B.3): follow to_team's team/level
@@ -137,6 +143,13 @@ def project_status(
             il_detail = e.il_detail
             as_of = e.id
         elif t == "il_off":
+            health = "active"
+            il_detail = None
+            as_of = e.id
+        elif t == "activate" and health == "il":
+            # A bare upstream "activated" is ambiguous. It only represents an
+            # IL return when the replay says the player is currently on IL;
+            # otherwise it is timeline-only and must not override roster data.
             health = "active"
             il_detail = None
             as_of = e.id

@@ -151,7 +151,7 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">✅ 已完成</a><ul class="sub"><li><a href="#sec-1-1">2026-08-07</a></li><li><a href="#sec-1-2">2026-08-06</a></li><li><a href="#sec-1-3">2026-08-03</a></li><li><a href="#sec-1-4">2026-07-30</a></li><li><a href="#sec-1-5">2026-07-29</a></li><li><a href="#sec-1-6">2026-07-28</a></li><li><a href="#sec-1-7">2026-07-27</a></li><li><a href="#sec-1-8">2026-07-24</a></li><li><a href="#sec-1-9">2026-07-23</a></li><li><a href="#sec-1-10">2026-07-22</a></li><li><a href="#sec-1-11">2026-07-21</a></li></ul></li><li><a href="#sec-2">▶️ 進行中 / 下一步</a></li><li><a href="#sec-3">❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）</a></li><li><a href="#sec-4">🔮 未來 Phase（先記著，這版不做）</a></li><li><a href="#sec-5">🗂️ 雜項 / 待整理</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1">✅ 已完成</a><ul class="sub"><li><a href="#sec-1-1">2026-08-10</a></li><li><a href="#sec-1-2">2026-08-07</a></li><li><a href="#sec-1-3">2026-08-06</a></li><li><a href="#sec-1-4">2026-08-03</a></li><li><a href="#sec-1-5">2026-07-30</a></li><li><a href="#sec-1-6">2026-07-29</a></li><li><a href="#sec-1-7">2026-07-28</a></li><li><a href="#sec-1-8">2026-07-27</a></li><li><a href="#sec-1-9">2026-07-24</a></li><li><a href="#sec-1-10">2026-07-23</a></li><li><a href="#sec-1-11">2026-07-22</a></li><li><a href="#sec-1-12">2026-07-21</a></li></ul></li><li><a href="#sec-2">▶️ 進行中 / 下一步</a></li><li><a href="#sec-3">❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）</a></li><li><a href="#sec-4">🔮 未來 Phase（先記著，這版不做）</a></li><li><a href="#sec-5">🗂️ 雜項 / 待整理</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
@@ -161,7 +161,18 @@
 
   <section>
     <h2 id="sec-1">✅ 已完成</h2>
-    <h3 id="sec-1-1">2026-08-07</h3>
+    <h3 id="sec-1-1">2026-08-10</h3>
+    <ul class="todo">
+    <li class="done"><strong><code>il-health-projection/01</code> 完成——傷兵狀態有可靠出口</strong>（票 <code>.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md</code>）。修正兩個獨立來源的長期錯誤：
+    <ul>
+    <li><strong>裸 activated</strong>：新增 enum <code>activate</code>（migration <code>0005_bare-activation.sql</code>），StatsAPI <code>typeCode=SC</code> 且 description 含 <code>activated</code>、不含 injured/disabled list 時分類為它；投影只在現況為 <code>il</code> 時才清為 <code>active</code>，否則 no-op，且絕不動 affiliation／team／level。時間軸中文標籤為「登錄」。</li>
+    <li><strong>漏送 IL 復出</strong>：僅 <code>call_up</code>（recalled／selected／purchased）會重設 health／<code>il_detail</code>；<code>trade</code>／<code>sign</code>／<code>send_down</code>／<code>dfa</code> 的 IL 行為以回歸測試鎖住不變。</li>
+    <li><strong>真實資料驗收</strong>：套 migration 後重跑 transactions + reproject（<code>sync_run #429</code> success），費爾柴德 2021-07-30→2021-09-01 為 <strong>33 天</strong>（原 759），李灝宇 2022-06-06→2022-07-17 為 <strong>41 天</strong>（原 372）；票面列出的其餘 13 段維持原值，5 名 tracked 球員現況均為 <code>active</code>。完整重播為 <strong>17 段</strong>而非票面的 15 段——多出來的兩段正是<strong>修正的產物</strong>：舊量測邏輯下，落在已經是 <code>il</code> 狀態上的 <code>il_on</code> 不會另起一段，於是 759 天那段吞掉了費爾柴德 <code>2023-08-22→08-28</code>（6 天）、372 天那段吞掉了李灝宇 <code>2023-05-18→06-13</code>（26 天），修好出口後兩段才各自浮現。</li>
+    <li><strong>上游字串拆分更正</strong>：SC 那 44 筆並非全是裸 activated，實際為 <strong>38 筆裸 activated ＋ 6 筆無狀態語意</strong>（<code>roster status changed by</code> 5 筆、<code>placed on the reserve list</code> 1 筆，維持 <code>other</code> 正確）。開票時的 44 筆誤述已在票面 §1、§2.1 與 spec-03 §9 更正。</li>
+    <li>文件同步 spec-01 B.3／C.3 與 spec-03 §9 的 12 組 <code>(typeCode, typeDesc)</code> 實測表；ETL 相關 39 tests、Node 相關 27 tests、typecheck 均綠。</li>
+    </ul></li>
+    </ul>
+    <h3 id="sec-1-2">2026-08-07</h3>
     <ul class="todo">
     <li class="done"><strong><code>team-names-zh/01</code> 完成——球隊名終於是中文</strong>（票 <code>.scratch/team-names-zh/issues/01-team-names-in-chinese.md</code>）。<code>teams</code> 231 筆 <code>name_zh</code> 原本<strong>全是 NULL</strong>，中文站上球隊名一律英文。
     <ul>
@@ -180,7 +191,7 @@
     <li><strong>waiver claim</strong> → 新增 enum <code>waiver_claim</code>（migration <code>0004_clammy_inhumans.sql</code>）。這題原本被歸為「分類美感」，實測後發現是投影 bug：<code>other</code> no-op ＋ <code>dfa</code> 保留原隊 ⇒ 鄭宗哲 2026 冬天連四次 claim 都把 DFA 記在<strong>前一支</strong>球隊頭上。落地：typeCode <code>CLW</code>／typeDesc <code>Claimed Off Waivers</code> 對照、<code>_ROSTER_TYPES</code> 納入、標籤「讓渡挑選」、<code>waiver.mdx</code> 掛 <code>roster_event_types</code> 讓名詞頁自動有實例回連。重跑 transactions（<code>sync_run #426</code>）後 5 筆既有事件已重新歸類，五名球員的投影結果不變（後續事件本就蓋掉了錯誤），驗證這是<strong>歷史正確性</strong>與<strong>未來正確性</strong>的修正。ETL 151 passed、vitest 140 passed、typecheck 綠。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-2">2026-08-06</h3>
+    <h3 id="sec-1-3">2026-08-06</h3>
     <ul class="todo">
     <li class="done"><strong><code>sync-runs-test-isolation/02</code> 完成——Python ETL 測試不再寫開發 DB</strong>（票 <code>.scratch/sync-runs-test-isolation/issues/02-python-etl-tests-still-write-to-dev-db.md</code>，分支 <code>fix/etl-test-db-isolation</code>）。
     <ul>
@@ -221,7 +232,7 @@
     <li><strong>同日驗收後續修正兩項</strong>：① <strong>失敗的 source 不再丟掉 warning</strong>——原本 collector 開在 <code>try</code> 內，走 except 分支就取不到，上游重試那幾筆（最能解釋失敗原因的線索）會消失；改成 collector 開在 <code>try</code> 外，失敗的 <code>SourceResult</code> 一併帶上已回報的 warning，spec-03 §7 補記此語意。② 驗收時補做<strong>真 jsonb round-trip</strong>（單測全走 FakeStore，沒人驗過真的寫得進 <code>sync_runs.detail</code>）：在 <code>phobos_test</code> 跑帶 warning 的批次，<code>detail.sources_warnings</code> 原樣存回、<code>None</code> 正常、status 仍是 <code>success</code>。ETL suite 138 passed。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-3">2026-08-03</h3>
+    <h3 id="sec-1-4">2026-08-03</h3>
     <ul class="todo">
     <li class="done"><strong><code>sync-runs-test-isolation/01</code> 完成——測試改連獨立 DB，批次歷史從此留得住</strong>（票 <code>.scratch/sync-runs-test-isolation/issues/01</code>，commit <code>43ed9f2</code>）。
     <ul>
@@ -309,11 +320,11 @@
     <ul class="todo">
     <li class="done"><strong>順修 <code>lib/services/home.ts</code> 的 dead import</strong>：票 01 移掉 8 處 join 後 <code>games</code> 已無使用處，但 <code>pnpm typecheck</code> 沒開 <code>noUnusedLocals</code> 所以擋不下來。已移除。</li>
     </ul>
-    <h3 id="sec-1-4">2026-07-30</h3>
+    <h3 id="sec-1-5">2026-07-30</h3>
     <ul class="todo">
     <li class="done"><strong>執行 ETL <code>morning</code> 同步批次</strong>（2026-07-30）：<code>sync_run #383 → success</code>，約 2 分鐘。變化：<code>games</code> 2691→2877（<strong>+186，其中僅 8 筆對應實際出賽</strong>——印證 <code>games-role-split</code> 票 02 的殘留成長速率比原估更快，929→1107）、<code>raw_payloads</code> 256→339（<strong>日增 83 筆</strong>，印證 <code>raw-payloads-retention</code> 的緊迫性）、逐場 +8、<code>transaction_events</code> +1、<code>season_pitching_stats</code> +1。近況句全部重算出真值（林昱珉升級為 <code>single_game</code>「上一場優質先發」）。兩個 WARNING 皆既有 sanitize 規則正常運作（<code>season_stats</code> 丟 2 支非納入 sportId 球隊、<code>transactions</code> 15 個 team ref 設 NULL），與 07-29 同模式。</li>
     </ul>
-    <h3 id="sec-1-5">2026-07-29</h3>
+    <h3 id="sec-1-6">2026-07-29</h3>
     <ul class="todo">
     <li class="done"><strong>DB 現況快照工具 <code>scripts/db/snapshot.py</code></strong>（零依賴 Python 3 + <code>psql</code>，比照 <code>build_docs.py</code> 的路線）。把 12 張表的欄位表、筆數、示範資料、enum、索引寫進 <code>admin_private/current_table.md</code>（新增 <code>admin_private/</code> 到 <code>.gitignore</code>——內含實際資料，不進版控）。
     <ul>
@@ -324,7 +335,7 @@
     </ul></li>
     <li class="done">執行 ETL <code>manual</code> 同步批次：<code>sync_run #382 → success</code>。transactions 有 15 個不屬於納入 sportId 的 team ref，依既有 sanitize 規則設為 <code>NULL</code>，未影響批次完成。</li>
     </ul>
-    <h3 id="sec-1-6">2026-07-28</h3>
+    <h3 id="sec-1-7">2026-07-28</h3>
     <ul class="todo">
     <li class="done"><strong>首頁 polish 票 <code>homepage-digest/05</code> 完成——digest 錨定改 wall-clock + 即將出賽效率</strong>（<code>.scratch/homepage-digest/issues/05</code>，分支 <code>feat/homepage-digest-05</code>；接 homepage slice code-review 兩項低嚴重度觀察）。皆為首頁 service 內部修正，<code>/api/home</code> 對外 Zod 合約不變：
     <ul>
@@ -382,7 +393,7 @@
     <li><strong>未跑正式 <code>/code-review</code></strong>（使用者觸發、計費，我無法代跑）；以逐檔自審＋全測試＋真連線把關代之。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-7">2026-07-27</h3>
+    <h3 id="sec-1-8">2026-07-27</h3>
     <ul class="todo">
     <li class="done"><strong>修正下放小聯盟球員顯示錯隊 — 新增 <code>assign</code> 事件型別 + B.3 投影規則</strong>（2026-07-27，票 <code>.scratch/projection-assign-fix/issues/01</code>）。小聯盟「assigned to [隊]」異動（typeCode ASG）原被歸 <code>other</code>、投影不動隊，導致被下放者卡在上一個 MLB 事件。作法：(1) Drizzle enum 加 <code>assign</code>（migration <code>0002_aberrant_doorman.sql</code>，<code>ADD VALUE &#x27;assign&#x27; BEFORE &#x27;il_on&#x27;</code>）；(2) 分類以 <strong>description 的「assigned to」片語</strong> 判定（非 typeDesc-前綴 haystack——避免「Assigned 」+「To…」如 Toledo 誤命中），與 invited-non-roster（春訓邀請、to_team 常為 MLB，不設 rostered）、rehab（「assignment to」）、國家隊 activate（SC）區分；(3) 投影 <code>assign</code>→rostered 取 to_team 隊/層級，<strong>to_team 無法解析（冬季/秋季聯盟、alt-site）→ no-op 不清隊</strong>，最後一筆可解析者勝。重投影後費爾柴德(656413)→Tacoma(529/3A)、林昱珉(801179)→Reno(2310/3A) 修正，evening 對帳對這兩位不再告警。測試 etl 122／node 41／typecheck 綠。spec-01 B.3/C.3 早前已更新。</li>
     <li class="done"><strong>spec-03 ETL slice 併回 <code>main</code>（merge <code>3aa1a08</code>, <code>--no-ff</code>）＋維運收尾</strong>（2026-07-27，batu）。review 通過（pytest 118／node 41／typecheck 綠；<code>game_*_lines</code> 1513/269、近況全轉真值、<code>/players</code> 點亮）後合併，遠端分支 <code>feat/spec-03-etl-skeleton</code> 已刪。收尾兩件：
@@ -487,7 +498,7 @@
     <li>收尾：<code>.gitignore</code> 補 Python 段；<code>docs/spec/spec-03</code> §9 的 transactions typeDesc／小聯盟 boxscore 兩個 open item 留給票 03/04 實作時實測回填。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-8">2026-07-24</h3>
+    <h3 id="sec-1-9">2026-07-24</h3>
     <ul class="todo">
     <li class="done"><strong>frontend-shell-and-roster slice（spec-02 切片 1+2）全 4 票完成</strong>（<code>.scratch/frontend-shell-and-roster/issues/</code>）。Next 端已與資料層同 repo 共存，<code>/players</code> 可在瀏覽器看到白名單 5 人：
     <ul>
@@ -498,7 +509,7 @@
     <li>全測 37 綠；<code>vitest.config</code> 加 <code>fileParallelism:false</code>（共用 Postgres 序列化）與 <code>@</code> alias。ETL 未跑 → 目前所有球員 <code>team=null</code>／狀態同步中，待 spec-03 slice 供 <code>player_current_status</code>/<code>player_recent_form</code> 後自動生效。</li>
     </ul></li>
     </ul>
-    <h3 id="sec-1-9">2026-07-23</h3>
+    <h3 id="sec-1-10">2026-07-23</h3>
     <ul class="todo">
     <li class="done"><strong>票 01（bootstrap 資料層骨架）實作完成</strong>（<code>.scratch/curated-schema-and-seed/issues/01</code>）：pnpm+TS+Drizzle+drizzle-kit+vitest 骨架、<code>docker-compose.yml</code>（Postgres 16）、<code>lib/db</code>（client+空 schema barrel）、<code>scripts/db/migrate.ts</code>、連線 smoke test 通過、<code>db:migrate</code> 對全新 DB 乾淨 no-op、README 啟動步驟。本機無 Docker→smoke test 走 homebrew pg（連線字串與 docker 共用）；pnpm 11 build 核准移至 <code>pnpm-workspace.yaml</code></li>
     <li class="done"><strong>票 02（curated schema + 首版 migration）實作完成</strong>：spec-01 §C 全 12 表 + 11 enum 以 Drizzle 定義（<code>lib/db/schema/</code> 分 6 檔）、20 FK、複合主鍵、只存不可推導比率；<code>drizzle/0000_*.sql</code> 對全新 DB 乾淨套用；schema introspection 測試 6 案例全綠（TDD：先 red 後 green，斷言取自 spec）</li>
@@ -525,7 +536,7 @@
     <li class="done"><strong>小 grilling：進階數據來源應變定案</strong>（requirements §9.1 決策樹）——①先實測 StatsAPI <code>stats=sabermetrics</code>（命中全解）；②未命中預案：打者頭號欄<strong>遞補鏈 wRC+→xwOBA→wOBA</strong>（退至 wOBA 清單縮 6）、<strong>WAR 移除不補</strong>、口袋替補換血（K-BB%/xERA/WHIP，原 xFIP/SIERA 同為 403 系）；③名詞頁不連動：wRC+/WAR 照寫當純知識、xwOBA 進清單時名詞頁先行。spec-01（xwoba 預留欄）/spec-03（實測任務規格）/spec-04（連動注記）同步修訂</li>
     <li class="done"><strong>實測 <code>stats=sabermetrics</code> → 命中，預案封存</strong>：hitting 供 <code>woba/wRc/wRcPlus/war</code>、pitching 供 <code>fip/fipMinus/xfip/war/eraMinus</code>；<strong>僅 MLB 層級</strong>（三位台灣球員 2025 AAA 對照：season 有 split、sabermetrics 回空）；2020~ 可回查；抽樣 Judge 2024 與 FanGraphs 同量級（MLB 官方自算版本）。→ 維持進階清單、口袋 xFIP 復活（SIERA 仍除名）；requirements §7.3/§9.1、adr §6.4、spec-01 C.7/§F、spec-03 §3/§9 收斂為定案版</li>
     </ul>
-    <h3 id="sec-1-10">2026-07-22</h3>
+    <h3 id="sec-1-11">2026-07-22</h3>
     <ul class="todo">
     <li class="done"><code>scripts/build_docs.py</code> 加上<strong>側邊欄目錄（TOC）</strong>：自動從 <code>##</code>/<code>###</code> 標題產生 sticky 左側導覽，可快速前往章節
     <ul>
@@ -551,7 +562,7 @@
     <li class="done">開 <strong>spec-02（頁面/路由 IA + 對外 API 合約）初稿</strong>：路由/sitemap、5 頁規格（顯示/資料源/渲染）、<code>/api/*</code> endpoint + 代表性 Zod 回傳形狀、時區/OG/ISR 橫向處理；6 項 open items（URL slug、revalidation 觸發、動態 OG、逐場 N…）</li>
     <li class="done">開 <strong>spec-03（ETL / 資料同步管線）初稿</strong>：管線總覽、來源→表對照、pybaseball/StatsAPI 各模組、一天兩次排程（早/晚班）、upsert 原則、<strong>近況一句話生成規則</strong>、時區存 UTC、錯誤處理；6 項 open items（排程時刻、roster 推導、生涯基準…）</li>
     </ul>
-    <h3 id="sec-1-11">2026-07-21</h3>
+    <h3 id="sec-1-12">2026-07-21</h3>
     <ul class="todo">
     <li class="done">比對兩份規劃文件（<code>plan/棒球網站技術選型討論.md</code> vs <code>plan/baseball-tracker-plan.md</code>），整理相同 / 不同之處</li>
     <li class="done">收斂三項分歧決策：
@@ -627,7 +638,7 @@
     <li class="done">~~<strong>SEO slice（2 票，<code>.scratch/seo/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區）——sitemap／robots、metadataBase 與 Open Graph／Twitter 分享卡已上線。</li>
     <li class="done">~~<strong>名詞庫 standard/roster slice（2 票，<code>.scratch/glossary-standard-roster/issues/</code>）</strong>~~（2026-07-28 完成，見已完成區）。</li>
     <li class="done">~~<strong>首頁 polish 票 <code>homepage-digest/05</code></strong>~~（2026-07-28 完成、merge 回 main，見已完成區）——digest 錨定改 wall-clock + upcoming 效率。</li>
-    <li class=""><strong><code>il-health-projection</code>（1 票，<code>.scratch/il-health-projection/issues/</code>）——傷兵狀態沒有可靠的出口</strong>（2026-08-10 開票）。盤點未完成項時，從待決問題「typeDesc 全集實測」查下去挖到的。<strong>原題目失效</strong>：上游 <code>(typeCode, typeDesc)</code> 實測只有 12 種、全部命中現有對照表，沒有「不認得的字串」。真正的問題是<strong>有一個句型認得、但它同時代表三件事</strong>——<code>[球隊] activated [球員].</code>（SC，44 筆）混了「小聯盟傷兵復出」「下放後例行登錄」「中華隊徵召」，字串上無法區分，一律落 <code>other</code>（no-op）。加上 <code>project_status</code> 裡沒有任何 roster 事件會把 <code>health</code> 從 <code>il</code> 打回 <code>active</code>，漏一次復出就錯到下一次 <code>il_off</code> 為止：實測 15 段 IL 區間有兩段異常，<strong>費爾柴德 759 天、李灝宇 372 天</strong>（其餘 13 段 9~77 天合理）。修法：① 只讓 <code>call_up</code> 重設 <code>health</code>（<code>trade</code>／<code>sign</code>／<code>send_down</code>／<code>dfa</code> 都可能發生在 IL 上，<strong>不能</strong>一起放進來）；② 新增 enum <code>activate</code>，投影對它做條件式處理（在 <code>il</code> 才清、否則 no-op，且不動 affiliation）。現況無線上錯誤（5 人皆 <code>active</code>），驗收看歷史重播。另記錄兩類<strong>上游自己漏送</strong>的事件（鄧愷威 2026 的 15 天 IL 只有出沒有進、費爾柴德 2021 只有進沒有出），classify 救不了、歸對帳（spec-03 §6）。</li>
+    <li class="done">~~<strong><code>il-health-projection</code>（1 票，<code>.scratch/il-health-projection/issues/</code>）——傷兵狀態沒有可靠的出口</strong>~~（2026-08-10 完成，見「已完成」區）。</li>
     </ul>
     <ul class="todo">
     <li class=""><strong>剩餘可做（非上線阻斷，已決策未動工）</strong>：① spec-04 §G — 3A/2A 各指標<strong>級距首版數值校訂</strong>（目前 MLB 慣例值佔位、正文標「待校訂」）；② spec-03 §2/§9 — cron 時刻上線後依實際結算延遲<strong>微調</strong>（目前為建議值）。其餘 open items 見下方「待決問題」與「未來 Phase」。</li>
@@ -649,7 +660,7 @@
     <li class="done">~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋<code>game_date_us</code> 錨定比賽日（spec-01 C.5、spec-02 §6）</li>
     <li class="done">~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）</li>
     <li class="done">~~小聯盟成績資料源細節：StatsAPI <code>sportId=11/12</code> 端點回傳欄位與 pybaseball 欄位對齊表~~ → <strong>已決策（2026-08-07，batu）：小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示</strong>（→ spec-03 §9 有完整實測）。原題目失效——<strong>pybaseball 從未被使用</strong>（全 repo 無 import，ADR §6.4 於 07-23 實測 FanGraphs／B-R 全 403），沒有第二來源要對齊。實測結論：計數欄（<code>hbp</code>／<code>sf</code>／<code>cs</code>／<code>bf</code>／<code>hld</code>）在 3A/2A 以下<strong>全部有值</strong>，可推導指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立；<code>lob_pct</code> 也全層級有值。缺的只有那四個 MLB-only 的（<code>stats=sabermetrics</code> 對 sportId≠1 回空、xwOBA 只有 Savant MLB）。不自算：MiLB 無公開權威的線性權重／league constants，FIP 又需 HBP 而投手表無此欄。<strong>連帶</strong>：<code>woba</code>／<code>wrc-plus</code>／<code>fip</code>／<code>war</code> 四則名詞頁的 <code>aaa</code>／<code>aa</code> 級距永遠對不到人，spec-04 §G 校訂時一併處理。</li>
-    <li class="">實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。<strong>部分回填（2026-07-27 票 03 實作）</strong>：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。<strong>waiver claim 已於 2026-08-07 收斂</strong>。<strong>typeDesc 全集已於 2026-08-10 測完——原題目失效</strong>：238 筆上游異動只有 12 種 <code>(typeCode, typeDesc)</code> 組合，全部命中現有對照表，不存在「不認得的字串默默落 <code>other</code>」。查證過程反而挖出真正的缺陷（一個句型三種語意 ＋ <code>health</code> 沒有出口），已開票 <code>il-health-projection/01</code>，對照表與結案一併在該票寫進 spec-03 §9。本條待該票完成後關閉。</li>
+    <li class="done">~~實測 MLB Stats API 的 <code>transactions</code> / <code>roster</code> 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。~~ → <strong>已於 2026-08-10 收斂</strong>：32 份 transactions payload 的 238 筆不重複異動只有 12 種 <code>(typeCode, typeDesc)</code>，完整表已回填 spec-03 §9；查證同時發現並修正裸 activated／health 無出口問題（見 <code>il-health-projection/01</code>）。</li>
     <li class="done">~~waiver claim 歸 <code>trade</code> 還是 <code>other</code>~~ → <strong>已決策（2026-08-07，batu）：兩者皆不採，新增 enum <code>waiver_claim</code></strong>（migration <code>0004</code>，比照 <code>declare_fa</code>／<code>assign</code>）。<code>other</code> 在投影是 no-op，而 <code>dfa</code> 保留原隊參考——鄭宗哲 2026-01~02 連四次 claim＋DFA，網站曾兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他（3/19 的 <code>send_down</code> 蓋掉才看似正常）。<code>trade</code> 投影對但標籤會變成「交易」，而他一次都沒被交易過。詳見 spec-03 §9。</li>
     <li class="done">~~<code>name_zh</code> 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。~~ → <strong>已釐清並決策（2026-08-07，batu）</strong>。<strong>球員這邊沒有缺口</strong>：5/5 都有 <code>name_zh</code>，白名單人工維護（新增球員時本來就得手寫）、ETL bio source 刻意不碰（<code>players_bio.py:7</code>）；沒有中文名的台裔球員照 Fairchild 前例音譯即可。<strong>真正 0 覆蓋的是球隊</strong>：<code>teams</code> 231 筆 <code>name_zh</code> 全 NULL，站上球隊名一律英文。決策：<strong>大聯盟 30 支手寫中文名、小聯盟不逐支翻譯，改用「母隊中文名 + 層級（原名）」推導</strong>（已驗證 201 支小聯盟隊全都有 <code>parent_org_team_id</code>，且 <code>teams.py</code> 的 upsert 不覆蓋 <code>name_zh</code>）。→ 開票 <code>team-names-zh/01</code>。</li>
     <li class="done">~~實測 StatsAPI <code>stats=sabermetrics</code> 端點~~ → 已實測（2026-07-23）：<strong>命中、維持原清單、預案封存</strong>（結果見 spec-03 §9）</li>

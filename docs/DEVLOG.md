@@ -7,6 +7,15 @@
 
 ## ✅ 已完成
 
+### 2026-08-10
+
+- [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
+  - **裸 activated**：新增 enum `activate`（migration `0005_bare-activation.sql`），StatsAPI `typeCode=SC` 且 description 含 `activated`、不含 injured/disabled list 時分類為它；投影只在現況為 `il` 時才清為 `active`，否則 no-op，且絕不動 affiliation／team／level。時間軸中文標籤為「登錄」。
+  - **漏送 IL 復出**：僅 `call_up`（recalled／selected／purchased）會重設 health／`il_detail`；`trade`／`sign`／`send_down`／`dfa` 的 IL 行為以回歸測試鎖住不變。
+  - **真實資料驗收**：套 migration 後重跑 transactions + reproject（`sync_run #429` success），費爾柴德 2021-07-30→2021-09-01 為 **33 天**（原 759），李灝宇 2022-06-06→2022-07-17 為 **41 天**（原 372）；票面列出的其餘 13 段維持原值，5 名 tracked 球員現況均為 `active`。完整重播為 **17 段**而非票面的 15 段——多出來的兩段正是**修正的產物**：舊量測邏輯下，落在已經是 `il` 狀態上的 `il_on` 不會另起一段，於是 759 天那段吞掉了費爾柴德 `2023-08-22→08-28`（6 天）、372 天那段吞掉了李灝宇 `2023-05-18→06-13`（26 天），修好出口後兩段才各自浮現。
+  - **上游字串拆分更正**：SC 那 44 筆並非全是裸 activated，實際為 **38 筆裸 activated ＋ 6 筆無狀態語意**（`roster status changed by` 5 筆、`placed on the reserve list` 1 筆，維持 `other` 正確）。開票時的 44 筆誤述已在票面 §1、§2.1 與 spec-03 §9 更正。
+  - 文件同步 spec-01 B.3／C.3 與 spec-03 §9 的 12 組 `(typeCode, typeDesc)` 實測表；ETL 相關 39 tests、Node 相關 27 tests、typecheck 均綠。
+
 ### 2026-08-07
 
 - [x] **`team-names-zh/01` 完成——球隊名終於是中文**（票 `.scratch/team-names-zh/issues/01-team-names-in-chinese.md`）。`teams` 231 筆 `name_zh` 原本**全是 NULL**，中文站上球隊名一律英文。
@@ -349,7 +358,7 @@
 - [x] ~~**SEO slice（2 票，`.scratch/seo/issues/`）**~~（2026-07-28 完成，見已完成區）——sitemap／robots、metadataBase 與 Open Graph／Twitter 分享卡已上線。
 - [x] ~~**名詞庫 standard/roster slice（2 票，`.scratch/glossary-standard-roster/issues/`）**~~（2026-07-28 完成，見已完成區）。
 - [x] ~~**首頁 polish 票 `homepage-digest/05`**~~（2026-07-28 完成、merge 回 main，見已完成區）——digest 錨定改 wall-clock + upcoming 效率。
-- [ ] **`il-health-projection`（1 票，`.scratch/il-health-projection/issues/`）——傷兵狀態沒有可靠的出口**（2026-08-10 開票）。盤點未完成項時，從待決問題「typeDesc 全集實測」查下去挖到的。**原題目失效**：上游 `(typeCode, typeDesc)` 實測只有 12 種、全部命中現有對照表，沒有「不認得的字串」。真正的問題是**有一個句型認得、但它同時代表三件事**——`[球隊] activated [球員].`（SC，44 筆）混了「小聯盟傷兵復出」「下放後例行登錄」「中華隊徵召」，字串上無法區分，一律落 `other`（no-op）。加上 `project_status` 裡沒有任何 roster 事件會把 `health` 從 `il` 打回 `active`，漏一次復出就錯到下一次 `il_off` 為止：實測 15 段 IL 區間有兩段異常，**費爾柴德 759 天、李灝宇 372 天**（其餘 13 段 9~77 天合理）。修法：① 只讓 `call_up` 重設 `health`（`trade`／`sign`／`send_down`／`dfa` 都可能發生在 IL 上，**不能**一起放進來）；② 新增 enum `activate`，投影對它做條件式處理（在 `il` 才清、否則 no-op，且不動 affiliation）。現況無線上錯誤（5 人皆 `active`），驗收看歷史重播。另記錄兩類**上游自己漏送**的事件（鄧愷威 2026 的 15 天 IL 只有出沒有進、費爾柴德 2021 只有進沒有出），classify 救不了、歸對帳（spec-03 §6）。
+- [x] ~~**`il-health-projection`（1 票，`.scratch/il-health-projection/issues/`）——傷兵狀態沒有可靠的出口**~~（2026-08-10 完成，見「已完成」區）。
 
 - [ ] **剩餘可做（非上線阻斷，已決策未動工）**：① spec-04 §G — 3A/2A 各指標**級距首版數值校訂**（目前 MLB 慣例值佔位、正文標「待校訂」）；② spec-03 §2/§9 — cron 時刻上線後依實際結算延遲**微調**（目前為建議值）。其餘 open items 見下方「待決問題」與「未來 Phase」。
 
@@ -371,7 +380,7 @@
 - [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
 - [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
 - [x] ~~小聯盟成績資料源細節：StatsAPI `sportId=11/12` 端點回傳欄位與 pybaseball 欄位對齊表~~ → **已決策（2026-08-07，batu）：小聯盟不顯示 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示**（→ spec-03 §9 有完整實測）。原題目失效——**pybaseball 從未被使用**（全 repo 無 import，ADR §6.4 於 07-23 實測 FanGraphs／B-R 全 403），沒有第二來源要對齊。實測結論：計數欄（`hbp`／`sf`／`cs`／`bf`／`hld`）在 3A/2A 以下**全部有值**，可推導指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立；`lob_pct` 也全層級有值。缺的只有那四個 MLB-only 的（`stats=sabermetrics` 對 sportId≠1 回空、xwOBA 只有 Savant MLB）。不自算：MiLB 無公開權威的線性權重／league constants，FIP 又需 HBP 而投手表無此欄。**連帶**：`woba`／`wrc-plus`／`fip`／`war` 四則名詞頁的 `aaa`／`aa` 級距永遠對不到人，spec-04 §G 校訂時一併處理。
-- [ ] 實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。**部分回填（2026-07-27 票 03 實作）**：typeDesc/typeCode→enum 對照已依 2024 實測資料建立（見票 03 完成區）。**waiver claim 已於 2026-08-07 收斂**。**typeDesc 全集已於 2026-08-10 測完——原題目失效**：238 筆上游異動只有 12 種 `(typeCode, typeDesc)` 組合，全部命中現有對照表，不存在「不認得的字串默默落 `other`」。查證過程反而挖出真正的缺陷（一個句型三種語意 ＋ `health` 沒有出口），已開票 `il-health-projection/01`，對照表與結案一併在該票寫進 spec-03 §9。本條待該票完成後關閉。
+- [x] ~~實測 MLB Stats API 的 `transactions` / `roster` 端點回傳格式，確認 enum 對照是否齊全（→ spec-01 §F、spec-03 §9）。~~ → **已於 2026-08-10 收斂**：32 份 transactions payload 的 238 筆不重複異動只有 12 種 `(typeCode, typeDesc)`，完整表已回填 spec-03 §9；查證同時發現並修正裸 activated／health 無出口問題（見 `il-health-projection/01`）。
 - [x] ~~waiver claim 歸 `trade` 還是 `other`~~ → **已決策（2026-08-07，batu）：兩者皆不採，新增 enum `waiver_claim`**（migration `0004`，比照 `declare_fa`／`assign`）。`other` 在投影是 no-op，而 `dfa` 保留原隊參考——鄭宗哲 2026-01~02 連四次 claim＋DFA，網站曾兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他（3/19 的 `send_down` 蓋掉才看似正常）。`trade` 投影對但標籤會變成「交易」，而他一次都沒被交易過。詳見 spec-03 §9。
 - [x] ~~`name_zh` 補齊方式（spec-01 §F）：目前手動 seed，無中文名球員顯示英文；系統性補齊策略待定。~~ → **已釐清並決策（2026-08-07，batu）**。**球員這邊沒有缺口**：5/5 都有 `name_zh`，白名單人工維護（新增球員時本來就得手寫）、ETL bio source 刻意不碰（`players_bio.py:7`）；沒有中文名的台裔球員照 Fairchild 前例音譯即可。**真正 0 覆蓋的是球隊**：`teams` 231 筆 `name_zh` 全 NULL，站上球隊名一律英文。決策：**大聯盟 30 支手寫中文名、小聯盟不逐支翻譯，改用「母隊中文名 + 層級（原名）」推導**（已驗證 201 支小聯盟隊全都有 `parent_org_team_id`，且 `teams.py` 的 upsert 不覆蓋 `name_zh`）。→ 開票 `team-names-zh/01`。
 - [x] ~~實測 StatsAPI `stats=sabermetrics` 端點~~ → 已實測（2026-07-23）：**命中、維持原清單、預案封存**（結果見 spec-03 §9）

@@ -47,6 +47,32 @@ def test_call_up_then_send_down_follows_latest_team():
     assert s.as_of_event_id == 3
 
 
+def test_call_up_clears_injured_list():
+    events = [
+        _ev(1, "send_down", "2024-05-01", to_team_id=235),
+        _ev(2, "il_on", "2024-05-20", il_detail="il_15"),
+        _ev(3, "call_up", "2024-06-01", to_team_id=147),
+    ]
+    s = project_status(1, events, LEVELS)
+    assert (s.affiliation, s.team_id, s.level) == ("rostered", 147, "mlb")
+    assert (s.health, s.il_detail, s.as_of_event_id) == ("active", None, 3)
+
+
+@pytest.mark.parametrize(
+    ("event_type", "to_team_id"),
+    [("trade", 147), ("sign", 147), ("send_down", 235), ("dfa", None)],
+)
+def test_non_call_up_moves_do_not_clear_injured_list(event_type, to_team_id):
+    """Only call_up is proof of a player leaving IL (spec-01 B.3)."""
+    events = [
+        _ev(1, "send_down", "2024-05-01", to_team_id=235),
+        _ev(2, "il_on", "2024-05-20", il_detail="il_60"),
+        _ev(3, event_type, "2024-06-01", to_team_id=to_team_id),
+    ]
+    s = project_status(1, events, LEVELS)
+    assert (s.health, s.il_detail, s.as_of_event_id) == ("il", "il_60", 3)
+
+
 def test_il_on_then_off_toggles_health_and_detail():
     events = [
         _ev(1, "call_up", "2024-05-01", to_team_id=147),
@@ -61,6 +87,25 @@ def test_il_on_then_off_toggles_health_and_detail():
     assert (s2.health, s2.il_detail) == ("active", None)
     # affiliation/team survive the IL round-trip
     assert (s2.affiliation, s2.team_id, s2.level) == ("rostered", 147, "mlb")
+
+
+def test_bare_activate_clears_il_only_and_is_otherwise_a_noop():
+    il_events = [
+        _ev(1, "send_down", "2024-06-01", to_team_id=235),
+        _ev(2, "il_on", "2024-06-10", il_detail="il_15"),
+        _ev(3, "activate", "2024-07-01", to_team_id=147),
+    ]
+    cleared = project_status(1, il_events, LEVELS)
+    assert (cleared.affiliation, cleared.team_id, cleared.level) == ("rostered", 235, "aaa")
+    assert (cleared.health, cleared.il_detail, cleared.as_of_event_id) == ("active", None, 3)
+
+    active_events = [
+        _ev(1, "send_down", "2024-06-01", to_team_id=235),
+        _ev(2, "activate", "2024-07-01", to_team_id=147),
+    ]
+    unchanged = project_status(1, active_events, LEVELS)
+    assert (unchanged.affiliation, unchanged.team_id, unchanged.level) == ("rostered", 235, "aaa")
+    assert (unchanged.health, unchanged.il_detail, unchanged.as_of_event_id) == ("active", None, 1)
 
 
 def test_dfa_keeps_prior_team_reference():

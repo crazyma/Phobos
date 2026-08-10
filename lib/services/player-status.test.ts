@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStatusSentence, levelLabel } from "./player-status.ts";
+import { buildStatusSentence, levelLabel, transactionTypeLabel } from "./player-status.ts";
 
 describe("levelLabel", () => {
   it("maps each team level to its zh display", () => {
@@ -13,6 +13,12 @@ describe("levelLabel", () => {
 
   it("returns null for a missing level", () => {
     expect(levelLabel(null)).toBeNull();
+  });
+});
+
+describe("transactionTypeLabel", () => {
+  it("labels a bare activation as 登錄", () => {
+    expect(transactionTypeLabel("activate")).toBe("登錄");
   });
 });
 

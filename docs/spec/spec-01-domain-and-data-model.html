@@ -200,13 +200,15 @@
     <table>
     <thead><tr><th>事件 type</th><th>歸屬變化</th><th>健康變化</th></tr></thead>
     <tbody>
-    <tr><td data-label="事件 type"><code>sign</code> / <code>trade</code> / <code>waiver_claim</code> / <code>call_up</code> / <code>send_down</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）</td><td data-label="健康變化">不變</td></tr>
+    <tr><td data-label="事件 type"><code>sign</code> / <code>trade</code> / <code>waiver_claim</code> / <code>send_down</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）</td><td data-label="健康變化">不變（這些異動可發生在 IL）</td></tr>
+    <tr><td data-label="事件 type"><code>call_up</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）</td><td data-label="健康變化">→ <code>active</code>（清 <code>il_detail</code>；被 recall／selected／purchased 上 MLB roster 不可能仍在 IL）</td></tr>
     <tr><td data-label="事件 type"><code>assign</code></td><td data-label="歸屬變化">→ <code>rostered</code>（取 <code>to_team</code> 的隊/層級）；<strong><code>to_team</code> 無法解析（非追蹤隊，如冬季/秋季聯盟）→ 不變、不清隊</strong></td><td data-label="健康變化">不變</td></tr>
     <tr><td data-label="事件 type"><code>dfa</code></td><td data-label="歸屬變化">→ <code>dfa</code>（保留原隊參考）</td><td data-label="健康變化">不變</td></tr>
     <tr><td data-label="事件 type"><code>release</code></td><td data-label="歸屬變化">→ <code>released</code>（清隊）</td><td data-label="健康變化">重設 <code>active</code></td></tr>
     <tr><td data-label="事件 type"><code>declare_fa</code></td><td data-label="歸屬變化">→ <code>free_agent</code>（清隊）</td><td data-label="健康變化">重設 <code>active</code></td></tr>
     <tr><td data-label="事件 type"><code>il_on</code></td><td data-label="歸屬變化">不變</td><td data-label="健康變化">→ <code>il</code>（記 <code>il_detail</code>）</td></tr>
     <tr><td data-label="事件 type"><code>il_off</code></td><td data-label="歸屬變化">不變</td><td data-label="健康變化">→ <code>active</code></td></tr>
+    <tr><td data-label="事件 type"><code>activate</code></td><td data-label="歸屬變化">不變（<strong>不改</strong> affiliation／team／level）</td><td data-label="健康變化">僅當目前為 <code>il</code> 時 → <code>active</code>（清 <code>il_detail</code>）；目前為 <code>active</code> 時 no-op</td></tr>
     <tr><td data-label="事件 type"><code>depart</code>（手動事件）</td><td data-label="歸屬變化">→ <code>departed</code></td><td data-label="健康變化">重設 <code>active</code></td></tr>
     <tr><td data-label="事件 type"><code>other</code></td><td data-label="歸屬變化">不變（僅時間軸顯示）</td><td data-label="健康變化">不變</td></tr>
     </tbody>
@@ -246,7 +248,7 @@
     <tr><td data-label="欄位"><code>id</code></td><td data-label="型別">bigserial <strong>PK</strong></td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>source_tx_id</code></td><td data-label="型別">text，可空 unique</td><td data-label="說明">上游 transaction id</td></tr>
     <tr><td data-label="欄位"><code>player_id</code></td><td data-label="型別">int FK</td><td data-label="說明"></td></tr>
-    <tr><td data-label="欄位"><code>type</code></td><td data-label="型別">enum <code>sign,call_up,send_down,trade,waiver_claim,dfa,release,declare_fa,assign,il_on,il_off,depart,other</code></td><td data-label="說明"><code>waiver_claim</code>＝讓渡挑選（StatsAPI「Claimed Off Waivers」/typeCode CLW）→ 投影同 <code>trade</code>（<code>rostered</code> 於 <code>to_team</code>），但<strong>不併入 <code>trade</code></strong>：時間軸標籤是「讓渡挑選」不是「交易」，且對應名詞頁 <code>waiver</code>。<code>declare_fa</code>＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 <code>free_agent</code>。<code>assign</code>＝小聯盟指派（StatsAPI「assigned to [隊]」/typeCode ASG）→ 投影 <code>rostered</code> 於該隊/層級；<strong>須與「invited non-roster」（春訓邀請，非上 roster）、國家隊 activate 區分——後者仍歸 <code>other</code></strong></td></tr>
+    <tr><td data-label="欄位"><code>type</code></td><td data-label="型別">enum <code>sign,call_up,send_down,trade,waiver_claim,dfa,release,declare_fa,assign,il_on,il_off,activate,depart,other</code></td><td data-label="說明"><code>waiver_claim</code>＝讓渡挑選（StatsAPI「Claimed Off Waivers」/typeCode CLW）→ 投影同 <code>trade</code>（<code>rostered</code> 於 <code>to_team</code>），但<strong>不併入 <code>trade</code></strong>：時間軸標籤是「讓渡挑選」不是「交易」，且對應名詞頁 <code>waiver</code>。<code>declare_fa</code>＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 <code>free_agent</code>。<code>assign</code>＝小聯盟指派（StatsAPI「assigned to [隊]」/typeCode ASG）→ 投影 <code>rostered</code> 於該隊/層級；<code>activate</code>＝typeCode SC 的裸「activated」（包括小聯盟登錄與國家隊徵召）——投影只在目前為 IL 時清健康，絕不以文字猜測隊伍。</td></tr>
     <tr><td data-label="欄位"><code>effective_date</code></td><td data-label="型別">date</td><td data-label="說明">排序主鍵之一</td></tr>
     <tr><td data-label="欄位"><code>announced_at</code></td><td data-label="型別">timestamptz，可空</td><td data-label="說明"></td></tr>
     <tr><td data-label="欄位"><code>from_team_id</code> / <code>to_team_id</code></td><td data-label="型別">int FK，可空</td><td data-label="說明"></td></tr>
@@ -306,7 +308,7 @@
   <section>
     <h2 id="sec-6" data-num="F">Open Items</h2>
     <ul class="todo">
-    <li class="">StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）</li>
+    <li class="done">~~StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）~~ → 已於 2026-08-10 實測並回填 spec-03 §9（32 份 payload、238 筆不重複異動、12 組 <code>(typeCode, typeDesc)</code>，全數有明確分類）。</li>
     <li class="done">~~<code>name_zh</code> 補齊方式（手動 seed；無中文名球員顯示英文）~~ → 已定（2026-08-07）：<strong>球員</strong>維持人工白名單 seed（5/5 有值，新增球員時本來就得手寫；無中文名的台裔球員照 Fairchild 前例音譯）；<strong>球隊</strong>改為「大聯盟 30 支手寫 + 小聯盟推導」，見 C.2 <code>teams.name_zh</code> 註</li>
     <li class="done">~~<code>wrc_plus</code>／<code>war</code> 欄位去留~~ → 已定（2026-07-23 實測命中）：欄位保留，來源＝StatsAPI <code>stats=sabermetrics</code>（僅 MLB 層級）</li>
     </ul>

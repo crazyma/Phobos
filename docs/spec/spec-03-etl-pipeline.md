@@ -97,7 +97,24 @@
   - **`other` 是錯的，不只是分類粗糙**：`other` 在投影是 no-op，而 `dfa` 的規則是「保留原隊參考」。鄭宗哲 2026-01~02 連續四次 claim＋DFA（PIT→TB→NYM→WSH→BOS），每次 DFA 都保留了**claim 之前**那一隊 → 網站曾有兩個月顯示「Pittsburgh Pirates・指定讓渡」，實際是坦帕灣 DFA 他。3/19 的 `send_down` 蓋掉才「看起來正常」——錯誤被後續事件掩蓋，不是沒發生。
   - **`trade` 投影正確但呈現錯誤**：`lib/services/player-status.ts` 會把它標成「交易」，鄭宗哲時間軸就會出現四筆交易，而他一次都沒被交易過；站上又已有 `waiver`（讓渡）與 `dfa`（指定讓渡）兩則名詞頁分開講這件事。
   - 落地：typeDesc/typeCode 對照、`_ROSTER_TYPES` 納入、標籤「讓渡挑選」、`waiver.mdx` 掛 `roster_event_types: [waiver_claim]`（名詞頁自動有實例回連）。重跑 transactions 後 5 筆既有事件已重新歸類（`on conflict … do update set type` 覆蓋）。
-- [ ] 實測 StatsAPI `transactions` 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（`_TYPEDESC_RULES` 目前是 best-effort，未匹配一律 `other`）
+- [x] ~~實測 StatsAPI `transactions` 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（`_TYPEDESC_RULES` 目前是 best-effort，未匹配一律 `other`）~~ → **已完成（2026-08-10）**。展開 5 位 tracked 球員自 2020-01-01 起的 32 份 `transactions` raw payload，得 **238 筆不重複上游異動**；`(typeCode, typeDesc)` 只有以下 12 組，均已明確分類：
+
+  | typeCode / typeDesc | 上游筆數 | 分類結果 |
+  |---|---:|---|
+  | SC / Status Change | 81 | `il_on` 20、`il_off` 17、`activate` 38、`other` 6 |
+  | ASG / Assigned | 67 | `assign` 48、`other` 19 |
+  | OPT / Optioned | 23 | `send_down` 23 |
+  | CU / Recalled | 19 | `call_up` 19 |
+  | DES / Designated for Assignment | 13 | `dfa` 13 |
+  | TR / Trade | 7 | `trade` 7 |
+  | SE / Selected | 7 | `call_up` 7 |
+  | NUM / Number Change | 7 | `other` 7 |
+  | CLW / Claimed Off Waivers | 5 | `waiver_claim` 5 |
+  | SFA / Signed as Free Agent | 5 | `sign` 5 |
+  | DFA / Declared Free Agency | 3 | `declare_fa` 3 |
+  | OUT / Outrighted | 1 | `send_down` 1 |
+
+  `other` 仍是刻意的 no-op：NUM 改背號沒有狀態語意；ASG 的春訓邀請／復健移地不能當 roster 指派；SC 剩下的 6 筆是「roster status changed by [球隊]」5 筆與「placed on the reserve list」1 筆，都沒有可投影的狀態。唯一需要新型別的是 SC 的 **38 筆**裸「activated」：字串無法分辨小聯盟 IL 復出、下放後例行登錄與國家隊徵召，故一律分類為 `activate`；投影只有在當前 `health='il'` 時才清為 `active`，否則 no-op，且從不改 affiliation／team／level。顯式含 `injured list`／`disabled list` 的 activation 照舊為 `il_off`。
 - [x] ~~小聯盟成績資料源細節（原題：StatsAPI `sportId=11/12` 與 pybaseball 的欄位對齊表）~~ → **已實測、已決策（2026-08-07，batu）：小聯盟不提供 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示。** 原題目已失效——pybaseball **從未被使用**（ETL 全 repo 無 import，僅散文殘留；ADR §6.4 早在 07-23 就實測 FanGraphs／B-R 全 403），沒有第二個來源要對齊。實測全庫各層級的非空計數：
   - **計數欄無缺口**：`hbp`／`sf`／`cs`／`bf`／`hld` 在 3A/2A/A+/A/Rk 全部有值 → 由計數欄推導的指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立。
   - **`lob_pct` 全層級有值**（aaa 7/7、aa 4/4…）→ 07-27「所有層級皆算」的決策已落地。
