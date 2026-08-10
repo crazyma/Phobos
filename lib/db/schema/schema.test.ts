@@ -99,6 +99,7 @@ describe("curated schema (spec-01 §C)", () => {
       "assign",
       "il_on",
       "il_off",
+      "activate",
       "depart",
       "other",
     ]);

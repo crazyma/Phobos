@@ -83,6 +83,26 @@ def test_classify_injured_list_on_and_off_with_detail():
     assert reinstated == "il_off"
 
 
+def test_classify_bare_status_change_activation():
+    """Bare SC activations are replayed contextually, rather than discarded.
+
+    The wording also covers a national-team activation; classification preserves
+    that fact as `activate`, while projection decides whether it changes health.
+    """
+    assert (
+        classify("Status Change", "SC", "Clearwater Threshers activated 2B Hao Yu Lee.")
+        == ("activate", None)
+    )
+    assert (
+        classify("Status Change", "SC", "activated 2B Hao-Yu  Lee.")
+        == ("activate", None)
+    )
+    assert (
+        classify("Status Change", "SC", "Chinese Taipei activated SS Tsung-Che Cheng.")
+        == ("activate", None)
+    )
+
+
 def test_classify_unknown_defaults_to_other():
     assert classify("Some Novel Move", "ZZ", "")[0] == "other"
 
@@ -150,8 +170,10 @@ def test_classify_minor_league_assignment_vs_lookalikes():
         classify("Assigned", "ASG", "Cincinnati Reds sent OF Stuart Fairchild on a rehab assignment to Louisville Bats.")[0]
         == "other"
     )
-    # (4) A national-team activation (typeCode SC) stays `other`.
-    assert classify("Status Change", "SC", "Chinese Taipei activated RF Stuart Fairchild.")[0] == "other"
+    # (4) A national-team activation also becomes `activate`; it is a no-op in
+    # projection while health is active, without relying on brittle team-name
+    # heuristics in classification.
+    assert classify("Status Change", "SC", "Chinese Taipei activated RF Stuart Fairchild.")[0] == "activate"
     # (5) Regression: a rehab assignment whose description starts with a "To…"
     #     word ("Toledo") must NOT spuriously match — the phrase is checked
     #     against the description alone, not the "Assigned "-prefixed haystack.

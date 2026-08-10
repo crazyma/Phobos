@@ -9,7 +9,7 @@ export const playerLifecycle = pgEnum("player_lifecycle", ["tracked", "archived"
 /** 層級（spec-01 C.2；sportId 對照 spec-03 §4）。 */
 export const teamLevel = pgEnum("team_level", ["mlb", "aaa", "aa", "a_plus", "a", "rookie"]);
 
-/** 異動事件類型（spec-01 C.3 / B.3）。`declare_fa`＝宣告成為自由球員（→ affiliation free_agent）；`assign`＝小聯盟指派（→ rostered 於 to_team 的隊/層級）；`waiver_claim`＝讓渡挑選（→ rostered 於 to_team，與 `trade` 同為換隊但成因不同）。 */
+/** 異動事件類型（spec-01 C.3 / B.3）。`declare_fa`＝宣告成為自由球員（→ affiliation free_agent）；`assign`＝小聯盟指派（→ rostered 於 to_team 的隊/層級）；`activate`＝裸 activated（僅在投影目前為 IL 時清除 health，不改隊伍）；`waiver_claim`＝讓渡挑選（→ rostered 於 to_team，與 `trade` 同為換隊但成因不同）。 */
 export const transactionType = pgEnum("transaction_type", [
   "sign",
   "call_up",
@@ -22,6 +22,7 @@ export const transactionType = pgEnum("transaction_type", [
   "assign",
   "il_on",
   "il_off",
+  "activate",
   "depart",
   "other",
 ]);

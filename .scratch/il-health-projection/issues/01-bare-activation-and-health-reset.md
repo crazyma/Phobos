@@ -4,7 +4,7 @@
 
 **Blocked by:** None。
 
-**Status:** ready-for-agent
+**Status:** done
 
 ---
 
@@ -142,18 +142,18 @@ health == "active" → no-op（不動 affiliation／team／level）
 
 ## 四、Checklist
 
-- [ ] `projection.py`：`call_up` 重設 `health`／`il_detail`（**只有 `call_up`**，理由見 §3.1 表）
-- [ ] migration `0005`：`transaction_type` 新增 `activate`
-- [ ] `lib/db/schema/enums.ts`（值 + 註解）、`lib/db/schema/schema.test.ts:95` 一帶的 enum 斷言、`lib/glossary/schema.ts:26` 一帶
-- [ ] `lib/services/player-status.ts` 中文標籤
-- [ ] `transactions.py`：`classify()` 產生 `activate`（§3.3 判準）
-- [ ] `projection.py`：`activate` 條件式分支（§3.2）
-- [ ] 重跑 transactions + reproject，確認 15 段 IL 區間裡的兩個異常收斂（預期 759→33 天、372→41 天），其餘 13 段**不變**
-- [ ] 確認 5 人現況仍全為 `active`（本票不該改變當前狀態，只該改變歷史正確性與未來正確性）
-- [ ] ETL 測試：裸 activated 分類、`activate` 在 il 時清狀態／在 active 時 no-op、`activate` 不動 affiliation、`call_up` 清 IL、**`trade`／`sign`／`send_down`／`dfa` 在 IL 上不清 health**（回歸鎖，防止日後有人「順手」擴大 §3.1）
-- [ ] spec-01 B.3／C.3：新型別與投影規則
-- [ ] spec-03 §9：把 §1 的 12 列對照表寫進去，原「實測 typeDesc 全集」項標為完成
-- [ ] DEVLOG 待決問題該條收斂
+- [x] `projection.py`：`call_up` 重設 `health`／`il_detail`（**只有 `call_up`**，理由見 §3.1 表）
+- [x] migration `0005`：`transaction_type` 新增 `activate`
+- [x] `lib/db/schema/enums.ts`（值 + 註解）、`lib/db/schema/schema.test.ts:95` 一帶的 enum 斷言、`lib/glossary/schema.ts:26` 一帶
+- [x] `lib/services/player-status.ts` 中文標籤
+- [x] `transactions.py`：`classify()` 產生 `activate`（§3.3 判準）
+- [x] `projection.py`：`activate` 條件式分支（§3.2）
+- [x] 重跑 transactions + reproject；票面列出的 15 段均符合預期（759→33、372→41，其餘 13 段不變）。另發現 2 段票面未列的既有區間（39、6 天），皆不受本修正影響
+- [x] 確認 5 人現況仍全為 `active`（本票不該改變當前狀態，只該改變歷史正確性與未來正確性）
+- [x] ETL 測試：裸 activated 分類、`activate` 在 il 時清狀態／在 active 時 no-op、`activate` 不動 affiliation、`call_up` 清 IL、**`trade`／`sign`／`send_down`／`dfa` 在 IL 上不清 health**（回歸鎖，防止日後有人「順手」擴大 §3.1）
+- [x] spec-01 B.3／C.3：新型別與投影規則
+- [x] spec-03 §9：把 §1 的 12 列對照表寫進去，原「實測 typeDesc 全集」項標為完成
+- [x] DEVLOG 待決問題該條收斂
 
 ## 五、驗收
 
@@ -169,6 +169,8 @@ health == "active" → no-op（不動 affiliation／team／level）
 §2.3 的兩類上游漏送**不在驗收範圍**——鄧愷威 2026 缺 `il_on` 修完仍然缺，那是對帳的責任。
 
 ## Comments
+
+- 2026-08-10：完成實作與實際資料驗收。`sync_run #429`（transactions + projection + recent_form）成功；費爾柴德 2021-07-30 區間為 33 天，李灝宇 2022-06-06 區間為 41 天，五名 tracked 球員皆 active。票面列出的 15 段皆符合預期；完整狀態轉換重播另帶出兩段票面未列的既有區間（費爾柴德 2021-05-18→06-26 為 39 天、2023-08-22→08-28 為 6 天），因此實際合計為 17 段，且兩段皆未受本修正影響。
 
 - 這張票是 2026-08-10 盤點未完成項時，從「typeDesc 全集實測」這條待決問題查下去挖出來的。原題目問的是「有沒有不認得的字串」，答案是沒有；真正的問題是**有一個字串認得、但它同時代表三件事**，而投影對它的預設處理（no-op）在其中一種情境下會造成長達兩年的錯誤狀態。
 - 與 `waiver_claim`（2026-08-07）如出一轍：都是「被歸進 `other` 的東西其實有狀態語意」。差別是 waiver_claim 錯在 affiliation（顯示錯球隊），這張錯在 health（顯示錯傷兵）。**`other` 是 no-op 這件事本身沒問題，問題是什麼東西該進 `other`。**

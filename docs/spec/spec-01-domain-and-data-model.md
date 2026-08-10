@@ -51,13 +51,15 @@ event（異動事件流）               ← 時間軸、狀態投影
 
 | 事件 type | 歸屬變化 | 健康變化 |
 |---|---|---|
-| `sign` / `trade` / `waiver_claim` / `call_up` / `send_down` | → `rostered`（取 `to_team` 的隊/層級） | 不變 |
+| `sign` / `trade` / `waiver_claim` / `send_down` | → `rostered`（取 `to_team` 的隊/層級） | 不變（這些異動可發生在 IL） |
+| `call_up` | → `rostered`（取 `to_team` 的隊/層級） | → `active`（清 `il_detail`；被 recall／selected／purchased 上 MLB roster 不可能仍在 IL） |
 | `assign` | → `rostered`（取 `to_team` 的隊/層級）；**`to_team` 無法解析（非追蹤隊，如冬季/秋季聯盟）→ 不變、不清隊** | 不變 |
 | `dfa` | → `dfa`（保留原隊參考） | 不變 |
 | `release` | → `released`（清隊） | 重設 `active` |
 | `declare_fa` | → `free_agent`（清隊） | 重設 `active` |
 | `il_on` | 不變 | → `il`（記 `il_detail`） |
 | `il_off` | 不變 | → `active` |
+| `activate` | 不變（**不改** affiliation／team／level） | 僅當目前為 `il` 時 → `active`（清 `il_detail`）；目前為 `active` 時 no-op |
 | `depart`（手動事件） | → `departed` | 重設 `active` |
 | `other` | 不變（僅時間軸顯示） | 不變 |
 
@@ -94,7 +96,7 @@ event（異動事件流）               ← 時間軸、狀態投影
 | `id` | bigserial **PK** | |
 | `source_tx_id` | text，可空 unique | 上游 transaction id |
 | `player_id` | int FK | |
-| `type` | enum `sign,call_up,send_down,trade,waiver_claim,dfa,release,declare_fa,assign,il_on,il_off,depart,other` | `waiver_claim`＝讓渡挑選（StatsAPI「Claimed Off Waivers」/typeCode CLW）→ 投影同 `trade`（`rostered` 於 `to_team`），但**不併入 `trade`**：時間軸標籤是「讓渡挑選」不是「交易」，且對應名詞頁 `waiver`。`declare_fa`＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 `free_agent`。`assign`＝小聯盟指派（StatsAPI「assigned to [隊]」/typeCode ASG）→ 投影 `rostered` 於該隊/層級；**須與「invited non-roster」（春訓邀請，非上 roster）、國家隊 activate 區分——後者仍歸 `other`** |
+| `type` | enum `sign,call_up,send_down,trade,waiver_claim,dfa,release,declare_fa,assign,il_on,il_off,activate,depart,other` | `waiver_claim`＝讓渡挑選（StatsAPI「Claimed Off Waivers」/typeCode CLW）→ 投影同 `trade`（`rostered` 於 `to_team`），但**不併入 `trade`**：時間軸標籤是「讓渡挑選」不是「交易」，且對應名詞頁 `waiver`。`declare_fa`＝宣告成為自由球員（StatsAPI「Declared Free Agency」/typeCode DFA）→ 投影 `free_agent`。`assign`＝小聯盟指派（StatsAPI「assigned to [隊]」/typeCode ASG）→ 投影 `rostered` 於該隊/層級；`activate`＝typeCode SC 的裸「activated」（包括小聯盟登錄與國家隊徵召）——投影只在目前為 IL 時清健康，絕不以文字猜測隊伍。 |
 | `effective_date` | date | 排序主鍵之一 |
 | `announced_at` | timestamptz，可空 | |
 | `from_team_id` / `to_team_id` | int FK，可空 | |
@@ -169,6 +171,6 @@ PK 皆 `(player_id, season, level, team_id)`——同季同層級跨隊分列；
 
 ## F. Open Items
 
-- [ ] StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）
+- [x] ~~StatsAPI transactions 端點的 type 字串 → C.3 enum 對照表（實測後補，spec-03 承接）~~ → 已於 2026-08-10 實測並回填 spec-03 §9（32 份 payload、238 筆不重複異動、12 組 `(typeCode, typeDesc)`，全數有明確分類）。
 - [x] ~~`name_zh` 補齊方式（手動 seed；無中文名球員顯示英文）~~ → 已定（2026-08-07）：**球員**維持人工白名單 seed（5/5 有值，新增球員時本來就得手寫；無中文名的台裔球員照 Fairchild 前例音譯）；**球隊**改為「大聯盟 30 支手寫 + 小聯盟推導」，見 C.2 `teams.name_zh` 註
 - [x] ~~`wrc_plus`／`war` 欄位去留~~ → 已定（2026-07-23 實測命中）：欄位保留，來源＝StatsAPI `stats=sabermetrics`（僅 MLB 層級）

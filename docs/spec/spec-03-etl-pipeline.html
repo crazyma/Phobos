@@ -254,7 +254,27 @@
     <li><strong><code>trade</code> 投影正確但呈現錯誤</strong>：<code>lib/services/player-status.ts</code> 會把它標成「交易」，鄭宗哲時間軸就會出現四筆交易，而他一次都沒被交易過；站上又已有 <code>waiver</code>（讓渡）與 <code>dfa</code>（指定讓渡）兩則名詞頁分開講這件事。</li>
     <li>落地：typeDesc/typeCode 對照、<code>_ROSTER_TYPES</code> 納入、標籤「讓渡挑選」、<code>waiver.mdx</code> 掛 <code>roster_event_types: [waiver_claim]</code>（名詞頁自動有實例回連）。重跑 transactions 後 5 筆既有事件已重新歸類（<code>on conflict … do update set type</code> 覆蓋）。</li>
     </ul></li>
-    <li class="">實測 StatsAPI <code>transactions</code> 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（<code>_TYPEDESC_RULES</code> 目前是 best-effort，未匹配一律 <code>other</code>）</li>
+    <li class="done">~~實測 StatsAPI <code>transactions</code> 回傳的 typeDesc 字串全集 → spec-01 C.3 enum 對照（<code>_TYPEDESC_RULES</code> 目前是 best-effort，未匹配一律 <code>other</code>）~~ → <strong>已完成（2026-08-10）</strong>。展開 5 位 tracked 球員自 2020-01-01 起的 32 份 <code>transactions</code> raw payload，得 <strong>238 筆不重複上游異動</strong>；<code>(typeCode, typeDesc)</code> 只有以下 12 組，均已明確分類：</li>
+    </ul>
+    <table>
+    <thead><tr><th>typeCode / typeDesc</th><th>上游筆數</th><th>分類結果</th></tr></thead>
+    <tbody>
+    <tr><td data-label="typeCode / typeDesc">SC / Status Change</td><td data-label="上游筆數">81</td><td data-label="分類結果"><code>il_on</code> 20、<code>il_off</code> 17、<code>activate</code> 44</td></tr>
+    <tr><td data-label="typeCode / typeDesc">ASG / Assigned</td><td data-label="上游筆數">67</td><td data-label="分類結果"><code>assign</code> 48、<code>other</code> 19</td></tr>
+    <tr><td data-label="typeCode / typeDesc">OPT / Optioned</td><td data-label="上游筆數">23</td><td data-label="分類結果"><code>send_down</code> 23</td></tr>
+    <tr><td data-label="typeCode / typeDesc">CU / Recalled</td><td data-label="上游筆數">19</td><td data-label="分類結果"><code>call_up</code> 19</td></tr>
+    <tr><td data-label="typeCode / typeDesc">DES / Designated for Assignment</td><td data-label="上游筆數">13</td><td data-label="分類結果"><code>dfa</code> 13</td></tr>
+    <tr><td data-label="typeCode / typeDesc">TR / Trade</td><td data-label="上游筆數">7</td><td data-label="分類結果"><code>trade</code> 7</td></tr>
+    <tr><td data-label="typeCode / typeDesc">SE / Selected</td><td data-label="上游筆數">7</td><td data-label="分類結果"><code>call_up</code> 7</td></tr>
+    <tr><td data-label="typeCode / typeDesc">NUM / Number Change</td><td data-label="上游筆數">7</td><td data-label="分類結果"><code>other</code> 7</td></tr>
+    <tr><td data-label="typeCode / typeDesc">CLW / Claimed Off Waivers</td><td data-label="上游筆數">5</td><td data-label="分類結果"><code>waiver_claim</code> 5</td></tr>
+    <tr><td data-label="typeCode / typeDesc">SFA / Signed as Free Agent</td><td data-label="上游筆數">5</td><td data-label="分類結果"><code>sign</code> 5</td></tr>
+    <tr><td data-label="typeCode / typeDesc">DFA / Declared Free Agency</td><td data-label="上游筆數">3</td><td data-label="分類結果"><code>declare_fa</code> 3</td></tr>
+    <tr><td data-label="typeCode / typeDesc">OUT / Outrighted</td><td data-label="上游筆數">1</td><td data-label="分類結果"><code>send_down</code> 1</td></tr>
+    </tbody>
+    </table>
+    <p><code>other</code> 仍是刻意的 no-op：NUM 改背號沒有狀態語意；ASG 的春訓邀請／復健移地不能當 roster 指派。唯一需要新型別的是 SC 的 44 筆裸「activated」：字串無法分辨小聯盟 IL 復出、下放後例行登錄與國家隊徵召，故一律分類為 <code>activate</code>；投影只有在當前 <code>health=&#x27;il&#x27;</code> 時才清為 <code>active</code>，否則 no-op，且從不改 affiliation／team／level。顯式含 <code>injured list</code>／<code>disabled list</code> 的 activation 照舊為 <code>il_off</code>。</p>
+    <ul class="todo">
     <li class="done">~~小聯盟成績資料源細節（原題：StatsAPI <code>sportId=11/12</code> 與 pybaseball 的欄位對齊表）~~ → <strong>已實測、已決策（2026-08-07，batu）：小聯盟不提供 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示。</strong> 原題目已失效——pybaseball <strong>從未被使用</strong>（ETL 全 repo 無 import，僅散文殘留；ADR §6.4 早在 07-23 就實測 FanGraphs／B-R 全 403），沒有第二個來源要對齊。實測全庫各層級的非空計數：
     <ul>
     <li><strong>計數欄無缺口</strong>：<code>hbp</code>／<code>sf</code>／<code>cs</code>／<code>bf</code>／<code>hld</code> 在 3A/2A/A+/A/Rk 全部有值 → 由計數欄推導的指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立。</li>

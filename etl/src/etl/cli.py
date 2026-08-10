@@ -74,6 +74,7 @@ TRANSACTION_TYPES = (
     "assign",
     "il_on",
     "il_off",
+    "activate",
     "depart",
     "other",
 )

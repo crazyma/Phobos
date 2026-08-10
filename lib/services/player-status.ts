@@ -37,6 +37,7 @@ const TRANSACTION_TYPE_LABELS: Record<string, string> = {
   assign: "指派",
   il_on: "進入傷兵名單",
   il_off: "傷兵名單回歸",
+  activate: "登錄",
   depart: "離開美職",
   other: "異動",
 };

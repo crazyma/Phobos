@@ -5,13 +5,12 @@
 (see `projection.py`). This module only ingests the event stream.
 
 Mapping StatsAPI's `typeDesc`/`typeCode` onto the curated `transaction_type`
-enum is the crux. The exact upstream string set is not empirically frozen
-(spec-03 §9), so classification is deliberately forgiving: it matches on
-lower-cased substrings of `typeDesc` (falling back to `typeCode`), detects
-injured-list placements/activations, and defaults anything unrecognised — waiver
-claims included, per the ticket — to `other` (timeline-only, no state change).
-The concrete strings mapped are enumerated in `_TYPEDESC_RULES` so the
-consolidator can backfill spec-01 §F.
+enum is the crux. The 2026-08-10 tracked-player inventory is recorded in
+spec-03 §9; classification remains deliberately forgiving for future strings:
+it matches lower-cased substrings of `typeDesc` (falling back to `typeCode`),
+detects injured-list placements/activations, and defaults unrecognised rows to
+`other` (timeline-only, no state change). The concrete strings mapped are
+enumerated in `_TYPEDESC_RULES`.
 """
 
 from __future__ import annotations
@@ -53,9 +52,10 @@ class TxRow:
 # wins, so put the specific IL/roster verbs before broad ones. Keys are matched
 # case-insensitively against `typeDesc`, then `typeCode`.
 #
-# NOTE (spec-03 §9): these strings are best-effort, not upstream-verified. Any
-# `typeDesc` not matched here → 'other'. Injured-list rows are handled separately
-# below (they carry an IL detail and map to il_on / il_off, not this table).
+# The 12 observed (typeCode, typeDesc) pairs are recorded in spec-03 §9. Any
+# future `typeDesc` not matched here → 'other'. Injured-list rows are handled
+# separately below (they carry an IL detail and map to il_on / il_off, not this
+# table).
 _TYPEDESC_RULES: tuple[tuple[str, str], ...] = (
     ("designated for assignment", "dfa"),
     ("designated", "dfa"),
@@ -75,7 +75,7 @@ _TYPEDESC_RULES: tuple[tuple[str, str], ...] = (
 )
 
 # typeCode fallbacks (StatsAPI short codes) for when typeDesc is empty/odd.
-# Codes confirmed against live 2024 data (see spec-03 §9 note in the report).
+# Codes confirmed against the tracked-player transaction inventory (spec-03 §9).
 # `DFA` is "Declared Free Agency" (NOT designation — that's `DES`).
 # Deliberately NOT mapped, so they fall through to 'other' (or, for ASG, are
 # resolved earlier by the "assigned to" description check → 'assign'):
@@ -135,8 +135,9 @@ def classify(type_desc: str, type_code: str, description: str) -> tuple[str, Opt
     """Return (transaction_type, il_detail) for one StatsAPI transaction.
 
     Injured-list rows take precedence (they map to il_on/il_off and carry an
-    il_detail); otherwise the first `_TYPEDESC_RULES` substring hit wins, then a
-    `_TYPECODE_RULES` fallback, else 'other'.
+    il_detail); then real minor-league assignments and bare SC activations are
+    contextual rules; otherwise the first `_TYPEDESC_RULES` substring hit wins,
+    then a `_TYPECODE_RULES` fallback, else 'other'.
     """
     haystack = f"{type_desc} {description}".lower()
 
@@ -163,6 +164,20 @@ def classify(type_desc: str, type_code: str, description: str) -> tuple[str, Opt
     # would spuriously contain the substring "assigned to".
     if "assigned to" in description.lower():
         return "assign", None
+
+    # A bare Status Change "activated" has no roster meaning on its own: it can
+    # be an IL return, a routine minor-league registration, or a national-team
+    # activation. Preserve it as its own event so the projection can clear IL
+    # only when the player's replayed health is currently "il". Explicit IL
+    # activations returned above remain `il_off`.
+    description_l = description.lower()
+    if (
+        type_code.upper() == "SC"
+        and "activated" in description_l
+        and "injured list" not in description_l
+        and "disabled list" not in description_l
+    ):
+        return "activate", None
 
     desc_l = type_desc.lower()
     for token, tx_type in _TYPEDESC_RULES:
