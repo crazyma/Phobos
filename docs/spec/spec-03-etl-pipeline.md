@@ -101,7 +101,7 @@
 
   | typeCode / typeDesc | 上游筆數 | 分類結果 |
   |---|---:|---|
-  | SC / Status Change | 81 | `il_on` 20、`il_off` 17、`activate` 44 |
+  | SC / Status Change | 81 | `il_on` 20、`il_off` 17、`activate` 38、`other` 6 |
   | ASG / Assigned | 67 | `assign` 48、`other` 19 |
   | OPT / Optioned | 23 | `send_down` 23 |
   | CU / Recalled | 19 | `call_up` 19 |
@@ -114,7 +114,7 @@
   | DFA / Declared Free Agency | 3 | `declare_fa` 3 |
   | OUT / Outrighted | 1 | `send_down` 1 |
 
-  `other` 仍是刻意的 no-op：NUM 改背號沒有狀態語意；ASG 的春訓邀請／復健移地不能當 roster 指派。唯一需要新型別的是 SC 的 44 筆裸「activated」：字串無法分辨小聯盟 IL 復出、下放後例行登錄與國家隊徵召，故一律分類為 `activate`；投影只有在當前 `health='il'` 時才清為 `active`，否則 no-op，且從不改 affiliation／team／level。顯式含 `injured list`／`disabled list` 的 activation 照舊為 `il_off`。
+  `other` 仍是刻意的 no-op：NUM 改背號沒有狀態語意；ASG 的春訓邀請／復健移地不能當 roster 指派；SC 剩下的 6 筆是「roster status changed by [球隊]」5 筆與「placed on the reserve list」1 筆，都沒有可投影的狀態。唯一需要新型別的是 SC 的 **38 筆**裸「activated」：字串無法分辨小聯盟 IL 復出、下放後例行登錄與國家隊徵召，故一律分類為 `activate`；投影只有在當前 `health='il'` 時才清為 `active`，否則 no-op，且從不改 affiliation／team／level。顯式含 `injured list`／`disabled list` 的 activation 照舊為 `il_off`。
 - [x] ~~小聯盟成績資料源細節（原題：StatsAPI `sportId=11/12` 與 pybaseball 的欄位對齊表）~~ → **已實測、已決策（2026-08-07，batu）：小聯盟不提供 wOBA／xwOBA／wRC+／WAR／FIP，缺值不顯示。** 原題目已失效——pybaseball **從未被使用**（ETL 全 repo 無 import，僅散文殘留；ADR §6.4 早在 07-23 就實測 FanGraphs／B-R 全 403），沒有第二個來源要對齊。實測全庫各層級的非空計數：
   - **計數欄無缺口**：`hbp`／`sf`／`cs`／`bf`／`hld` 在 3A/2A/A+/A/Rk 全部有值 → 由計數欄推導的指標（AVG／OBP／SLG／OPS／ISO／K%／BB%／BABIP／WHIP／ERA／HR9）全層級成立。
   - **`lob_pct` 全層級有值**（aaa 7/7、aa 4/4…）→ 07-27「所有層級皆算」的決策已落地。

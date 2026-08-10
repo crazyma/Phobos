@@ -12,7 +12,8 @@
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
   - **裸 activated**：新增 enum `activate`（migration `0005_bare-activation.sql`），StatsAPI `typeCode=SC` 且 description 含 `activated`、不含 injured/disabled list 時分類為它；投影只在現況為 `il` 時才清為 `active`，否則 no-op，且絕不動 affiliation／team／level。時間軸中文標籤為「登錄」。
   - **漏送 IL 復出**：僅 `call_up`（recalled／selected／purchased）會重設 health／`il_detail`；`trade`／`sign`／`send_down`／`dfa` 的 IL 行為以回歸測試鎖住不變。
-  - **真實資料驗收**：套 migration 後重跑 transactions + reproject（`sync_run #429` success），費爾柴德 2021-07-30→2021-09-01 為 **33 天**（原 759），李灝宇 2022-06-06→2022-07-17 為 **41 天**（原 372）；票面列出的其餘 13 段維持原值，5 名 tracked 球員現況均為 `active`。重播另發現票面未列的兩段既有 IL（費爾柴德 2021-05-18→06-26 共 39 天、2023-08-22→08-28 共 6 天），兩者均未受此修正影響，故完整重播共有 17 段而非票面所稱 15 段。
+  - **真實資料驗收**：套 migration 後重跑 transactions + reproject（`sync_run #429` success），費爾柴德 2021-07-30→2021-09-01 為 **33 天**（原 759），李灝宇 2022-06-06→2022-07-17 為 **41 天**（原 372）；票面列出的其餘 13 段維持原值，5 名 tracked 球員現況均為 `active`。完整重播為 **17 段**而非票面的 15 段——多出來的兩段正是**修正的產物**：舊量測邏輯下，落在已經是 `il` 狀態上的 `il_on` 不會另起一段，於是 759 天那段吞掉了費爾柴德 `2023-08-22→08-28`（6 天）、372 天那段吞掉了李灝宇 `2023-05-18→06-13`（26 天），修好出口後兩段才各自浮現。
+  - **上游字串拆分更正**：SC 那 44 筆並非全是裸 activated，實際為 **38 筆裸 activated ＋ 6 筆無狀態語意**（`roster status changed by` 5 筆、`placed on the reserve list` 1 筆，維持 `other` 正確）。開票時的 44 筆誤述已在票面 §1、§2.1 與 spec-03 §9 更正。
   - 文件同步 spec-01 B.3／C.3 與 spec-03 §9 的 12 組 `(typeCode, typeDesc)` 實測表；ETL 相關 39 tests、Node 相關 27 tests、typecheck 均綠。
 
 ### 2026-08-07
