@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately。**Blocks:** 02、04、05、07。
 
-**Status:** ready-for-agent
+**Status:** done
 
 決策依據：`docs/plan/ui-reskin-2026-08-12.md` §1、§2.2、§4、§5.1、§5.2。
 
@@ -68,19 +68,18 @@ weight 設定參考 `Phobos-UI/app/layout.tsx:6-21`。三個 variable 都要掛�
 
 ## Checklist
 
-- [ ] `/players` 整頁為新版面，分區由 `LEVEL_ORDER` 產生、**六階皆有字樣**、空層級不出現
-- [ ] 卡片純字排、**無頭像框**，狀態句與近況句都在且未被截斷
-- [ ] 隊名不重複印層級
-- [ ] 層級篩選為 chip、排序下拉保留、archived 折疊區可用、空狀態走 `EmptyState`
-- [ ] 三字體生效；8 個語意 token ＋ **補齊 `--a-plus`／`--a`／`--rookie`**
-- [ ] `globals.css:85-117` 深色盤已刪
-- [ ] 報頭樣式且**漢堡選單仍可用**；頁尾 kicker 化且 `lastSyncedAt` 不動；容器統一 `max-w-6xl px-6`
-- [ ] 五個共用樣板為單一落點，未重複實作
-- [ ] `components/players/players-view.test.tsx` 更新並綠
-- [ ] `pnpm typecheck` 綠、`pnpm test` 綠
-
-## Comments
+- [x] `/players` 整頁為新版面，分區由 `LEVEL_ORDER` 產生、**六階皆有字樣**、空層級不出現
+- [x] 卡片純字排、**無頭像框**，狀態句與近況句都在且未被截斷
+- [x] 隊名不重複印層級
+- [x] 層級篩選為 chip、排序下拉保留、archived 折疊區可用、空狀態走 `EmptyState`
+- [x] 三字體生效；8 個語意 token ＋ **補齊 `--a-plus`／`--a`／`--rookie`**
+- [x] `globals.css:85-117` 深色盤已刪
+- [x] 報頭樣式且**漢堡選單仍可用**；頁尾 kicker 化且 `lastSyncedAt` 不動；容器統一 `max-w-6xl px-6`
+- [x] 五個共用樣板為單一落點，未重複實作
+- [x] `components/players/players-view.test.tsx` 更新並綠
+- [x] `pnpm typecheck` 綠、`pnpm test` 綠
 
 - **不搬設計的 `next.config.mjs` 設定**：它開了 `typescript.ignoreBuildErrors: true` 與 `images.unoptimized: true`，是 v0 產出的權宜設定。
 - 本票不動任何 `lib/services/*`。
 - 完成後其他頁面會是「新報頭＋舊內文」的混搭狀態，**這是預期的**，由 02／04／05 收斂。
+- 2026-08-13：完成全站設計地基與 `/players` 雜誌風名冊。新增 Noto Sans TC／Noto Serif TC／Geist Mono 三字體、亮色語意 token 與六階徽章色，移除未生效的 `.dark` token；新增 `SectionTitle`、`LevelBadge`、`TagButton`、`EmptyState`、卡片 hover 共用樣板。名冊改為六階動態分區、chips 篩選、排序下拉、archived disclosure 與空狀態；卡片維持純字排並保留狀態／近況句。實際以 dev server 與本機 Chrome 檢視桌機及 390px 手機版 `/players`。

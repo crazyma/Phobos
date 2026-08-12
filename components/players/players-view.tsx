@@ -3,12 +3,24 @@
 import { useMemo, useState } from "react";
 import type { PlayerSummary } from "@/lib/services";
 import { levelLabel, type TeamLevel } from "@/lib/services/player-status";
+import { EmptyState } from "@/components/magazine/empty-state";
+import { LevelBadge } from "@/components/magazine/level-badge";
+import { TagButton } from "@/components/magazine/tag-button";
 import { PlayerCard } from "./player-card";
 
 type SortKey = "name" | "level";
 
 /** 由高到低的層級顯示序（無隊者排最後）。 */
 const LEVEL_ORDER: TeamLevel[] = ["mlb", "aaa", "aa", "a_plus", "a", "rookie"];
+
+const LEVEL_COPY: Record<TeamLevel, { note: string; en: string }> = {
+  mlb: { note: "大聯盟現役", en: "Major League" },
+  aaa: { note: "3A 一階之遙", en: "Triple-A" },
+  aa: { note: "2A 養成階段", en: "Double-A" },
+  a_plus: { note: "高階 1A 養成", en: "High-A" },
+  a: { note: "1A 養成階段", en: "Single-A" },
+  rookie: { note: "新人聯盟養成", en: "Rookie League" },
+};
 
 function displayName(p: PlayerSummary): string {
   return p.nameZh ?? p.nameEn;
@@ -52,28 +64,25 @@ export function PlayersView({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-3 text-sm">
-        <label className="flex items-center gap-1">
+      <div className="mb-12 flex flex-wrap items-center gap-3">
+        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
           層級
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value as "all" | TeamLevel)}
-            className="rounded border border-border bg-background px-2 py-1"
-          >
-            <option value="all">全部</option>
-            {availableLevels.map((l) => (
-              <option key={l} value={l}>
-                {levelLabel(l)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-1">
+        </span>
+        <TagButton label="全部" active={level === "all"} onClick={() => setLevel("all")} />
+        {availableLevels.map((l) => (
+          <TagButton
+            key={l}
+            label={levelLabel(l) ?? l}
+            active={level === l}
+            onClick={() => setLevel(l)}
+          />
+        ))}
+        <label className="flex w-full shrink-0 basis-full justify-end gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:ml-auto sm:w-auto sm:basis-auto sm:shrink">
           排序
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded border border-border bg-background px-2 py-1"
+            className="rounded border border-border bg-card px-2 py-1.5 font-sans text-sm font-normal tracking-normal text-foreground"
           >
             <option value="name">依姓名</option>
             <option value="level">依層級</option>
@@ -82,26 +91,84 @@ export function PlayersView({
       </div>
 
       {shown.length > 0 ? (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {shown.map((p) => (
-            <li key={p.playerId}>
-              <PlayerCard player={p} />
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-16">
+          {LEVEL_ORDER.map((currentLevel) => {
+            const group = shown.filter((p) => p.team?.level === currentLevel);
+            if (group.length === 0) return null;
+            const copy = LEVEL_COPY[currentLevel];
+            return (
+              <section key={currentLevel}>
+                <div className="mb-6 flex items-end justify-between border-b-2 border-border pb-3">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                    <LevelBadge level={currentLevel} />
+                    <h2 className="font-serif text-2xl font-black text-foreground">{copy.note}</h2>
+                    <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                      {copy.en}
+                    </span>
+                  </div>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">{group.length} 位</span>
+                </div>
+                <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                  {group.map((p, index) => (
+                    <li key={p.playerId}>
+                      <PlayerCard player={p} index={index} />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+
+          {level === "all" && shown.some((p) => !p.team) && (
+            <section>
+              <div className="mb-6 flex items-end justify-between border-b-2 border-border pb-3">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                  <span className="rounded border border-border px-2 py-1 font-mono text-xs font-bold leading-none text-muted-foreground">
+                    待確認
+                  </span>
+                  <h2 className="font-serif text-2xl font-black text-foreground">層級待確認</h2>
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    Team assignment pending
+                  </span>
+                </div>
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {shown.filter((p) => !p.team).length} 位
+                </span>
+              </div>
+              <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {shown
+                  .filter((p) => !p.team)
+                  .map((p, index) => (
+                    <li key={p.playerId}>
+                      <PlayerCard player={p} index={index} />
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          )}
+        </div>
       ) : (
-        <p className="text-sm text-muted-foreground">目前沒有符合條件的球員。</p>
+        <EmptyState
+          title="目前沒有符合條件的球員"
+          description="調整篩選條件後再試試看。"
+        />
       )}
 
       {archived.length > 0 && (
-        <details className="mt-8">
-          <summary className="cursor-pointer text-sm font-medium">
-            歷史球員（{archived.length}）
+        <details className="group mt-16">
+          <summary className="flex cursor-pointer list-none items-end justify-between border-b-2 border-border pb-3 [&::-webkit-details-marker]:hidden">
+            <span className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+              <span className="rounded border border-border px-2 py-1 font-mono text-xs font-bold leading-none text-muted-foreground">
+                ARCHIVED
+              </span>
+              <span className="font-serif text-2xl font-black text-foreground">歷史球員</span>
+            </span>
+            <span className="font-mono text-xs text-muted-foreground">{archived.length} 位</span>
           </summary>
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-            {archived.map((p) => (
+          <ul className="mt-6 grid gap-5 opacity-60 transition-opacity group-open:opacity-100 sm:grid-cols-2 xl:grid-cols-3">
+            {archived.map((p, index) => (
               <li key={p.playerId}>
-                <PlayerCard player={p} />
+                <PlayerCard player={p} index={index} />
               </li>
             ))}
           </ul>

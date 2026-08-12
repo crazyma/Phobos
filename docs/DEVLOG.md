@@ -325,7 +325,7 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（7 票，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板，**票已開、尚未動工**。
+- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（7 票，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06／07 待辦。
   - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦）、04 首頁、05 名詞、07 隊徽 **四票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
   - **⚠️ 舊的 8 票（`.scratch/ui-reskin/issues/`）已作廢**，標記見 `.scratch/ui-reskin/SUPERSEDED.md`。舊批是未經 `/to-tickets` 手寫的，兩處實質偏差：跳過「Quiz the user」、且 `01 設計基礎` 是**水平**切片（明寫「不改任何頁面內容」、無法獨立 demo）。v2 以 skill 重開並經 batu 確認：**地基折進第一張頁面票**（已確認地基變更是純加法、不破壞既有頁面，故不適用 wide-refactor 的 expand–contract 例外）、每票只帶自己要的樣板、媒體集錦併入球員頁票。**兩批的技術決策一致**，差別在切分與流程。
   - **開票時查證出的一項修正（已回寫 plan §5.5）**：原建議 sparkline 打者畫 season-to-date OPS，**不成立**——`game_batting_lines`（`lib/db/schema/games.ts:28-52`）**沒有 `hbp` 也沒有 `sf`**（欄位只有 `pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb`），OBP 算不出來、OPS 也就算不出來。**改為投手 ERA（`er × 27 ÷ ipOuts`）、打者 AVG（`h ÷ ab`）**，兩者皆可精算。把 HBP/SF 當 0 近似 OBP **不做**——會系統性低估，等於在圖上放沒有出處的數字，與拒絕設計那個編造的 0-100「狀態分數」是同一條理由。日後要 OPS 須補 ETL 把 `hbp`／`sf` 寫進 `game_batting_lines`（schema＋ETL 變更），另案。
@@ -336,6 +336,8 @@
   - **待決四題**：① ~~球員照片~~ **已收斂（2026-08-12，batu：一律不放人物圖像，改純字排＋隊徽）**——先更正初稿：設計用的**不是真人肖像**（`public/players/` 只有 `pitcher-portrait.png`／`batter-portrait.png` 兩檔、六名球員按 type 共用、alt 寫「示意插畫」），**未違反 `requirements.md:233`**，原本寫成「正面衝突」是講重了。真正的問題是密度——5 名 tracked 球員照設計原樣會是五張卡、四張投手圖一模一樣，80×80 的框比留白更糟。三個缺口改法：hero 換隊徽（姓氏浮水印本就在）、名冊卡拿掉圖框走純字排（保留編號浮水印）、首頁封面跨頁改**引言跨頁**（左半大字近況一句話＋層級 badge、右半四格數據）。連帶解掉 `headshot` 與 `summary` 兩項資料缺口。**隊徽本身另計**：30 支大聯盟隊徽下載進 `public/logos/`（不 hotlink）、小聯盟一律用母隊隊徽（與 2026-08-07 中文隊名決策同構、走 `parentOrgTeamId`），**時機未定但三個版面沒有隊徽也成立、不阻斷主線**；② ~~深色模式~~ **已收斂（2026-08-12，batu：不做）**——且這不是移除功能而是刪未曾生效的碼：全 repo **沒有任何地方掛 `.dark` class**（無 theme toggle、無 `next-themes`），而 `globals.css:5` 的 `@custom-variant dark (&:is(.dark *))` 是 class-based、不吃 `prefers-color-scheme` ⇒ `globals.css:85-117` 那 33 行深色盤**從未被觸發過**。連帶清理兩處不可達的 `dark:`（`ui/button.tsx` shadcn 原樣、`upcoming.tsx:68` 的 `dark:text-emerald-400`，後者改吃 `--up`／`--down` 後自然消失）；③ ~~名詞頁 modal vs 獨立頁~~ **已收斂（2026-08-12 討論，見 plan §5.3）：先 A（保留 `/glossary/[slug]` 全頁、只借 modal 的五段版面骨架，索引頁補搜尋＋卡片牆），B（intercepting routes `@modal/(.)glossary/[slug]`，兩全）留作後續 polish 且開票前需一次 spike**——modal-only 會讓 24 個可索引 URL 收斂成 1 個、sitemap 掉 24 條、per-term OG 全失，且 `season-stats.tsx:150` 的雙向連結與 `getRegistry()` 的 build-fail 護欄都掛在名詞頁上；`requirements.md` §8 該句是驗收條件；④ 資料缺口四項——`headshot`／`summary` 由 ① 解掉（不做）；**媒體與新聞集錦已決（2026-08-12，batu：先用 mock data）**，紀律三條見 plan §5.4（檔名自帶 `MOCK`、不進 `lib/services/index.ts` barrel、列技術債且不納入任何對帳驗收數字）。
   - **sparkline 走勢已決（2026-08-12，batu：選 B——季內累積走勢）**（plan §5.5、票 07）。不畫設計那個編造的 0-100「狀態分數」；**也不比照媒體用 mock**——媒體是「等資料源」，sparkline 是「等定義」，mock 一個編造分數等於把待決問題畫進 UI。打者指標的修正見上方「開票時查證出的一項修正」。
   - 「我想知道」問題牆為**全新頁**（需新內容模型 `FanQuestion`），可與拉皮脫鉤另議。
+
+- [x] **UI 拉皮票 01：球員名冊改版＋設計地基**（2026-08-13，`.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`，分支 `feature/ui-reskin-v2-roster`）——`/players` 改為六階動態分區的雜誌風純字排名冊，加入層級 chip、排序、archived disclosure 與 EmptyState；全站換 Noto Sans TC／Noto Serif TC／Geist Mono、深藍暖橘亮色 token（含 `a_plus`／`a`／`rookie`）、新版報頭／頁尾與 `max-w-6xl px-6` 容器。共用樣板集中在 `components/magazine/`，未動 `lib/services/*`；以 dev server＋Chrome 實際檢視桌機與手機 `/players`。`pnpm typecheck`、`pnpm test` 綠。
 
 - [x] ~~**`team-names-zh`（1 票，`.scratch/team-names-zh/issues/`）**~~（2026-08-07 完成，見已完成區）——大聯盟 30 支手寫中文名、小聯盟由母隊推導。
 

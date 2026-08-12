@@ -12,8 +12,8 @@ export function SiteFooter({
   lastSyncedAt?: Date | string | null;
 }) {
   return (
-    <footer className="mt-auto border-t border-border">
-      <div className="mx-auto max-w-5xl px-4 py-4 text-xs text-muted-foreground">
+    <footer className="mt-auto mt-16 border-t border-border">
+      <div className="mx-auto max-w-6xl px-6 py-5 font-mono text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
         資料更新於 {formatDateTimeTaipei(lastSyncedAt)}（台灣時間）
       </div>
     </footer>

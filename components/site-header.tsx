@@ -19,21 +19,25 @@ export function SiteHeader() {
     pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <header className="border-b border-border">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-        <Link href="/" className="text-lg font-bold" onClick={() => setOpen(false)}>
+    <header className="mx-auto max-w-6xl px-6 pt-6 sm:pt-10">
+      <div className="flex items-center justify-between border-b-4 border-primary pb-3">
+        <Link
+          href="/"
+          className="font-serif text-sm font-black uppercase tracking-[0.3em] text-primary"
+          onClick={() => setOpen(false)}
+        >
           Phobos
         </Link>
 
         {/* desktop nav */}
-        <nav className="hidden gap-6 sm:flex">
+        <nav className="hidden items-center gap-5 sm:flex">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "text-sm transition-colors hover:text-foreground",
-                isActive(item.href) ? "font-medium text-foreground" : "text-muted-foreground",
+                "font-serif text-sm font-bold transition-colors hover:text-foreground",
+                isActive(item.href) ? "text-accent" : "text-muted-foreground",
               )}
             >
               {item.label}
@@ -55,15 +59,15 @@ export function SiteHeader() {
 
       {/* mobile collapsible nav */}
       {open && (
-        <nav className="flex flex-col border-t border-border sm:hidden">
+        <nav className="flex flex-col border-b border-border sm:hidden">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
               className={cn(
-                "px-4 py-3 text-sm transition-colors hover:bg-muted",
-                isActive(item.href) ? "font-medium text-foreground" : "text-muted-foreground",
+                "px-1 py-3 font-serif text-sm font-bold transition-colors hover:bg-muted",
+                isActive(item.href) ? "text-accent" : "text-muted-foreground",
               )}
             >
               {item.label}
