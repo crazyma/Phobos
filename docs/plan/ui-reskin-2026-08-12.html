@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI 拉皮研究 — 以 Phobos-UI 雜誌風設計改寫前端（2026-08-12）</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+      --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --fg: #1f2320; --muted: #6b7268; --accent: #8a3324;
+    --line: #e3ddd3; --card: #ffffff; --code-bg: #f0ede6;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a; --fg: #e7e4dd; --muted: #9a9d97; --accent: #d8836a;
+    --line: #2c2f33; --card: #1b1e22; --code-bg: #20232a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", sans-serif;
+    line-height: 1.75; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 3rem 1.5rem 6rem; }
+  header.page-head { margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+  header.page-head h1 { font-size: 1.7rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+  header.page-head p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+  .badge {
+    font-size: .78rem; padding: .2rem .6rem; border: 1px solid var(--line);
+    border-radius: 999px; color: var(--muted); background: var(--card);
+  }
+  .badge strong { color: var(--accent); }
+  blockquote {
+    margin: 0 0 1.5rem; padding: .75rem 1rem; background: var(--code-bg);
+    border-left: 3px solid var(--accent); border-radius: 4px; color: var(--muted); font-size: .92rem;
+  }
+  blockquote p { margin: 0 0 .5rem; }
+  blockquote p:last-child { margin: 0; }
+  h2 { font-size: 1.25rem; margin: 2.75rem 0 1rem; padding-top: .25rem; color: var(--fg); }
+  h2::before { content: attr(data-num); color: var(--accent); margin-right: .5rem; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 1.02rem; margin: 1.75rem 0 .75rem; color: var(--fg); }
+  p { margin: 0 0 1rem; }
+  ul, ol { padding-left: 1.4rem; margin: 0 0 1rem; }
+  li { margin-bottom: .35rem; }
+  strong { color: var(--fg); }
+  a { color: var(--accent); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg); padding: .1rem .35rem; border-radius: 4px; font-size: .86em;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; margin: 0 0 1.25rem;
+  }
+  pre code { background: none; padding: 0; font-size: .82rem; line-height: 1.6; }
+  table {
+    width: 100%; border-collapse: collapse; margin: 0 0 1.5rem; font-size: .9rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--code-bg); font-weight: 600; color: var(--muted);
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .03em;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .arch-diagram {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem;
+    white-space: pre; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 1.1rem 1.2rem; overflow-x: auto; color: var(--muted); margin: 0 0 1.25rem;
+  }
+  .todo { list-style: none; padding-left: 0; }
+  .todo li { position: relative; padding-left: 1.6rem; }
+  .todo li::before {
+    content: ""; position: absolute; left: 0; top: .3rem; width: 1rem; height: 1rem;
+    border: 1.5px solid var(--muted); border-radius: 4px;
+  }
+  .todo li.done::before {
+    content: "\2713"; border-color: var(--accent); color: var(--accent);
+    font-size: .8rem; line-height: 1rem; text-align: center; font-weight: 700;
+  }
+  section { margin-bottom: .5rem; }
+  footer.page-foot {
+    margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: .82rem;
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 2rem 1.1rem 4rem; }
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr { margin-bottom: .75rem; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    td { border-bottom: 1px solid var(--line); display: flex; gap: .5rem; }
+    td::before { content: attr(data-label); font-weight: 600; color: var(--muted); min-width: 6.5rem; flex-shrink: 0; }
+  }
+
+  /* ── 側邊欄目錄 ──────────────────────────────────────────────────── */
+  html { scroll-behavior: smooth; }
+  h2, h3 { scroll-margin-top: 1.5rem; }
+  .layout { display: flex; align-items: flex-start; max-width: 1180px; margin: 0 auto; }
+  .layout > .wrap { flex: 1 1 auto; min-width: 0; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: flex-start;
+    flex: 0 0 250px; width: 250px; max-height: 100vh; overflow-y: auto;
+    padding: 2.75rem 1rem 2rem 1.5rem; border-right: 1px solid var(--line);
+  }
+  .toc summary {
+    list-style: none; cursor: pointer; user-select: none;
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: .75rem; pointer-events: none;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary::after {
+    content: "\25be"; float: right; transition: transform .15s ease; pointer-events: none;
+  }
+  .toc-box:not([open]) summary::after { transform: rotate(-90deg); }
+  .toc nav ul { list-style: none; padding-left: 0; margin: 0; }
+  .toc nav li { margin: 0; }
+  .toc nav a {
+    display: block; text-decoration: none; color: var(--muted);
+    font-size: .86rem; line-height: 1.4; padding: .32rem .55rem;
+    border-left: 2px solid transparent; border-radius: 0 6px 6px 0;
+    transition: color .12s, background .12s;
+  }
+  .toc nav a:hover { color: var(--fg); background: var(--code-bg); }
+  .toc nav a.active {
+    color: var(--accent); background: var(--code-bg); border-left-color: var(--accent); font-weight: 600;
+  }
+  .toc .toc-num { color: var(--accent); margin-right: .45rem; font-variant-numeric: tabular-nums; }
+  .toc ul.sub { padding-left: .7rem; margin: .1rem 0 .35rem; }
+  .toc ul.sub a { font-size: .8rem; padding: .24rem .55rem; color: var(--muted); }
+  @media (max-width: 960px) {
+    .layout { display: block; }
+    .toc {
+      position: static; width: auto; flex: none; max-height: none; overflow: visible;
+      border-right: none; border-bottom: 1px solid var(--line);
+      padding: 1.1rem 1.25rem; margin: 0;
+    }
+    .toc summary { pointer-events: auto; margin-bottom: 0; }
+    .toc-box[open] summary { margin-bottom: .6rem; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">0</span>一句話結論</a></li><li><a href="#sec-2"><span class="toc-num">1</span>技術棧相容性</a><ul class="sub"><li><a href="#sec-2-1">1.1 設計專案沒有用元件庫</a></li><li><a href="#sec-2-2">1.2 需要動的三件事</a></li><li><a href="#sec-2-3">1.3 可直接複製的檔案</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">2</span>頁面對應</a><ul class="sub"><li><a href="#sec-3-1">2.1 首頁</a></li><li><a href="#sec-3-2">2.2 球員名冊</a></li><li><a href="#sec-3-3">2.3 球員個人頁（差距最大）</a></li><li><a href="#sec-3-4">2.4 名詞（架構性衝突，非樣式問題）</a></li><li><a href="#sec-3-5">2.5 「我想知道」（全新）</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">3</span>我們有、設計沒有的 UI —— 用設計語彙的實作對照</a></li><li><a href="#sec-5"><span class="toc-num">4</span>設計原則（摘自設計指南頁，供實作對齊）</a></li><li><a href="#sec-6"><span class="toc-num">5</span>待決四題（拍板後才開票）</a><ul class="sub"><li><a href="#sec-6-1">5.1 球員照片 —— 與 PRD 正面衝突</a></li><li><a href="#sec-6-2">5.2 深色模式</a></li><li><a href="#sec-6-3">5.3 名詞頁 modal vs 獨立頁</a></li><li><a href="#sec-6-4">5.4 資料缺口</a></li></ul></li><li><a href="#sec-7"><span class="toc-num">6</span>附註</a></li></ul></nav></details></aside>
+  <div class="wrap">
+
+  <header class="page-head">
+    <h1>UI 拉皮研究 — 以 Phobos-UI 雜誌風設計改寫前端（2026-08-12）</h1>
+    <p>研究外部設計專案 <code>Phobos-UI</code>（v0 產出、雜誌跨頁風格，自帶設計指南頁）能否用來改寫本站前端。結論：<strong>技術棧同源、可直接搬</strong>，但設計覆蓋的資訊深度只有現行的一部分，且與 PRD 的「不放球員照片」決策正面衝突。<br>本文只做研究與對照，<strong>不含實作切片</strong>。四個待決項（§5）拍板後再開票到 <code>.scratch/ui-reskin/issues/</code>。</p>
+    <div class="badges"><span class="badge"><strong>類型</strong> 研究/選型</span><span class="badge"><strong>輸入</strong> Phobos-UI repo（v0 設計專案）</span><span class="badge"><strong>對象</strong> spec-02 既有五頁</span><span class="badge"><strong>狀態</strong> 待決四題、未動工</span></div>
+  </header>
+
+  <section>
+    <h2 id="sec-1" data-num="0">一句話結論</h2>
+    <p>搬的是 <strong>design token 與版面樣板</strong>，不是元件庫——設計專案通篇手刻 Tailwind，<code>@/components/ui/*</code> 的 import 數是 <strong>0</strong>。因此拉皮的成本不在依賴，在於<strong>補齊設計沒畫到的那些頁面區塊</strong>，以及<strong>先解決球員照片這個產品決策衝突</strong>。</p>
+  </section>
+  <section>
+    <h2 id="sec-2" data-num="1">技術棧相容性</h2>
+    <table>
+    <thead><tr><th></th><th>Phobos（現行）</th><th>Phobos-UI（設計）</th></tr></thead>
+    <tbody>
+    <tr><td data-label="">Next / React</td><td data-label="Phobos（現行）">16.2 / 19</td><td data-label="Phobos-UI（設計）">16.3 / 19</td></tr>
+    <tr><td data-label="">Tailwind</td><td data-label="Phobos（現行）">v4（<code>@import &quot;tailwindcss&quot;</code>）</td><td data-label="Phobos-UI（設計）">v4，同</td></tr>
+    <tr><td data-label="">shadcn</td><td data-label="Phobos（現行）"><code>base-nova</code> / neutral / cssVariables</td><td data-label="Phobos-UI（設計）"><strong>components.json 設定相同</strong></td></tr>
+    <tr><td data-label="">primitives</td><td data-label="Phobos（現行）"><code>@base-ui/react</code> ^1.6</td><td data-label="Phobos-UI（設計）">^1.5</td></tr>
+    <tr><td data-label="">icons</td><td data-label="Phobos（現行）">lucide-react ^1.26</td><td data-label="Phobos-UI（設計）">^1.16</td></tr>
+    <tr><td data-label="">資料</td><td data-label="Phobos（現行）">Drizzle + Postgres（真實資料）</td><td data-label="Phobos-UI（設計）"><code>lib/players-data.ts</code> 靜態假資料</td></tr>
+    </tbody>
+    </table>
+    <h3 id="sec-2-1">1.1 設計專案沒有用元件庫</h3>
+    <p>全域 grep <code>@/components/ui/</code> 在設計專案的 <code>app/</code>＋<code>components/</code> 命中 <strong>0 筆</strong>。<code>components/ui/button.tsx</code> 存在但無人引用，且與我們的 <code>components/ui/button.tsx</code> 幾乎逐字相同（差異只有引號風格與兩處 hover class）。</p>
+    <p><strong>⇒ 拉皮不需要新增任何 npm 依賴。</strong></p>
+    <h3 id="sec-2-2">1.2 需要動的三件事</h3>
+    <ol>
+    <li><strong>字體（唯一的新東西，但走 <code>next/font/google</code>，免安裝）</strong></li>
+    </ol>
+    <ol start="2">
+    <li><strong><code>app/globals.css</code> 的語意 token</strong></li>
+    </ol>
+    <ul>
+    <li>⚠️ <strong>層級數對不上</strong>：設計只定義 MLB/3A/2A 三階，我們的 <code>LEVEL_ORDER</code>（<code>components/players/players-view.tsx:11</code>）有 <strong>六階</strong>（<code>mlb / aaa / aa / a_plus / a / rookie</code>）。需自行補 <code>--a-plus / --a / --rookie</code>（建議自 <code>--aa</code> 的灰再降階），否則低階球員 badge 無色。</li>
+    <li>⚠️ <strong>設計沒有深色模式</strong>：<code>:root { color-scheme: light }</code>、無 <code>.dark</code> 區塊（雖仍宣告 <code>@custom-variant dark</code>）。我們現行 <code>globals.css:85-117</code> 有完整深色盤。→ 待決 §5.2。</li>
+    </ul>
+    <ol start="3">
+    <li><strong>補設計沒有的元件</strong>：見 §3。</li>
+    </ol>
+    <h3 id="sec-2-3">1.3 可直接複製的檔案</h3>
+    <table>
+    <thead><tr><th>檔案</th><th>說明</th></tr></thead>
+    <tbody>
+    <tr><td data-label="檔案"><code>components/sparkline.tsx</code></td><td data-label="說明">57 行純 SVG 折線，零依賴</td></tr>
+    <tr><td data-label="檔案"><code>components/magazine/baseball-icons.tsx</code></td><td data-label="說明">球棒／棒球／手套／本壘板，lucide 同規格（24×24、currentColor、圓角）</td></tr>
+    <tr><td data-label="檔案"><code>components/magazine/media-carousel.tsx</code></td><td data-label="說明">橫向輪播 + 左右箭頭 disabled 狀態 + 隱藏原生捲軸</td></tr>
+    <tr><td data-label="檔案">Modal 互動實作</td><td data-label="說明">雙 rAF 進場、延遲卸載退場、Esc、遮罩點擊、scroll lock</td></tr>
+    </tbody>
+    </table>
+    <blockquote><p>Modal 那段在設計專案裡重複了三次（<code>glossary-page.tsx:241-271</code>、<code>questions-page.tsx:162-194</code>、<code>styleguide-page.tsx:530-559</code>）。搬過來時應收斂成單一 <code>useDialogTransition</code> hook。</p></blockquote>
+  </section>
+  <section>
+    <h2 id="sec-3" data-num="2">頁面對應</h2>
+    <table>
+    <thead><tr><th>設計頁</th><th>我們的頁</th><th>對應狀況</th></tr></thead>
+    <tbody>
+    <tr><td data-label="設計頁"><code>/magazine</code></td><td data-label="我們的頁"><code>/</code></td><td data-label="對應狀況">⚠️ 骨架不同（缺即將出賽、缺 empty state）</td></tr>
+    <tr><td data-label="設計頁"><code>/magazine/roster</code></td><td data-label="我們的頁"><code>/players</code></td><td data-label="對應狀況">⚠️ 缺篩選／排序／archived</td></tr>
+    <tr><td data-label="設計頁"><code>/magazine/players/[id]</code></td><td data-label="我們的頁"><code>/players/[id]</code></td><td data-label="對應狀況">⚠️ 資訊深度差最多</td></tr>
+    <tr><td data-label="設計頁"><code>/magazine/glossary</code></td><td data-label="我們的頁"><code>/glossary</code></td><td data-label="對應狀況">⚠️ <strong>設計是 modal，我們是獨立頁</strong></td></tr>
+    <tr><td data-label="設計頁">—</td><td data-label="我們的頁"><code>/glossary/[slug]</code></td><td data-label="對應狀況">❌ 設計完全沒有</td></tr>
+    <tr><td data-label="設計頁"><code>/magazine/questions</code>（我想知道）</td><td data-label="我們的頁">—</td><td data-label="對應狀況">➕ 全新頁</td></tr>
+    <tr><td data-label="設計頁"><code>/magazine/styleguide</code></td><td data-label="我們的頁">—</td><td data-label="對應狀況">➕ 設計指南本身</td></tr>
+    </tbody>
+    </table>
+    <h3 id="sec-3-1">2.1 首頁</h3>
+    <ul>
+    <li><strong>設計</strong>：大標 → 封面人物跨頁（大圖＋人物簡介＋四格數據）→ 近期賽果 → 異動快訊。</li>
+    <li><strong>我們</strong>（<code>components/home/home-page.tsx</code>）：最新賽況 → 球員動態 → <strong>即將出賽</strong> → 外加整套 <code>emptyState</code>（休賽季的本季／上季回顧＋名詞推薦）。</li>
+    </ul>
+    <p><strong>設計缺</strong>：即將出賽整區、<code>emptyState</code> 整套。前者是 PRD §9.1 已定的功能。</p>
+    <p><strong>設計多</strong>：封面人物需要 <code>headshot</code> + <code>summary</code>（人物介紹段），DB 兩個欄位都沒有。</p>
+    <h3 id="sec-3-2">2.2 球員名冊</h3>
+    <ul>
+    <li><strong>設計</strong>：依 MLB/3A/2A 分區，每區標題列＋人數；卡片有編號浮水印、頭像、三格數據。</li>
+    <li><strong>我們</strong>：層級下拉 + 排序下拉 + archived 折疊區；卡片有「狀態一句話」與「近況一句話」。</li>
+    </ul>
+    <p><strong>設計缺</strong>：篩選／排序 UI、archived 區、狀態一句話的位置。</p>
+    <p><strong>設計多</strong>：頭像、編號浮水印。</p>
+    <h3 id="sec-3-3">2.3 球員個人頁（差距最大）</h3>
+    <p>設計 7 區：返回列 → hero → 檔案資訊（摘要＋4 格 dl）→ 近期比賽紀錄（<code>StatList</code>）→ 近況走勢 sparkline → 媒體與新聞集錦 → 本季數據（<code>StatCards</code>）→ 逐季歷史表 → 個人動態。</p>
+    <p>我們 5 區（spec-02 §2.3）：hero → 球季數據 → 逐場成績 → 動態時間軸 → 出賽預告。</p>
+    <p><strong>設計缺</strong>：</p>
+    <ul>
+    <li><strong>出賽預告整區</strong>（下一系列賽、確定先發／可能出賽／傷兵中、台灣時間、近期戰績）——無任何對應樣板。</li>
+    <li><strong>進階數據展開區</strong>（<code>components/player-detail/season-stats.tsx:132</code> 的 <code>&lt;details&gt;</code>，每項連回名詞頁）。</li>
+    <li><strong>完整數據表的資訊量</strong>：我們打擊 20 欄、投球 20 欄（<code>season-stats.tsx:24-68</code>），另有 per-team 分列＋<strong>合計列</strong>＋「低階層級數據僅供參考」註記。設計的 <code>StatCards</code> 一個層級只放 <strong>4 個</strong>大數字——這不是樣式差異，是差一個量級，需要「4 格重點 + 可展開完整表」的折衷。</li>
+    <li><strong>archived 球員</strong>的「已離開美職體系／生涯總成績」模式。</li>
+    </ul>
+    <p><strong>設計多</strong>：媒體與新聞集錦（news/thread/tweet/video ＋縮圖，<strong>無資料來源</strong>）、sparkline 走勢（需 0-100 的 form 序列，<strong>無此資料</strong>）、人物 <code>summary</code>。</p>
+    <h3 id="sec-3-4">2.4 名詞（架構性衝突，非樣式問題）</h3>
+    <ul>
+    <li><strong>設計</strong>：單頁 <code>/magazine/glossary</code>，搜尋框 + 分類分區 + 卡片，<strong>點卡片開 modal</strong>。</li>
+    <li><strong>我們</strong>：<code>/glossary</code> 索引 + 每則獨立 <code>/glossary/[slug]</code> 靜態頁（<code>dynamicParams = false</code>、24 則 MDX）。</li>
+    </ul>
+    <blockquote><p>⚠️ <strong>全面 modal 化會直接砸掉 SEO</strong>。<code>requirements.md</code> §8 成功樣貌寫明「球員頁與名詞頁能被 Google 搜到」，<code>app/glossary/[slug]/page.tsx</code> 也有 <code>generateStaticParams</code> ＋ OG metadata。</p></blockquote>
+    <p><strong>建議</strong>：保留獨立頁，<strong>把設計 modal 的內容結構當成名詞頁的版面骨架</strong>。設計的五段（簡述概念／對球員的意義／數據高低／站內相關／延伸參考）與我們 spec-04 的四層（判讀 → 定義算法小字 → 延伸 → 範例回連）大致對得上，只多出「簡述概念」條列。索引頁則採用設計的搜尋框＋卡片牆。</p>
+    <p><strong>分類也對不上</strong>：</p>
+    <table>
+    <thead><tr><th>設計</th><th>我們</th></tr></thead>
+    <tbody>
+    <tr><td data-label="設計">打擊數據</td><td data-label="我們"><code>batting_adv</code></td></tr>
+    <tr><td data-label="設計">投球數據</td><td data-label="我們"><code>pitching_adv</code></td></tr>
+    <tr><td data-label="設計"><strong>防守數據</strong>（我們沒有）</td><td data-label="我們">—</td></tr>
+    <tr><td data-label="設計">綜合評估數據</td><td data-label="我們">部分 <code>shared_adv</code></td></tr>
+    <tr><td data-label="設計">規則</td><td data-label="我們"><code>roster</code></td></tr>
+    <tr><td data-label="設計">—</td><td data-label="我們"><strong><code>standard</code>（標準數據）、<code>shared_adv</code>（打投共用）</strong></td></tr>
+    </tbody>
+    </table>
+    <p><strong>欄位對映</strong>：<code>term ← name_zh</code>、<code>abbr ← name_en</code>、<code>desc ← blurb</code>、<code>points</code>/<code>meaning ← MDX body</code>、<code>scale ← bands</code>（見 §3 第一列，需改造）、<code>links ← sources</code>、<code>related ← 範例球員回連</code>。</p>
+    <h3 id="sec-3-5">2.5 「我想知道」（全新）</h3>
+    <p>情境問題牆 + 主題標籤篩選 + modal 帶出對應名詞。純新功能，需要新內容模型（<code>FanQuestion</code>：question / context / tags / terms[]）。MDX 名詞庫可當素材，但問題本身要人工寫。<strong>可與拉皮脫鉤，另行決定。</strong></p>
+  </section>
+  <section>
+    <h2 id="sec-4" data-num="3">我們有、設計沒有的 UI —— 用設計語彙的實作對照</h2>
+    <p>設計指南頁（<code>components/magazine/styleguide-page.tsx</code>）本身就是為此而寫的樣板集。逐項對照：</p>
+    <table>
+    <thead><tr><th>我們的 UI</th><th>現行檔案</th><th>用設計的哪個元素</th></tr></thead>
+    <tbody>
+    <tr><td data-label="我們的 UI"><strong>級距表</strong>（MLB/3A/2A × 打者/投手）</td><td data-label="現行檔案"><code>components/glossary/bands-table.tsx</code></td><td data-label="用設計的哪個元素"><strong>ScaleBar</strong>（<code>styleguide-page.tsx:438</code>）只有單一軸 → <strong>一層級一條、垂直堆三條</strong>，左側掛層級 badge；打投兩視角各用一個「Modal 分段小標」段落。<code>zones[].tone</code>（low/mid/high）對應 band 優劣，<code>hint</code> 放「數字越低越好」，<code>note</code> 放層級說明</td></tr>
+    <tr><td data-label="我們的 UI"><strong>進階數據展開</strong></td><td data-label="現行檔案"><code>season-stats.tsx:132</code></td><td data-label="用設計的哪個元素">「數據區塊」樣板（<code>border-l-2 border-accent</code> ＋大寫 mono 指標名＋大字數值＋hint 小字，<code>styleguide-page.tsx:254</code>）。hint 位置正好放 band label（「優異」），指標名本身即名詞頁連結</td></tr>
+    <tr><td data-label="我們的 UI"><strong>完整 20 欄數據表</strong></td><td data-label="現行檔案"><code>season-stats.tsx:75</code></td><td data-label="用設計的哪個元素">設計的<strong>逐季歷史表</strong>（<code>magazine-player-detail.tsx:345</code>）已解此題：<code>overflow-x-auto</code> ＋ <code>min-w-[52rem]</code> ＋ <strong>sticky 左欄</strong> ＋「← 左右滑動查看更多欄位 →」提示 ＋同季多列虛線分組。合計列用 <code>border-y-2 border-foreground</code> 加粗區隔</td></tr>
+    <tr><td data-label="我們的 UI"><strong>出賽預告 / 即將出賽</strong></td><td data-label="現行檔案"><code>player-detail/upcoming.tsx</code></td><td data-label="用設計的哪個元素">「賽果／動態列」樣板（<code>grid-cols-[auto_1fr]</code>，左 mono 日期、右主體）。三個 tag 沿用層級 badge 形狀換色：確定先發＝<code>--accent</code> 實心、可能出賽＝描邊、傷兵中＝<code>--down</code>。勝敗吃 <code>--up</code>／<code>--down</code></td></tr>
+    <tr><td data-label="我們的 UI"><strong>名冊篩選／排序</strong></td><td data-label="現行檔案"><code>players-view.tsx:55</code></td><td data-label="用設計的哪個元素"><strong>主題 Filter 標籤</strong>（<code>questions-page.tsx:77</code> 的 <code>TagButton</code>，選中暖橘實心／未選描邊）取代 <code>&lt;select&gt;</code>；排序保留下拉或做兩顆 chip</td></tr>
+    <tr><td data-label="我們的 UI"><strong>歷史球員折疊區</strong></td><td data-label="現行檔案"><code>players-view.tsx:96</code></td><td data-label="用設計的哪個元素">設計無 disclosure 樣板 → 沿用層級分區標題列（<code>border-b-2</code> ＋ badge ＋人數）包 <code>&lt;details&gt;</code>，卡片降對比表示已封存</td></tr>
+    <tr><td data-label="我們的 UI"><strong>首頁 empty state</strong></td><td data-label="現行檔案"><code>home-page.tsx:49</code></td><td data-label="用設計的哪個元素"><strong>空狀態</strong>樣板（圖示圓框＋襯線大標＋說明＋行動按鈕，<code>styleguide-page.tsx:416</code>）；名詞推薦三格用<strong>名詞卡</strong>樣板</td></tr>
+    <tr><td data-label="我們的 UI"><strong>資料新鮮度 footer</strong></td><td data-label="現行檔案"><code>components/site-footer.tsx</code></td><td data-label="用設計的哪個元素">設計<strong>完全沒有 footer</strong> → 用 kicker 樣式（<code>font-mono text-[11px] uppercase tracking-[0.3em]</code>）＋上邊框，維持克制</td></tr>
+    <tr><td data-label="我們的 UI"><strong>行動版導覽</strong></td><td data-label="現行檔案"><code>site-header.tsx:44</code></td><td data-label="用設計的哪個元素">設計的 <code>MagazineNav</code> 是桌機 flex、<strong>無漢堡選單</strong>（四連結在窄螢幕會擠）→ 保留現有 Menu/X 收合邏輯，外觀換成襯線字＋<code>border-b-4 border-primary</code> 報頭樣式</td></tr>
+    <tr><td data-label="我們的 UI"><strong>狀態一句話／近況一句話</strong></td><td data-label="現行檔案"><code>player-hero.tsx:52</code></td><td data-label="用設計的哪個元素">設計 hero 放的是人工 <code>summary</code>，無此二句的位置 → 狀態句用封面人物的<strong>斜體襯線引言</strong>（<code>border-l-4 border-accent pl-4 font-serif italic</code>），近況句放其下小字</td></tr>
+    </tbody>
+    </table>
+  </section>
+  <section>
+    <h2 id="sec-5" data-num="4">設計原則（摘自設計指南頁，供實作對齊）</h2>
+    <ol>
+    <li>大字襯線標題建立雜誌般的視覺層級與個性。</li>
+    <li>深藍為主、暖橘為輔，<strong>強調色克制、只點在關鍵處</strong>。</li>
+    <li>數據與標籤一律等寬字體，維持對齊與工整。</li>
+    <li>大量留白與雙欄節奏，讓輕度球迷也易於閱讀。</li>
+    </ol>
+    <p>版面骨架：<code>mx-auto max-w-6xl px-6</code>（我們現行是 <code>max-w-5xl px-4</code> / 個人頁 <code>max-w-3xl</code>）；區塊標題 = kicker（<code>font-mono text-[11px] uppercase tracking-[0.3em] text-accent</code>）＋襯線大標；卡片 hover = <code>-translate-y-1</code> ＋ <code>shadow-lg</code> ＋暖橘邊框。</p>
+  </section>
+  <section>
+    <h2 id="sec-6" data-num="5">待決四題（拍板後才開票）</h2>
+    <h3 id="sec-6-1">5.1 球員照片 —— 與 PRD 正面衝突</h3>
+    <p><code>requirements.md:233</code> 已定：<strong>只放球隊 logo，不放球員照片</strong>（避開肖像權）。設計專案的封面跨頁、名冊卡、球員頁 hero <strong>全以頭像為視覺主體</strong>（<code>public/players/*.png</code>，alt 寫「示意插畫」）。</p>
+    <p><strong>選項</strong>：(a) 以隊徽／剪影／插畫替代；(b) 重開這個產品決策。</p>
+    <blockquote><p>設計本身已備妥不依賴照片的替代品：<code>magazine-player-detail.tsx:227</code> 的<strong>姓氏浮水印</strong>（<code>text-[12rem] text-primary-foreground/[0.06]</code>）正是為此而設計，把中央圓形頭像換成隊徽即可成立。</p></blockquote>
+    <h3 id="sec-6-2">5.2 深色模式</h3>
+    <p>設計只做亮色。→ 保留我們現有深色盤（需自配深藍系 dark token），或砍掉？</p>
+    <h3 id="sec-6-3">5.3 名詞頁 modal vs 獨立頁</h3>
+    <p>建議保留獨立頁（SEO 是驗收條件），只借 modal 的版面骨架。</p>
+    <h3 id="sec-6-4">5.4 資料缺口</h3>
+    <p><code>summary</code>（人物介紹）、<code>headshot</code>、媒體連結、sparkline 走勢序列——四項設計有、DB 沒有。→ 補 schema，還是這幾區先不做？</p>
+  </section>
+  <section>
+    <h2 id="sec-7" data-num="6">附註</h2>
+    <ul>
+    <li>設計專案的 <code>next.config.mjs</code> 開了 <code>typescript.ignoreBuildErrors: true</code> 與 <code>images.unoptimized: true</code>——<strong>v0 產出的權宜設定，不要跟著搬</strong>。</li>
+    <li>設計的 <code>/magazine/glossary</code> 右下角有「測試畫面」浮動按鈕（循環 default／keyword／empty），是設計檢視用的 dev 工具，搬運時應移除。</li>
+    <li>設計專案的 <code>lib/players-data.ts</code>（857 行）與 <code>lib/player-detail-data.ts</code>（320 行）是靜態假資料，<strong>不搬</strong>；我們接的是 <code>lib/services/*</code> 的真實資料。</li>
+    </ul>
+    <p>_文件位置慣例見 <code>CLAUDE.md</code>；本文屬 <code>plan/</code>（發想脈絡），拍板後的決策入 <code>adr/</code>、可照做的細節入 <code>spec/</code>。_</p>
+  </section>
+
+  <footer class="page-foot">
+    自動由 <code>docs/plan/ui-reskin-2026-08-12.md</code> 產生 · <code>python3 scripts/build_docs.py</code>
+  </footer>
+
+  </div>
+</div>
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc nav a'));
+  if (!links.length) return;
+  var byId = {};
+  var targets = [];
+  links.forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    var el = document.getElementById(id);
+    if (el) { byId[id] = a; targets.push(el); }
+  });
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      var active = null;
+      for (var i = 0; i < targets.length; i++) {
+        if (visible[targets[i].id]) { active = targets[i].id; break; }
+      }
+      links.forEach(function (a) { a.classList.remove('active'); });
+      if (active && byId[active]) byId[active].classList.add('active');
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  }
+  // 手機版預設收合目錄
+  var box = document.querySelector('.toc-box');
+  if (box && window.matchMedia('(max-width: 960px)').matches) box.removeAttribute('open');
+})();
+</script>
+</body>
+</html>

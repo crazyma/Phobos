@@ -595,6 +595,16 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
+    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端</strong>（研究已完成，見 <code>plan/ui-reskin-2026-08-12.md</code>；<strong>待 batu 拍板四題後才開票</strong>到 <code>.scratch/ui-reskin/issues/</code>）。
+    <ul>
+    <li><strong>技術面無阻礙</strong>：兩邊同為 Next 16 / React 19 / Tailwind v4 / shadcn <code>base-nova</code> / <code>@base-ui/react</code> / lucide，且設計專案通篇手刻 Tailwind、<code>@/components/ui/*</code> import 數為 <strong>0</strong> ⇒ <strong>不需新增任何 npm 依賴</strong>。要動的只有三處：字體（<code>Noto_Serif_TC</code>／<code>Noto_Sans_TC</code>／<code>Geist_Mono</code>，走 <code>next/font/google</code>）、<code>globals.css</code> 的 8 個新語意 token（<code>--mlb/--aaa/--aa</code>、<code>--up/--down</code>）、以及設計沒畫到的區塊。</li>
+    <li><strong>設計覆蓋不到我們現有的</strong>：出賽預告（PRD §9.1 已定）、首頁 <code>emptyState</code>、archived 球員、名冊篩選/排序、進階數據展開區、20 欄完整數據表（設計每層級只放 4 格）、資料新鮮度 footer、行動版漢堡選單。§3 已逐項給出「用設計的哪個樣板實作」對照。</li>
+    <li><strong>設計層級只有三階、我們有六階</strong>（<code>players-view.tsx:11</code> 的 <code>a_plus/a/rookie</code> 無色）；設計亦<strong>無深色模式</strong>（<code>color-scheme: light</code>、無 <code>.dark</code> 區塊）。</li>
+    <li><strong>待決四題</strong>：① <strong>球員照片與 <code>requirements.md:233</code>「只放球隊 logo」正面衝突</strong>——設計全以頭像為視覺主體，替代方案是設計自帶的姓氏浮水印＋隊徽；② 深色模式保留或砍；③ 名詞頁 modal 化會砸掉 SEO（<code>requirements.md</code> §8 驗收條件），建議保留 <code>/glossary/[slug]</code> 獨立頁只借版面骨架；④ <code>summary</code>／<code>headshot</code>／媒體連結／sparkline 走勢四項資料 DB 沒有，要補 schema 或該區不做。</li>
+    <li>「我想知道」問題牆為<strong>全新頁</strong>（需新內容模型 <code>FanQuestion</code>），可與拉皮脫鉤另議。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done">~~<strong><code>team-names-zh</code>（1 票，<code>.scratch/team-names-zh/issues/</code>）</strong>~~（2026-08-07 完成，見已完成區）——大聯盟 30 支手寫中文名、小聯盟由母隊推導。</li>
     </ul>
     <ul class="todo">

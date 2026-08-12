@@ -325,6 +325,13 @@
 
 ## ▶️ 進行中 / 下一步
 
+- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端**（研究已完成，見 `plan/ui-reskin-2026-08-12.md`；**待 batu 拍板四題後才開票**到 `.scratch/ui-reskin/issues/`）。
+  - **技術面無阻礙**：兩邊同為 Next 16 / React 19 / Tailwind v4 / shadcn `base-nova` / `@base-ui/react` / lucide，且設計專案通篇手刻 Tailwind、`@/components/ui/*` import 數為 **0** ⇒ **不需新增任何 npm 依賴**。要動的只有三處：字體（`Noto_Serif_TC`／`Noto_Sans_TC`／`Geist_Mono`，走 `next/font/google`）、`globals.css` 的 8 個新語意 token（`--mlb/--aaa/--aa`、`--up/--down`）、以及設計沒畫到的區塊。
+  - **設計覆蓋不到我們現有的**：出賽預告（PRD §9.1 已定）、首頁 `emptyState`、archived 球員、名冊篩選/排序、進階數據展開區、20 欄完整數據表（設計每層級只放 4 格）、資料新鮮度 footer、行動版漢堡選單。§3 已逐項給出「用設計的哪個樣板實作」對照。
+  - **設計層級只有三階、我們有六階**（`players-view.tsx:11` 的 `a_plus/a/rookie` 無色）；設計亦**無深色模式**（`color-scheme: light`、無 `.dark` 區塊）。
+  - **待決四題**：① **球員照片與 `requirements.md:233`「只放球隊 logo」正面衝突**——設計全以頭像為視覺主體，替代方案是設計自帶的姓氏浮水印＋隊徽；② 深色模式保留或砍；③ 名詞頁 modal 化會砸掉 SEO（`requirements.md` §8 驗收條件），建議保留 `/glossary/[slug]` 獨立頁只借版面骨架；④ `summary`／`headshot`／媒體連結／sparkline 走勢四項資料 DB 沒有，要補 schema 或該區不做。
+  - 「我想知道」問題牆為**全新頁**（需新內容模型 `FanQuestion`），可與拉皮脫鉤另議。
+
 - [x] ~~**`team-names-zh`（1 票，`.scratch/team-names-zh/issues/`）**~~（2026-08-07 完成，見已完成區）——大聯盟 30 支手寫中文名、小聯盟由母隊推導。
 
 - [x] ~~**`sync-runs-test-isolation/02`（`.scratch/sync-runs-test-isolation/issues/`）——Python ETL 測試仍寫在開發 DB 上**~~（2026-08-06 完成，見已完成區）——`uv run pytest` 改連 `phobos_test`，找不到就 skip、不退回開發庫。
