@@ -325,8 +325,9 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（8 票，`.scratch/ui-reskin/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板，**票已開、尚未動工**。
-  - **相依順序**：**01 設計基礎★**（字體／token／全域外框／共用樣板，blocks 全部）→ 02 名冊、03 個人頁 A（hero／近期比賽／媒體 mock／時間軸／出賽預告）、05 首頁、06 名詞 **四票可並行** → 04 個人頁 B（數據區，blocked by 03 因同頁）→ 07 sparkline（blocked by 04）。**08 隊徽獨立、時機未定、不阻斷任何票**。★＝frontier。
+- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（7 票，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板，**票已開、尚未動工**。
+  - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦）、04 首頁、05 名詞、07 隊徽 **四票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
+  - **⚠️ 舊的 8 票（`.scratch/ui-reskin/issues/`）已作廢**，標記見 `.scratch/ui-reskin/SUPERSEDED.md`。舊批是未經 `/to-tickets` 手寫的，兩處實質偏差：跳過「Quiz the user」、且 `01 設計基礎` 是**水平**切片（明寫「不改任何頁面內容」、無法獨立 demo）。v2 以 skill 重開並經 batu 確認：**地基折進第一張頁面票**（已確認地基變更是純加法、不破壞既有頁面，故不適用 wide-refactor 的 expand–contract 例外）、每票只帶自己要的樣板、媒體集錦併入球員頁票。**兩批的技術決策一致**，差別在切分與流程。
   - **開票時查證出的一項修正（已回寫 plan §5.5）**：原建議 sparkline 打者畫 season-to-date OPS，**不成立**——`game_batting_lines`（`lib/db/schema/games.ts:28-52`）**沒有 `hbp` 也沒有 `sf`**（欄位只有 `pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb`），OBP 算不出來、OPS 也就算不出來。**改為投手 ERA（`er × 27 ÷ ipOuts`）、打者 AVG（`h ÷ ab`）**，兩者皆可精算。把 HBP/SF 當 0 近似 OBP **不做**——會系統性低估，等於在圖上放沒有出處的數字，與拒絕設計那個編造的 0-100「狀態分數」是同一條理由。日後要 OPS 須補 ETL 把 `hbp`／`sf` 寫進 `game_batting_lines`（schema＋ETL 變更），另案。
   - **票 07 另記兩個坑**：sparkline **自我正規化**（`range = max - min || 1`）⇒ 只表達形狀不表達幅度，故圖上**必須**標指標名與終點值；且 `sparkline.tsx:20` 的 `step = width / (data.length - 1)` 在單點資料會 `Infinity`。
   - **技術面無阻礙**：兩邊同為 Next 16 / React 19 / Tailwind v4 / shadcn `base-nova` / `@base-ui/react` / lucide，且設計專案通篇手刻 Tailwind、`@/components/ui/*` import 數為 **0** ⇒ **不需新增任何 npm 依賴**。要動的只有三處：字體（`Noto_Serif_TC`／`Noto_Sans_TC`／`Geist_Mono`，走 `next/font/google`）、`globals.css` 的 8 個新語意 token（`--mlb/--aaa/--aa`、`--up/--down`）、以及設計沒畫到的區塊。
