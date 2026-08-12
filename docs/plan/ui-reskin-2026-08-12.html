@@ -151,13 +151,13 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">0</span>一句話結論</a></li><li><a href="#sec-2"><span class="toc-num">1</span>技術棧相容性</a><ul class="sub"><li><a href="#sec-2-1">1.1 設計專案沒有用元件庫</a></li><li><a href="#sec-2-2">1.2 需要動的三件事</a></li><li><a href="#sec-2-3">1.3 可直接複製的檔案</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">2</span>頁面對應</a><ul class="sub"><li><a href="#sec-3-1">2.1 首頁</a></li><li><a href="#sec-3-2">2.2 球員名冊</a></li><li><a href="#sec-3-3">2.3 球員個人頁（差距最大）</a></li><li><a href="#sec-3-4">2.4 名詞（架構性衝突，非樣式問題）</a></li><li><a href="#sec-3-5">2.5 「我想知道」（全新）</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">3</span>我們有、設計沒有的 UI —— 用設計語彙的實作對照</a></li><li><a href="#sec-5"><span class="toc-num">4</span>設計原則（摘自設計指南頁，供實作對齊）</a></li><li><a href="#sec-6"><span class="toc-num">5</span>待決四題（拍板後才開票）</a><ul class="sub"><li><a href="#sec-6-1">5.1 人物圖像 —— <strong>已決議：一律不放，改純字排＋隊徽</strong>（2026-08-12，batu）</a></li><li><a href="#sec-6-2">5.2 深色模式</a></li><li><a href="#sec-6-3">5.3 名詞頁 modal vs 獨立頁</a></li><li><a href="#sec-6-4">5.4 資料缺口</a></li></ul></li><li><a href="#sec-7"><span class="toc-num">6</span>附註</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">0</span>一句話結論</a></li><li><a href="#sec-2"><span class="toc-num">1</span>技術棧相容性</a><ul class="sub"><li><a href="#sec-2-1">1.1 設計專案沒有用元件庫</a></li><li><a href="#sec-2-2">1.2 需要動的三件事</a></li><li><a href="#sec-2-3">1.3 可直接複製的檔案</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">2</span>頁面對應</a><ul class="sub"><li><a href="#sec-3-1">2.1 首頁</a></li><li><a href="#sec-3-2">2.2 球員名冊</a></li><li><a href="#sec-3-3">2.3 球員個人頁（差距最大）</a></li><li><a href="#sec-3-4">2.4 名詞（架構性衝突，非樣式問題）</a></li><li><a href="#sec-3-5">2.5 「我想知道」（全新）</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">3</span>我們有、設計沒有的 UI —— 用設計語彙的實作對照</a></li><li><a href="#sec-5"><span class="toc-num">4</span>設計原則（摘自設計指南頁，供實作對齊）</a></li><li><a href="#sec-6"><span class="toc-num">5</span>待決四題（拍板後才開票）</a><ul class="sub"><li><a href="#sec-6-1">5.1 人物圖像 —— <strong>已決議：一律不放，改純字排＋隊徽</strong>（2026-08-12，batu）</a></li><li><a href="#sec-6-2">5.2 深色模式 —— <strong>已決議：不做</strong>（2026-08-12，batu）</a></li><li><a href="#sec-6-3">5.3 名詞頁 modal vs 獨立頁</a></li><li><a href="#sec-6-4">5.4 資料缺口</a></li><li><a href="#sec-6-5">5.5 sparkline 走勢 —— ⏳ 待決</a></li></ul></li><li><a href="#sec-7"><span class="toc-num">6</span>附註</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
     <h1>UI 拉皮研究 — 以 Phobos-UI 雜誌風設計改寫前端（2026-08-12）</h1>
-    <p>研究外部設計專案 <code>Phobos-UI</code>（v0 產出、雜誌跨頁風格，自帶設計指南頁）能否用來改寫本站前端。結論：<strong>技術棧同源、可直接搬</strong>，但設計覆蓋的資訊深度只有現行的一部分，數處版面需要自行補齊。<br>本文只做研究與對照，<strong>不含實作切片</strong>。§5 四個待決項中，<strong>§5.1 人物圖像</strong>與 <strong>§5.3 名詞頁 modal</strong> 已於 2026-08-12 拍板；餘兩題決定後再開票到 <code>.scratch/ui-reskin/issues/</code>。</p>
-    <div class="badges"><span class="badge"><strong>類型</strong> 研究/選型</span><span class="badge"><strong>輸入</strong> Phobos-UI repo（v0 設計專案）</span><span class="badge"><strong>對象</strong> spec-02 既有五頁</span><span class="badge"><strong>狀態</strong> 4 題已決 2（人物圖像／名詞頁）、未動工</span></div>
+    <p>研究外部設計專案 <code>Phobos-UI</code>（v0 產出、雜誌跨頁風格，自帶設計指南頁）能否用來改寫本站前端。結論：<strong>技術棧同源、可直接搬</strong>，但設計覆蓋的資訊深度只有現行的一部分，數處版面需要自行補齊。<br>本文只做研究與對照，<strong>不含實作切片</strong>。§5 待決項已於 2026-08-12 拍板四項——<strong>§5.1 人物圖像</strong>（不放，改純字排＋隊徽）、<strong>§5.2 深色模式</strong>（不做）、<strong>§5.3 名詞頁</strong>（先 A 全頁、B 留 polish）、<strong>§5.4 媒體集錦</strong>（先用 mock）；<strong>僅餘 §5.5 sparkline 走勢待決</strong>，之後即可開票到 <code>.scratch/ui-reskin/issues/</code>。</p>
+    <div class="badges"><span class="badge"><strong>類型</strong> 研究/選型</span><span class="badge"><strong>輸入</strong> Phobos-UI repo（v0 設計專案）</span><span class="badge"><strong>對象</strong> spec-02 既有五頁</span><span class="badge"><strong>狀態</strong> 僅餘 sparkline 待決、未動工</span></div>
   </header>
 
   <section>
@@ -322,8 +322,19 @@
     <li>落地方式：<code>public/logos/</code> ＋ 一個走母隊推導的 <code>teamLogo(teamId)</code> helper。</li>
     </ul>
     <blockquote><p><strong>⏳ 仍未定：隊徽這張票的時機。</strong> 可以是拉皮的前置票，也可以先出「留白版本」（hero 只有姓氏浮水印、名冊卡純字排、隊名不掛徽）之後再補。三個版面在沒有隊徽時都成立，故不阻斷主線。</p></blockquote>
-    <h3 id="sec-6-2">5.2 深色模式</h3>
-    <p>設計只做亮色。→ 保留我們現有深色盤（需自配深藍系 dark token），或砍掉？</p>
+    <h3 id="sec-6-2">5.2 深色模式 —— <strong>已決議：不做</strong>（2026-08-12，batu）</h3>
+    <p>設計只做亮色（<code>:root { color-scheme: light }</code>、無 <code>.dark</code> 區塊）。決議跟進，不自配深藍系 dark token。</p>
+    <p><strong>這不是移除功能，是刪未曾生效的程式碼</strong>——實測全 repo：</p>
+    <ul>
+    <li>沒有任何地方掛 <code>.dark</code> class（無 theme toggle、無 <code>next-themes</code>、<code>&lt;html&gt;</code> 上也沒有）。</li>
+    <li><code>globals.css:5</code> 的 <code>@custom-variant dark (&amp;:is(.dark *))</code> 是 <strong>class-based</strong>，不吃 <code>prefers-color-scheme</code>。</li>
+    </ul>
+    <p>⇒ <code>globals.css:85-117</code> 那 33 行深色盤<strong>從未被觸發過</strong>。</p>
+    <p><strong>連帶清理</strong>（兩處僅有的 <code>dark:</code> 用法，同樣不可達）：</p>
+    <ul>
+    <li><code>components/ui/button.tsx</code>：shadcn 原樣帶來的 <code>dark:</code> variant，無害，可留可清。</li>
+    <li><code>components/player-detail/upcoming.tsx:68</code>：<code>dark:text-emerald-400</code>——勝敗色改吃 <code>--up</code>／<code>--down</code> token 後這條自然消失。</li>
+    </ul>
     <h3 id="sec-6-3">5.3 名詞頁 modal vs 獨立頁</h3>
     <p><strong>決議方向：先 A、把 B 當後續 polish。</strong>（2026-08-12 討論）</p>
     <p>問題不是「modal 不好」，而是<strong>「只有 modal」會拿掉 24 個可被索引的 URL</strong>。設計那頁的 modal 是純 client state：卡片是 <code>&lt;button&gt;</code>（<code>glossary-page.tsx:204</code>），詳解在 <code>if (!rendered) return null</code>（<code>:273</code>）之後才存在。</p>
@@ -365,11 +376,35 @@
     <tbody>
     <tr><td data-label="缺口"><code>headshot</code></td><td data-label="狀態">✅ <strong>不做</strong>（§5.1：不放任何人物圖像）</td></tr>
     <tr><td data-label="缺口"><code>summary</code>（人物介紹段）</td><td data-label="狀態">✅ <strong>不做</strong>——封面跨頁改引言跨頁後用<strong>近況一句話</strong>（已有真值），球員頁 hero 的位置由狀態句＋近況句填（§3 末列）</td></tr>
-    <tr><td data-label="缺口">媒體與新聞集錦</td><td data-label="狀態">⏳ 無資料來源。補 schema＋新 ETL source，還是整區先不做？</td></tr>
-    <tr><td data-label="缺口">sparkline 走勢（0-100 序列）</td><td data-label="狀態">⏳ 無此資料。可由 <code>game_*_lines</code> 逐場推導（需定義「狀態分數」），或整區先不做</td></tr>
+    <tr><td data-label="缺口">媒體與新聞集錦</td><td data-label="狀態">✅ <strong>先用 mock data</strong>（2026-08-12，batu）——版面先上，等資料源。見下方注意事項</td></tr>
+    <tr><td data-label="缺口">sparkline 走勢（0-100 序列）</td><td data-label="狀態">⏳ 待決，見 §5.5</td></tr>
     </tbody>
     </table>
+    <p>#### 媒體 mock 的三條紀律</p>
+    <p>批次數字與示意值不能混淆是本專案的既有立場（DEVLOG 多處以實測值取代推測值）。因此 mock 期間：</p>
+    <ol>
+    <li><strong>檔名自帶警示</strong>：放 <code>lib/services/media.mock.ts</code>，export 名稱含 <code>MOCK</code>，檔頭註明「等待真實資料源，勿當真值引用」。</li>
+    <li><strong>不進 <code>lib/services/index.ts</code> 的公開 barrel</strong>——避免日後被誤當成一般 service 接走。</li>
+    <li><strong>列為技術債並記在 DEVLOG</strong>，與「媒體資料源」一併結案；真實來源上線前，這一區不納入任何對帳或驗收數字。</li>
+    </ol>
     <blockquote><p>附帶：隊徽（<code>public/logos/</code> ＋ <code>teamLogo(teamId)</code> 走母隊推導）是 §5.1 帶出的<strong>新</strong>資料需求，時機未定、不阻斷主線。</p></blockquote>
+    <h3 id="sec-6-5">5.5 sparkline 走勢 —— ⏳ 待決</h3>
+    <p><strong>它是什麼</strong>：<code>components/sparkline.tsx</code>（57 行純 SVG，無座標軸、無刻度、線尾一點），用在球員頁「近期比賽紀錄」下方，每層級一張卡，標題「近七場狀態走勢」（<code>magazine-player-detail.tsx:298-321</code>）。</p>
+    <p><strong>兩個坑</strong>：</p>
+    <ol>
+    <li><strong>餵它的數字不存在</strong>。<code>form: number[]</code>（如林昱珉 <code>[58, 62, 55, 70, 66, 74, 80]</code>）是 0-100 的「狀態分數」——<strong>不是任何棒球數據</strong>，StatsAPI 沒有、我們 DB 也推不出來，是設計為了填圖自行編造。要上真值得先定義這個分數怎麼算，<strong>那才是工作量，畫圖不是</strong>。</li>
+    <li><strong>自我正規化</strong>（<code>range = max - min || 1</code>，取自資料本身）⇒ <strong>只表達形狀、不表達幅度</strong>。從 58 爬到 80 的球員，跟打擊率在 .290–.295 抖動的球員，畫出來一模一樣。當裝飾可以，當數據讀會誤導。</li>
+    </ol>
+    <p><strong>三條路</strong>：</p>
+    <table>
+    <thead><tr><th></th><th>做法</th><th>評價</th></tr></thead>
+    <tbody>
+    <tr><td data-label=""><strong>A</strong></td><td data-label="做法">整區不做</td><td data-label="評價">最省；球員頁少一塊，版面靠「近期比賽紀錄」撐得住</td></tr>
+    <tr><td data-label=""><strong>B</strong>（建議）</td><td data-label="做法">改畫<strong>季內累積走勢</strong>（打者 season-to-date OPS、投手 season-to-date ERA 隨比賽日推移）</td><td data-label="評價">資料現成（<code>game_*_lines</code> 已有逐場）、平滑好讀、語意誠實。必須在圖上標明指標名與起訖值，<strong>不可無標示</strong></td></tr>
+    <tr><td data-label=""><strong>C</strong></td><td data-label="做法">保留「狀態分數」概念但定義它</td><td data-label="評價">等於開一個小 spec（權重／樣本／層級校正），為一張裝飾圖不划算——且那個分數會成為全站唯一沒有出處的數字</td></tr>
+    </tbody>
+    </table>
+    <blockquote><p><strong>不比照媒體用 mock</strong>：媒體是「等資料源」，補上來源就換掉；sparkline 是「等定義」，mock 一個編造的分數等於把待決問題畫進 UI 裡。性質不同。</p></blockquote>
   </section>
   <section>
     <h2 id="sec-7" data-num="6">附註</h2>
