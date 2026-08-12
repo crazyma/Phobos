@@ -151,18 +151,18 @@
 </head>
 <body>
 <div class="layout">
-  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">0</span>一句話結論</a></li><li><a href="#sec-2"><span class="toc-num">1</span>技術棧相容性</a><ul class="sub"><li><a href="#sec-2-1">1.1 設計專案沒有用元件庫</a></li><li><a href="#sec-2-2">1.2 需要動的三件事</a></li><li><a href="#sec-2-3">1.3 可直接複製的檔案</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">2</span>頁面對應</a><ul class="sub"><li><a href="#sec-3-1">2.1 首頁</a></li><li><a href="#sec-3-2">2.2 球員名冊</a></li><li><a href="#sec-3-3">2.3 球員個人頁（差距最大）</a></li><li><a href="#sec-3-4">2.4 名詞（架構性衝突，非樣式問題）</a></li><li><a href="#sec-3-5">2.5 「我想知道」（全新）</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">3</span>我們有、設計沒有的 UI —— 用設計語彙的實作對照</a></li><li><a href="#sec-5"><span class="toc-num">4</span>設計原則（摘自設計指南頁，供實作對齊）</a></li><li><a href="#sec-6"><span class="toc-num">5</span>待決四題（拍板後才開票）</a><ul class="sub"><li><a href="#sec-6-1">5.1 球員照片 —— 與 PRD 正面衝突</a></li><li><a href="#sec-6-2">5.2 深色模式</a></li><li><a href="#sec-6-3">5.3 名詞頁 modal vs 獨立頁</a></li><li><a href="#sec-6-4">5.4 資料缺口</a></li></ul></li><li><a href="#sec-7"><span class="toc-num">6</span>附註</a></li></ul></nav></details></aside>
+  <aside class="toc"><details class="toc-box" open><summary>目錄</summary><nav><ul><li><a href="#sec-1"><span class="toc-num">0</span>一句話結論</a></li><li><a href="#sec-2"><span class="toc-num">1</span>技術棧相容性</a><ul class="sub"><li><a href="#sec-2-1">1.1 設計專案沒有用元件庫</a></li><li><a href="#sec-2-2">1.2 需要動的三件事</a></li><li><a href="#sec-2-3">1.3 可直接複製的檔案</a></li></ul></li><li><a href="#sec-3"><span class="toc-num">2</span>頁面對應</a><ul class="sub"><li><a href="#sec-3-1">2.1 首頁</a></li><li><a href="#sec-3-2">2.2 球員名冊</a></li><li><a href="#sec-3-3">2.3 球員個人頁（差距最大）</a></li><li><a href="#sec-3-4">2.4 名詞（架構性衝突，非樣式問題）</a></li><li><a href="#sec-3-5">2.5 「我想知道」（全新）</a></li></ul></li><li><a href="#sec-4"><span class="toc-num">3</span>我們有、設計沒有的 UI —— 用設計語彙的實作對照</a></li><li><a href="#sec-5"><span class="toc-num">4</span>設計原則（摘自設計指南頁，供實作對齊）</a></li><li><a href="#sec-6"><span class="toc-num">5</span>待決四題（拍板後才開票）</a><ul class="sub"><li><a href="#sec-6-1">5.1 人物圖像 —— <strong>已決議：一律不放，改純字排＋隊徽</strong>（2026-08-12，batu）</a></li><li><a href="#sec-6-2">5.2 深色模式</a></li><li><a href="#sec-6-3">5.3 名詞頁 modal vs 獨立頁</a></li><li><a href="#sec-6-4">5.4 資料缺口</a></li></ul></li><li><a href="#sec-7"><span class="toc-num">6</span>附註</a></li></ul></nav></details></aside>
   <div class="wrap">
 
   <header class="page-head">
     <h1>UI 拉皮研究 — 以 Phobos-UI 雜誌風設計改寫前端（2026-08-12）</h1>
-    <p>研究外部設計專案 <code>Phobos-UI</code>（v0 產出、雜誌跨頁風格，自帶設計指南頁）能否用來改寫本站前端。結論：<strong>技術棧同源、可直接搬</strong>，但設計覆蓋的資訊深度只有現行的一部分，且與 PRD 的「不放球員照片」決策正面衝突。<br>本文只做研究與對照，<strong>不含實作切片</strong>。四個待決項（§5）拍板後再開票到 <code>.scratch/ui-reskin/issues/</code>。</p>
-    <div class="badges"><span class="badge"><strong>類型</strong> 研究/選型</span><span class="badge"><strong>輸入</strong> Phobos-UI repo（v0 設計專案）</span><span class="badge"><strong>對象</strong> spec-02 既有五頁</span><span class="badge"><strong>狀態</strong> 待決四題、未動工</span></div>
+    <p>研究外部設計專案 <code>Phobos-UI</code>（v0 產出、雜誌跨頁風格，自帶設計指南頁）能否用來改寫本站前端。結論：<strong>技術棧同源、可直接搬</strong>，但設計覆蓋的資訊深度只有現行的一部分，數處版面需要自行補齊。<br>本文只做研究與對照，<strong>不含實作切片</strong>。§5 四個待決項中，<strong>§5.1 人物圖像</strong>與 <strong>§5.3 名詞頁 modal</strong> 已於 2026-08-12 拍板；餘兩題決定後再開票到 <code>.scratch/ui-reskin/issues/</code>。</p>
+    <div class="badges"><span class="badge"><strong>類型</strong> 研究/選型</span><span class="badge"><strong>輸入</strong> Phobos-UI repo（v0 設計專案）</span><span class="badge"><strong>對象</strong> spec-02 既有五頁</span><span class="badge"><strong>狀態</strong> 4 題已決 2（人物圖像／名詞頁）、未動工</span></div>
   </header>
 
   <section>
     <h2 id="sec-1" data-num="0">一句話結論</h2>
-    <p>搬的是 <strong>design token 與版面樣板</strong>，不是元件庫——設計專案通篇手刻 Tailwind，<code>@/components/ui/*</code> 的 import 數是 <strong>0</strong>。因此拉皮的成本不在依賴，在於<strong>補齊設計沒畫到的那些頁面區塊</strong>，以及<strong>先解決球員照片這個產品決策衝突</strong>。</p>
+    <p>搬的是 <strong>design token 與版面樣板</strong>，不是元件庫——設計專案通篇手刻 Tailwind，<code>@/components/ui/*</code> 的 import 數是 <strong>0</strong>。因此拉皮的成本不在依賴，在於<strong>補齊設計沒畫到的那些頁面區塊</strong>——出賽預告、首頁 empty state、archived、完整數據表、footer、行動版導覽，以及<strong>把設計倚賴人物圖像的三個版面改成純字排＋隊徽</strong>（§5.1）。</p>
   </section>
   <section>
     <h2 id="sec-2" data-num="1">技術棧相容性</h2>
@@ -226,14 +226,14 @@
     <li><strong>我們</strong>（<code>components/home/home-page.tsx</code>）：最新賽況 → 球員動態 → <strong>即將出賽</strong> → 外加整套 <code>emptyState</code>（休賽季的本季／上季回顧＋名詞推薦）。</li>
     </ul>
     <p><strong>設計缺</strong>：即將出賽整區、<code>emptyState</code> 整套。前者是 PRD §9.1 已定的功能。</p>
-    <p><strong>設計多</strong>：封面人物需要 <code>headshot</code> + <code>summary</code>（人物介紹段），DB 兩個欄位都沒有。</p>
+    <p><strong>設計多</strong>：封面人物需要 <code>headshot</code> + <code>summary</code>（人物介紹段），DB 兩個欄位都沒有。→ <strong>§5.1 已決議改為「引言跨頁」</strong>：左半放大字襯線的近況一句話＋層級 badge，右半維持四格數據，不需圖也不需 <code>summary</code>。</p>
     <h3 id="sec-3-2">2.2 球員名冊</h3>
     <ul>
     <li><strong>設計</strong>：依 MLB/3A/2A 分區，每區標題列＋人數；卡片有編號浮水印、頭像、三格數據。</li>
     <li><strong>我們</strong>：層級下拉 + 排序下拉 + archived 折疊區；卡片有「狀態一句話」與「近況一句話」。</li>
     </ul>
     <p><strong>設計缺</strong>：篩選／排序 UI、archived 區、狀態一句話的位置。</p>
-    <p><strong>設計多</strong>：頭像、編號浮水印。</p>
+    <p><strong>設計多</strong>：頭像、編號浮水印。→ <strong>§5.1 已決議拿掉頭像框</strong>，保留編號浮水印，卡片改純字排。</p>
     <h3 id="sec-3-3">2.3 球員個人頁（差距最大）</h3>
     <p>設計 7 區：返回列 → hero → 檔案資訊（摘要＋4 格 dl）→ 近期比賽紀錄（<code>StatList</code>）→ 近況走勢 sparkline → 媒體與新聞集錦 → 本季數據（<code>StatCards</code>）→ 逐季歷史表 → 個人動態。</p>
     <p>我們 5 區（spec-02 §2.3）：hero → 球季數據 → 逐場成績 → 動態時間軸 → 出賽預告。</p>
@@ -299,10 +299,29 @@
   </section>
   <section>
     <h2 id="sec-6" data-num="5">待決四題（拍板後才開票）</h2>
-    <h3 id="sec-6-1">5.1 球員照片 —— 與 PRD 正面衝突</h3>
-    <p><code>requirements.md:233</code> 已定：<strong>只放球隊 logo，不放球員照片</strong>（避開肖像權）。設計專案的封面跨頁、名冊卡、球員頁 hero <strong>全以頭像為視覺主體</strong>（<code>public/players/*.png</code>，alt 寫「示意插畫」）。</p>
-    <p><strong>選項</strong>：(a) 以隊徽／剪影／插畫替代；(b) 重開這個產品決策。</p>
-    <blockquote><p>設計本身已備妥不依賴照片的替代品：<code>magazine-player-detail.tsx:227</code> 的<strong>姓氏浮水印</strong>（<code>text-[12rem] text-primary-foreground/[0.06]</code>）正是為此而設計，把中央圓形頭像換成隊徽即可成立。</p></blockquote>
+    <h3 id="sec-6-1">5.1 人物圖像 —— <strong>已決議：一律不放，改純字排＋隊徽</strong>（2026-08-12，batu）</h3>
+    <p>#### 先更正一項事實</p>
+    <p>本文初稿把這題寫成「與 PRD 正面衝突」，<strong>講重了</strong>。<code>public/players/</code> 裡只有<strong>兩個檔案</strong>——<code>pitcher-portrait.png</code> 與 <code>batter-portrait.png</code>，六名球員按 <code>type</code> 共用，alt 寫「示意插畫」。<strong>設計用的不是真人肖像，是角色示意圖</strong>，並未違反 <code>requirements.md:233</code>（只放球隊 logo、不放球員照片）。</p>
+    <p>#### 真正的問題是密度，不是法務</p>
+    <p>我們目前 <strong>5 名 tracked 球員</strong>。照設計原樣，名冊頁會是五張卡、四張投手圖一模一樣。頭像框在設計稿裡好看，是因為那是「一整版不同人臉」的視覺假設；換成兩張圖輪播，80×80 的框就從資產變成噪音——<strong>比留白更糟</strong>。</p>
+    <p><strong>⇒ 決議：不放任何人物圖像（連示意插畫也不放）。</strong> 圖像位置改由字體排印與隊徽承擔——雜誌風格本來就吃這套，設計指南的四條原則第一條（大字襯線建立視覺層級）正是這個意思。</p>
+    <p>#### 三個缺口各自怎麼補</p>
+    <table>
+    <thead><tr><th>位置</th><th>設計原本</th><th>改為</th></tr></thead>
+    <tbody>
+    <tr><td data-label="位置"><strong>球員頁 hero</strong></td><td data-label="設計原本">128/160 圓形頭像 + <code>ring-4 ring-accent</code>（<code>magazine-player-detail.tsx:234</code>）</td><td data-label="改為"><strong>隊徽</strong>。深藍底＋暖橘圈＋隊徽，姓氏浮水印（<code>:227</code>，<code>text-[12rem] text-primary-foreground/[0.06]</code>）本來就在，版面撐得住</td></tr>
+    <tr><td data-label="位置"><strong>名冊卡</strong></td><td data-label="設計原本">80×80 方框頭像（<code>roster-page.tsx:32</code>）</td><td data-label="改為"><strong>拿掉圖框、純字排</strong>。設計自帶元素夠用：編號浮水印（<code>:27</code>）＋暖橘短線（<code>:44</code>）＋襯線大名＋mono 英文名；隊徽縮成 20px 掛在隊名旁</td></tr>
+    <tr><td data-label="位置"><strong>首頁封面跨頁</strong></td><td data-label="設計原本"><code>min-h-[380px]</code> 半版大圖（<code>magazine-page.tsx:42</code>）</td><td data-label="改為"><strong>引言跨頁</strong>（quote spread）。左半放大字襯線的<strong>近況一句話</strong>＋層級 badge，右半維持四格數據。雜誌本來就有這個形式，不需要圖</td></tr>
+    </tbody>
+    </table>
+    <p>#### 隊徽的來源</p>
+    <p><code>teams.mlbTeamId</code> 是 PK（<code>lib/db/schema/identity.ts:20</code>），對得上 MLB 靜態 logo；但目前 <code>public/</code> 只有 <code>og-default.png</code>，schema 亦無 logo 欄位。</p>
+    <ul>
+    <li><strong>把 30 支大聯盟隊徽下載進 <code>public/</code>，不 hotlink 第三方 CDN。</strong></li>
+    <li><strong>小聯盟一律用母隊隊徽</strong>——與 2026-08-07「中文隊名」那題同構（小聯盟不逐支處理、由 <code>parentOrgTeamId</code> 推導），201 支 affiliate 都有母隊參照，未來新增的隊自動涵蓋。</li>
+    <li>落地方式：<code>public/logos/</code> ＋ 一個走母隊推導的 <code>teamLogo(teamId)</code> helper。</li>
+    </ul>
+    <blockquote><p><strong>⏳ 仍未定：隊徽這張票的時機。</strong> 可以是拉皮的前置票，也可以先出「留白版本」（hero 只有姓氏浮水印、名冊卡純字排、隊名不掛徽）之後再補。三個版面在沒有隊徽時都成立，故不阻斷主線。</p></blockquote>
     <h3 id="sec-6-2">5.2 深色模式</h3>
     <p>設計只做亮色。→ 保留我們現有深色盤（需自配深藍系 dark token），或砍掉？</p>
     <h3 id="sec-6-3">5.3 名詞頁 modal vs 獨立頁</h3>
@@ -340,7 +359,17 @@
     </table>
     <p><strong>順序理由</strong>：拉皮的價值主要在視覺，modal 是錦上添花。先把 24 頁的版面換成設計骨架、索引頁補上搜尋與分類卡片牆，是風險最低的一刀；視覺落地後再花一張票做 B，spike 失敗也只是退回 A，不擋主線。</p>
     <h3 id="sec-6-4">5.4 資料缺口</h3>
-    <p><code>summary</code>（人物介紹）、<code>headshot</code>、媒體連結、sparkline 走勢序列——四項設計有、DB 沒有。→ 補 schema，還是這幾區先不做？</p>
+    <p>四項設計有、DB 沒有。<strong>§5.1 已解掉其中兩項</strong>：</p>
+    <table>
+    <thead><tr><th>缺口</th><th>狀態</th></tr></thead>
+    <tbody>
+    <tr><td data-label="缺口"><code>headshot</code></td><td data-label="狀態">✅ <strong>不做</strong>（§5.1：不放任何人物圖像）</td></tr>
+    <tr><td data-label="缺口"><code>summary</code>（人物介紹段）</td><td data-label="狀態">✅ <strong>不做</strong>——封面跨頁改引言跨頁後用<strong>近況一句話</strong>（已有真值），球員頁 hero 的位置由狀態句＋近況句填（§3 末列）</td></tr>
+    <tr><td data-label="缺口">媒體與新聞集錦</td><td data-label="狀態">⏳ 無資料來源。補 schema＋新 ETL source，還是整區先不做？</td></tr>
+    <tr><td data-label="缺口">sparkline 走勢（0-100 序列）</td><td data-label="狀態">⏳ 無此資料。可由 <code>game_*_lines</code> 逐場推導（需定義「狀態分數」），或整區先不做</td></tr>
+    </tbody>
+    </table>
+    <blockquote><p>附帶：隊徽（<code>public/logos/</code> ＋ <code>teamLogo(teamId)</code> 走母隊推導）是 §5.1 帶出的<strong>新</strong>資料需求，時機未定、不阻斷主線。</p></blockquote>
   </section>
   <section>
     <h2 id="sec-7" data-num="6">附註</h2>
