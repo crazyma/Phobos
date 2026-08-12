@@ -251,7 +251,7 @@
     <li><strong>我們</strong>：<code>/glossary</code> 索引 + 每則獨立 <code>/glossary/[slug]</code> 靜態頁（<code>dynamicParams = false</code>、24 則 MDX）。</li>
     </ul>
     <blockquote><p>⚠️ <strong>全面 modal 化會直接砸掉 SEO</strong>。<code>requirements.md</code> §8 成功樣貌寫明「球員頁與名詞頁能被 Google 搜到」，<code>app/glossary/[slug]/page.tsx</code> 也有 <code>generateStaticParams</code> ＋ OG metadata。</p></blockquote>
-    <p><strong>建議</strong>：保留獨立頁，<strong>把設計 modal 的內容結構當成名詞頁的版面骨架</strong>。設計的五段（簡述概念／對球員的意義／數據高低／站內相關／延伸參考）與我們 spec-04 的四層（判讀 → 定義算法小字 → 延伸 → 範例回連）大致對得上，只多出「簡述概念」條列。索引頁則採用設計的搜尋框＋卡片牆。</p>
+    <p><strong>建議</strong>：保留獨立頁，<strong>把設計 modal 的內容結構當成名詞頁的版面骨架</strong>。設計的五段（簡述概念／對球員的意義／數據高低／站內相關／延伸參考）與我們 spec-04 的四層（判讀 → 定義算法小字 → 延伸 → 範例回連）大致對得上，只多出「簡述概念」條列。索引頁則採用設計的搜尋框＋卡片牆。<strong>完整取捨與 A→B 執行順序見 §5.3。</strong></p>
     <p><strong>分類也對不上</strong>：</p>
     <table>
     <thead><tr><th>設計</th><th>我們</th></tr></thead>
@@ -306,7 +306,39 @@
     <h3 id="sec-6-2">5.2 深色模式</h3>
     <p>設計只做亮色。→ 保留我們現有深色盤（需自配深藍系 dark token），或砍掉？</p>
     <h3 id="sec-6-3">5.3 名詞頁 modal vs 獨立頁</h3>
-    <p>建議保留獨立頁（SEO 是驗收條件），只借 modal 的版面骨架。</p>
+    <p><strong>決議方向：先 A、把 B 當後續 polish。</strong>（2026-08-12 討論）</p>
+    <p>問題不是「modal 不好」，而是<strong>「只有 modal」會拿掉 24 個可被索引的 URL</strong>。設計那頁的 modal 是純 client state：卡片是 <code>&lt;button&gt;</code>（<code>glossary-page.tsx:204</code>），詳解在 <code>if (!rendered) return null</code>（<code>:273</code>）之後才存在。</p>
+    <p>#### 會掉什麼</p>
+    <table>
+    <thead><tr><th>現在有</th><th>modal-only 之後</th></tr></thead>
+    <tbody>
+    <tr><td data-label="現在有">24 個 <code>/glossary/[slug]</code> 靜態頁</td><td data-label="modal-only 之後">1 個 <code>/glossary</code></td></tr>
+    <tr><td data-label="現在有">每則獨立 title／description／OG／Twitter（<code>app/glossary/[slug]/page.tsx:24-39</code>）</td><td data-label="modal-only 之後">只剩索引頁一張通用卡</td></tr>
+    <tr><td data-label="現在有">sitemap 24 條（<code>lib/seo/sitemap.ts:12-14</code>）</td><td data-label="modal-only 之後">0 條</td></tr>
+    <tr><td data-label="現在有">站內有真連結指向每則名詞</td><td data-label="modal-only 之後">卡片是 <code>&lt;button&gt;</code>，爬蟲走不進去</td></tr>
+    </tbody>
+    </table>
+    <p>長尾查詢是名詞庫的主要獲客路徑——「wRC+ 是什麼」「FIP 中文」本來一頁精準對一題，全塞進一頁後 24 個主題互相稀釋。</p>
+    <blockquote><p><strong>排除一個看似可行的補救</strong>：把 24 份詳解都 SSR 進 DOM 再用 CSS 藏起來——<strong>不管用</strong>。索引單位是 URL 不是 DOM 片段，隱藏內容還會被降權。</p></blockquote>
+    <p>#### 比 SEO 更硬的一條</p>
+    <p>名詞頁不只是 SEO 資產，它是兩個機制的掛載點：</p>
+    <ol>
+    <li><strong>雙向連結</strong>（spec-04 §D）：<code>components/player-detail/season-stats.tsx:150</code> 的進階數據每項都連 <code>/glossary/${metricSlug(key)}</code>。名詞頁沒了，這些連結沒有去處。</li>
+    <li><strong>build-fail 護欄</strong>：<code>getRegistry()</code> 在 <code>app/glossary/[slug]/page.tsx:51</code> 被呼叫，build 時只要有顯示中的 metric 缺名詞頁就炸。這道「名詞頁先行」的保險是掛在名詞頁的 render 上的。</li>
+    </ol>
+    <p>而 <code>requirements.md</code> §8「球員頁與名詞頁能被 Google 搜到」是<strong>驗收條件</strong>，不是偏好。</p>
+    <p>#### 但設計師的判斷不是錯的</p>
+    <p>在索引頁掃過 24 張卡、想確認某則、看完回到原位——這個情境用整頁跳轉確實比較差。modal 解的是真問題，只是不能是唯一入口。</p>
+    <p>#### 三個選項</p>
+    <table>
+    <thead><tr><th></th><th>做法</th><th>評價</th></tr></thead>
+    <tbody>
+    <tr><td data-label=""><strong>A</strong>（先做）</td><td data-label="做法">索引頁採用設計的搜尋框＋卡片牆，卡片是真 <code>&lt;Link&gt;</code>，點擊進 <code>/glossary/[slug]</code> 全頁；<strong>全頁版面用 modal 那五段骨架</strong>（簡述概念／對球員的意義／數據高低／站內相關／延伸參考）</td><td data-label="評價">SEO 零風險、最快看到成果；失去「不離開索引頁」的閱讀感</td></tr>
+    <tr><td data-label=""><strong>B</strong>（後續 polish）</td><td data-label="做法"><strong>Intercepting routes</strong>：卡片一樣是真 <code>&lt;Link&gt;</code>，加 <code>app/@modal/(.)glossary/[slug]/page.tsx</code> 攔截 client-side 導航顯示 modal；直接輸網址／重新整理／爬蟲則走原本全頁。同一份 MDX body 兩邊共用，URL 也會變（可分享、可回上一頁關閉）</td><td data-label="評價">兩全。代價：root layout 要加 <code>@modal</code> slot；設計的雙 rAF 進場動畫要改寫（route 切換本身已延遲一拍）。<strong>⚠️ 未實測</strong> intercepting route 配我們 <code>await import(...content/glossary/${slug}.mdx)</code> 的動態 MDX 匯入在 Next 16 的行為 → 開票前需一次小 spike</td></tr>
+    <tr><td data-label=""><strong>C</strong></td><td data-label="做法">索引頁 modal 只放「預覽＋看完整說明」按鈕，深度內容仍在全頁</td><td data-label="評價">兩邊都不夠好，不建議</td></tr>
+    </tbody>
+    </table>
+    <p><strong>順序理由</strong>：拉皮的價值主要在視覺，modal 是錦上添花。先把 24 頁的版面換成設計骨架、索引頁補上搜尋與分類卡片牆，是風險最低的一刀；視覺落地後再花一張票做 B，spike 失敗也只是退回 A，不擋主線。</p>
     <h3 id="sec-6-4">5.4 資料缺口</h3>
     <p><code>summary</code>（人物介紹）、<code>headshot</code>、媒體連結、sparkline 走勢序列——四項設計有、DB 沒有。→ 補 schema，還是這幾區先不做？</p>
   </section>
