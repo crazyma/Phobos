@@ -71,7 +71,7 @@ weight 設定參考 `Phobos-UI/app/layout.tsx:6-21`。三個 variable 都要掛�
 - [x] `/players` 整頁為新版面，分區由 `LEVEL_ORDER` 產生、**六階皆有字樣**、空層級不出現
 - [x] 卡片純字排、**無頭像框**，狀態句與近況句都在且未被截斷
 - [x] 隊名不重複印層級
-- [x] 層級篩選為 chip、排序下拉保留、archived 折疊區可用、空狀態走 `EmptyState`
+- [x] 層級篩選為 chip、~~排序下拉保留~~（**票面有誤，見 Comments：排序已移除**）、archived 折疊區可用、空狀態走 `EmptyState`
 - [x] 三字體生效；8 個語意 token ＋ **補齊 `--a-plus`／`--a`／`--rookie`**
 - [x] `globals.css:85-117` 深色盤已刪
 - [x] 報頭樣式且**漢堡選單仍可用**；頁尾 kicker 化且 `lastSyncedAt` 不動；容器統一 `max-w-6xl px-6`
@@ -79,7 +79,21 @@ weight 設定參考 `Phobos-UI/app/layout.tsx:6-21`。三個 variable 都要掛�
 - [x] `components/players/players-view.test.tsx` 更新並綠
 - [x] `pnpm typecheck` 綠、`pnpm test` 綠
 
+## Comments
+
 - **不搬設計的 `next.config.mjs` 設定**：它開了 `typescript.ignoreBuildErrors: true` 與 `images.unoptimized: true`，是 v0 產出的權宜設定。
 - 本票不動任何 `lib/services/*`。
 - 完成後其他頁面會是「新報頭＋舊內文」的混搭狀態，**這是預期的**，由 02／04／05 收斂。
 - 2026-08-13：完成全站設計地基與 `/players` 雜誌風名冊。新增 Noto Sans TC／Noto Serif TC／Geist Mono 三字體、亮色語意 token 與六階徽章色，移除未生效的 `.dark` token；新增 `SectionTitle`、`LevelBadge`、`TagButton`、`EmptyState`、卡片 hover 共用樣板。名冊改為六階動態分區、chips 篩選、排序下拉、archived disclosure 與空狀態；卡片維持純字排並保留狀態／近況句。實際以 dev server 與本機 Chrome 檢視桌機及 390px 手機版 `/players`。
+
+### 事後 review 修掉三件（2026-08-13，同分支）
+
+完整敘述與實測數字見 `docs/DEVLOG.md` 2026-08-13。摘要：
+
+1. **頁尾 `mt-16` 從未生效**——與 `mt-auto` 同為 `margin-top`、同 specificity，編譯後 `mt-auto` 勝出。修法是單純移除、不補間距（頁面 section 已有 `pb-16`，且既然它從未生效，dev server 上驗收過的外觀就是沒有這 4rem）。
+2. **archived 卡片降對比空轉**——`opacity-60 … group-open:opacity-100` 在收合時子節點不顯示、展開時又拉回全不透明。改成 `PlayerCard` 的 `archived` prop、壓底色去彩度；實測次要文字由 3.47:1（透明度方案）回到 5.04:1，全數過 WCAG AA。
+3. **排序下拉完全失效，已移除**——見下條。
+
+> ⚠️ **本票開票時的錯誤（記給後續票參考）**：Checklist 寫「排序下拉保留」，理由是「chip 表達不了排序語意」。但這與同一張票要求的「層級分區」**直接相衝**——分區後區內成員層級必然相同，`levelRank` 差恆為 0，兩個排序選項輸出完全一致，那個 `<select>` 從一開始就是死的。**開票時沒想到，實作照票做也沒察覺。** 後續票若同時要求「分組呈現」與「排序控制」，先確認兩者不會互相抵銷。
+>
+> 已移除的是**控制項**不是排序本身——區內仍固定依姓名 `localeCompare(…, "zh-Hant")`，避免退化成 DB 回傳順序。

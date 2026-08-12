@@ -7,6 +7,19 @@
 
 ## ✅ 已完成
 
+### 2026-08-13
+
+- [x] **UI 拉皮票 01 完成——`/players` 換上雜誌風名冊，全站設計地基一併落地**（票 `.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`，分支 `feature/ui-reskin-v2-roster`）。
+  - **地基（純加法，故折進第一個垂直切片、不另開水平票）**：`next/font/google` 三角色分工（`Noto_Serif_TC` 標題／人名、`Noto_Sans_TC` 內文、`Geist_Mono` 所有數據與標籤）；`globals.css` 換深藍暖橘亮色盤並註冊 8 個新語意 token（`--mlb`／`--aaa`／`--aa`＋`-foreground`、`--up`／`--down`），另**自行補齊設計沒有的 `--a-plus`／`--a`／`--rookie`**——設計只有三階、我們有六階，漏掉的話低階徽章會是**沒有顏色**而不是 fallback。刪掉 `globals.css:85-117` 那 33 行**從未被觸發過**的深色盤（全 repo 無 `.dark` 掛載點，`@custom-variant dark` 是 class-based、不吃 `prefers-color-scheme`）。共用樣板 `SectionTitle`／`LevelBadge`／`TagButton`／`EmptyState`／卡片 hover 集中在 `components/magazine/`，單一落點供後續票沿用。
+  - **名冊頁**：`/players` 改為依 `LEVEL_ORDER` 六階**動態分區**（六階皆有中英文字樣、空層級不出現）、層級篩選由原生 `<select>` 改 `TagButton` chip、卡片維持**純字排無頭像**（編號浮水印＋暖橘短線＋襯線大名＋mono 英文名＋守位·隊名，另安排狀態句與近況句）、歷史球員收進 `<details>`、篩不到人走 `EmptyState`；報頭／頁尾 kicker 化、容器 `max-w-5xl px-4` → `max-w-6xl px-6`。隊名沿用 `withLevel: false` 不重複印層級。**未動任何 `lib/services/*`**；以 dev server ＋ 本機 Chrome 實際檢視桌機與 390px 手機版。完成後其他頁面是「新報頭＋舊內文」的混搭狀態，如票面預期，由 02／04／05 收斂。
+  - **事後 review 抓到並已在同分支修掉三件**：
+    1. **頁尾的 `mt-16` 從來沒有生效。** `components/site-footer.tsx` 同時掛 `mt-auto` 與 `mt-16`，兩者都是 `margin-top`、同 specificity，編譯後 `mt-auto` 排在後面而勝出，`mt-16` 被**靜默丟掉**。修法是**單純移除 `mt-16`、不補其他間距**——頁面 section 本身已有 `pb-16`（`app/players/page.tsx:15`），而且既然它從未生效，實作時用 dev server 檢視並確認過的版面**就是「沒有這 4rem」的樣子**，補上反而會改變已驗收的外觀。已就地留註解說明日後不要在此用 `mt-*` 加間距（要留白就加在 `<main>` 或頁面自己的 section）。
+    2. **歷史球員卡片的「降對比」永遠看不到。** `<ul>` 上是 `opacity-60 transition-opacity group-open:opacity-100`——`<details>` 收合時子節點根本不顯示（`opacity-60` 空轉），展開時 `group-open` 又把它拉回全不透明，**兩種狀態都沒有降對比**。改法不是調整透明度，而是**改成 `PlayerCard` 的 `archived` prop**：呼叫端只表達語意，由元件內部「壓底色 ＋ 去掉橘色重點」（`bg-muted`，短線與引言直線換 `bg-muted-foreground`／`border-muted-foreground`）。理由是整張卡片是可點的 `<a>`、**不適用 WCAG「非作用中元件」豁免**，而整體透明度會把次要文字壓到 AA 以下——**實測對比（headless Chrome 截圖逐像素算出）：不降 5.99:1、透明度 0.75 只剩 3.47:1、0.6 約 2.6:1；改壓底色後回到 5.04:1**，所有文字皆過 AA 4.5:1（姓名與狀態句 13.85:1）。
+    3. **「排序」下拉在改版後完全沒有作用，已移除。** 改版後名冊依 `LEVEL_ORDER` 固定順序分區渲染，**區內成員層級必然相同 ⇒ `levelRank` 差恆為 0 ⇒「依姓名」與「依層級」輸出完全一致**。**拿掉的是控制項、不是排序本身**——區內仍固定以 `localeCompare(…, "zh-Hant")` 依姓名排序，避免退化成 DB 回傳順序（已補測試：DB 順序刻意反過來，輸出仍為姓名序）。連帶移除 `sort` state、`SortKey` type 與 `levelRank()`。
+       - **成因值得記一筆**：這是**開票時**「排序保留下拉」（票面理由「chip 表達不了排序語意」）與「層級分區」兩條要求相撞，實作照票做但沒察覺兩者衝突。
+  - **實作過程發現的一個坑**：**測試檔裡寫出完整的 Tailwind class 字串（例如斷言某個 class 不存在）會被 Tailwind 掃成候選字，把那個已死的 utility 重新編回 CSS bundle**——斷言「它不存在」反而讓它存在。已改用不會構成合法候選的 regex 比對（如 `/opacity-\d/`、`/bg-muted(?![-\w])/`，後者順帶避開誤中 `bg-muted-foreground`），並在 `players-view.test.tsx` 與 `player-card.tsx` 原處留註解說明。
+  - `pnpm typecheck` 綠、`pnpm test` 綠。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
@@ -337,7 +350,7 @@
   - **sparkline 走勢已決（2026-08-12，batu：選 B——季內累積走勢）**（plan §5.5、票 07）。不畫設計那個編造的 0-100「狀態分數」；**也不比照媒體用 mock**——媒體是「等資料源」，sparkline 是「等定義」，mock 一個編造分數等於把待決問題畫進 UI。打者指標的修正見上方「開票時查證出的一項修正」。
   - 「我想知道」問題牆為**全新頁**（需新內容模型 `FanQuestion`），可與拉皮脫鉤另議。
 
-- [x] **UI 拉皮票 01：球員名冊改版＋設計地基**（2026-08-13，`.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`，分支 `feature/ui-reskin-v2-roster`）——`/players` 改為六階動態分區的雜誌風純字排名冊，加入層級 chip、排序、archived disclosure 與 EmptyState；全站換 Noto Sans TC／Noto Serif TC／Geist Mono、深藍暖橘亮色 token（含 `a_plus`／`a`／`rookie`）、新版報頭／頁尾與 `max-w-6xl px-6` 容器。共用樣板集中在 `components/magazine/`，未動 `lib/services/*`；以 dev server＋Chrome 實際檢視桌機與手機 `/players`。`pnpm typecheck`、`pnpm test` 綠。
+- [x] ~~**UI 拉皮票 01：球員名冊改版＋設計地基**（`.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`）~~（2026-08-13 完成，見已完成區；分支 `feature/ui-reskin-v2-roster`）——`/players` 六階動態分區的雜誌風純字排名冊＋全站設計地基；含事後 review 修掉的頁尾 `mt-16` 失效、archived 降對比空轉、失效的排序下拉三項。
 
 - [x] ~~**`team-names-zh`（1 票，`.scratch/team-names-zh/issues/`）**~~（2026-08-07 完成，見已完成區）——大聯盟 30 支手寫中文名、小聯盟由母隊推導。
 

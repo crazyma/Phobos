@@ -8,8 +8,6 @@ import { LevelBadge } from "@/components/magazine/level-badge";
 import { TagButton } from "@/components/magazine/tag-button";
 import { PlayerCard } from "./player-card";
 
-type SortKey = "name" | "level";
-
 /** 由高到低的層級顯示序（無隊者排最後）。 */
 const LEVEL_ORDER: TeamLevel[] = ["mlb", "aaa", "aa", "a_plus", "a", "rookie"];
 
@@ -26,12 +24,9 @@ function displayName(p: PlayerSummary): string {
   return p.nameZh ?? p.nameEn;
 }
 
-function levelRank(p: PlayerSummary): number {
-  return p.team ? LEVEL_ORDER.indexOf(p.team.level) : LEVEL_ORDER.length;
-}
-
 /**
- * 名冊呈現層（client）：追蹤中球員的層級篩選 + 排序，外加 archived 折疊區。
+ * 名冊呈現層（client）：追蹤中球員的層級篩選，外加 archived 折疊區。
+ * 名冊本身依 LEVEL_ORDER 分區渲染、區內固定依姓名排序，故不再提供排序控制項。
  * 資料量小，篩選/排序全在 client（spec-02）。
  */
 export function PlayersView({
@@ -42,7 +37,6 @@ export function PlayersView({
   archived: PlayerSummary[];
 }) {
   const [level, setLevel] = useState<"all" | TeamLevel>("all");
-  const [sort, setSort] = useState<SortKey>("name");
 
   const availableLevels = useMemo(() => {
     const present = new Set<TeamLevel>();
@@ -53,14 +47,10 @@ export function PlayersView({
   const shown = useMemo(() => {
     const filtered =
       level === "all" ? tracked : tracked.filter((p) => p.team?.level === level);
-    return [...filtered].sort((a, b) => {
-      if (sort === "level") {
-        const diff = levelRank(a) - levelRank(b);
-        if (diff !== 0) return diff;
-      }
-      return displayName(a).localeCompare(displayName(b), "zh-Hant");
-    });
-  }, [tracked, level, sort]);
+    return [...filtered].sort((a, b) =>
+      displayName(a).localeCompare(displayName(b), "zh-Hant"),
+    );
+  }, [tracked, level]);
 
   return (
     <div>
@@ -77,17 +67,6 @@ export function PlayersView({
             onClick={() => setLevel(l)}
           />
         ))}
-        <label className="flex w-full shrink-0 basis-full justify-end gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground sm:ml-auto sm:w-auto sm:basis-auto sm:shrink">
-          排序
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="rounded border border-border bg-card px-2 py-1.5 font-sans text-sm font-normal tracking-normal text-foreground"
-          >
-            <option value="name">依姓名</option>
-            <option value="level">依層級</option>
-          </select>
-        </label>
       </div>
 
       {shown.length > 0 ? (
@@ -155,7 +134,7 @@ export function PlayersView({
       )}
 
       {archived.length > 0 && (
-        <details className="group mt-16">
+        <details className="mt-16">
           <summary className="flex cursor-pointer list-none items-end justify-between border-b-2 border-border pb-3 [&::-webkit-details-marker]:hidden">
             <span className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
               <span className="rounded border border-border px-2 py-1 font-mono text-xs font-bold leading-none text-muted-foreground">
@@ -165,10 +144,11 @@ export function PlayersView({
             </span>
             <span className="font-mono text-xs text-muted-foreground">{archived.length} 位</span>
           </summary>
-          <ul className="mt-6 grid gap-5 opacity-60 transition-opacity group-open:opacity-100 sm:grid-cols-2 xl:grid-cols-3">
+          {/* 封存外觀由 PlayerCard 自己決定；這裡只表達語意，不覆寫它的樣式。 */}
+          <ul className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {archived.map((p, index) => (
               <li key={p.playerId}>
-                <PlayerCard player={p} index={index} />
+                <PlayerCard player={p} index={index} archived />
               </li>
             ))}
           </ul>

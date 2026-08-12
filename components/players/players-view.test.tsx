@@ -52,11 +52,22 @@ describe("PlayersView (page smoke)", () => {
     expect(html).toContain("連三場猛打賞");
     // null recentForm → placeholder
     expect(html).toContain("近況同步中");
-    // level filter uses chips, while sort stays a select.
+    // 層級篩選是 chip；排序控制項已移除（分區渲染後「依姓名/依層級」輸出一致）。
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("全部");
-    expect(html).toContain("排序");
-    expect(html).toContain("<select");
+    expect(html).not.toContain("排序");
+    expect(html).not.toContain("<select");
+  });
+
+  it("keeps name ordering even though the sort control is gone", () => {
+    // DB 回傳順序刻意反過來；輸出仍應是 zh-Hant 姓名序。
+    const sameLevel: PlayerSummary[] = [
+      { ...tracked[0], playerId: 101, nameEn: "Wei-Chung Wang", nameZh: "王維中" },
+      { ...tracked[0], playerId: 102, nameEn: "Chih-Jung Liu", nameZh: "劉致榮" },
+    ];
+    const html = renderToStaticMarkup(<PlayersView tracked={sameLevel} archived={[]} />);
+    const expected = ["王維中", "劉致榮"].sort((a, b) => a.localeCompare(b, "zh-Hant"));
+    expect(html.indexOf(expected[0])).toBeLessThan(html.indexOf(expected[1]));
   });
 
   it("renders every populated level from LEVEL_ORDER with Chinese and English labels", () => {
@@ -94,11 +105,36 @@ describe("PlayersView (page smoke)", () => {
     );
     expect(withArchived).toContain("歷史球員");
     expect(withArchived).toContain("老將");
+    // 封存的視覺訊號＝壓底色，且必須在「展開後」還看得到（不能被 open 狀態覆寫抵銷）。
+    // 注意：本檔的斷言字串刻意不寫出「已經不該存在」的完整 Tailwind class
+    //（例如把 variant 與 utility 用冒號接起來的那種），因為 Tailwind 會掃描測試檔，
+    // 完整字串會被當成候選字、把死掉的 utility 重新編回 CSS bundle。
+    expect(withArchived).toMatch(/bg-muted(?![-\w])/); // 不要誤中 bg-muted-foreground
+    expect(withArchived).not.toContain("group-open");
+    // 不再用 opacity 降對比——那會把次要小字壓到 WCAG AA 4.5:1 以下。
+    expect(withArchived).not.toMatch(/opacity-\d/);
 
     const withoutArchived = renderToStaticMarkup(
       <PlayersView tracked={tracked} archived={[]} />,
     );
     expect(withoutArchived).not.toContain("歷史球員");
+  });
+
+  it("de-accents archived cards instead of fading them", () => {
+    // 只渲染封存球員（tracked 留空），避免比對到現役卡片與 chip 上的 accent。
+    const archivedOnly = renderToStaticMarkup(<PlayersView tracked={[]} archived={archived} />);
+    const trackedOnly = renderToStaticMarkup(<PlayersView tracked={tracked} archived={[]} />);
+
+    // 現役卡片的橘色重點：頂端短線與狀態句左側直線。
+    expect(trackedOnly).toContain("h-0.5 w-8 bg-accent");
+    expect(trackedOnly).toContain("border-l-4 border-accent");
+
+    // 封存卡片同樣位置換成灰色，整張去彩度；文字色不動，所以對比不受影響。
+    expect(archivedOnly).toContain("老將");
+    expect(archivedOnly).toContain("h-0.5 w-8 bg-muted-foreground");
+    expect(archivedOnly).toContain("border-l-4 border-muted-foreground");
+    expect(archivedOnly).not.toContain("h-0.5 w-8 bg-accent");
+    expect(archivedOnly).not.toContain("border-l-4 border-accent");
   });
 
   it("shows the shared empty state when no tracked player is available", () => {
