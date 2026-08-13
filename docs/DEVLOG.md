@@ -421,6 +421,11 @@
 
 ## ❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）
 
+- [ ] **（2026-08-13 UI 拉皮浮現）分享卡的球隊 logo 要不要跟站內隊徽一樣推母隊？** `lib/seo/open-graph.ts:41` 的 `teamLogoUrl(teamId)` 用的是**球隊自己的 id**（`https://midfield.mlbstatic.com/v1/team/{id}/spots/96`），小聯盟球員的 OG 圖因此是小聯盟隊的 spot 圖；而票 02 定的**站內隊徽規則是「小聯盟一律顯示母隊」**（`lib/services/team-logo.ts`）。兩者不一致。
+  - **不是 bug**：midfield 端點涵蓋小聯盟 team id，不會破圖；且 OG 走外連、不吃我們的授權清單。
+  - 要決定的是**語意**：分享卡要呈現「他實際效力的那支小聯盟隊」還是「所屬母球團」。前者資訊更精確，後者與站內一致、辨識度也高（多數讀者認得母隊隊徽）。
+  - 改動很小（`playerShareMetadata` 改吃已解析的 id），但會影響既有分享連結的預覽圖。
+
 - [x] ~~進階數據要顯示到多細~~ → 已定：打/投各 7 項、只落不可推導欄（spec-01 C.7）
 - [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
 - [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
@@ -444,6 +449,9 @@
 - [ ] 視需要把 `lib/services` 抽成獨立後端服務
 - [ ] ISR 升級為 ETL 完成後 on-demand revalidate（spec-02 §8 v2；需 ETL 呼叫 revalidate endpoint）
 - [ ] Open Graph 動態合成圖（spec-02 §8 v2；v1 用球隊 logo／站台預設圖）
+- [ ] **`loadTeamMap()` 的請求級快取**（2026-08-13 UI 拉皮浮現）。`home.ts`／`player-recent.ts`／`player-upcoming.ts`／`player-detail.ts` 各自 `await loadTeamMap(db)`，每次都全表掃 `teams`（231 筆）。`React.cache()` 是正解，可讓同一個 request 內共用一次。
+  - **這是原本就有的行為，不是本次造成的**——票 02 曾用 module 層級的可變全域 `latestTeamMap` 當 logo 來源，那從來不是快取（而且藏著 bug，已於 2026-08-13 移除，見已完成區）。
+  - 231 筆的規模下不痛，故列未來 Phase 而非待決問題。真要動時**注意別再走回跨請求共用可變狀態**。
 
 ---
 
