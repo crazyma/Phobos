@@ -69,6 +69,15 @@
   - 球員頁數據區下方新增純 server SVG 卡片；每張標示「本季累積打擊率／自責分率走勢」與最新值，單點以 `step = 0` 防止 `Infinity`。線色依進步方向判斷：AVG 越高越好、ERA 越低越好。
   - 新增 service／元件測試覆蓋跨層級不混算、門檻、AVG／ERA 手算與單點；真實 2026 資料驗證費爾柴德只出 3A（MLB 19 AB 隱藏）、李灝宇 MLB／3A 分卡、林昱珉 3A ERA 圖。現有資料沒有二刀流，打投同頁雙卡僅由 fixture 測試驗證。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠。
 
+- [x] **票 01／06 事後修正——三個「看畫面才發現」的呈現層問題**（同分支 `feat/ui-reskin-v2`；`docs/DEVLOG.html` 一併重建）。三者**測試與 build 都抓不到**，因為都是視覺／語意層面而非邏輯錯誤：
+  1. **報頭被壓成內容寬度並置中（全站，票 01 留下的）。** `components/site-header.tsx` 把 `mx-auto max-w-6xl` 直接掛在 `<header>` 上，而 `<header>` 是 `app/layout.tsx:46` 那個 `flex min-h-dvh flex-col` body 的**直接子元素** ⇒ `margin-inline: auto` 取消了 flex 預設的 `align-items: stretch`，整個報頭縮成內容寬度置中，`border-b-4 border-primary` 的分隔線只有「PHOBOS｜球員名冊｜名詞」那麼寬。**修法比照 `components/site-footer.tsx`**：`<header>` 外層不設寬度，寬度容器 `mx-auto max-w-6xl px-6 pt-6 sm:pt-10` 移到**內層** div。桌機那列與下方的行動版收合選單（`sm:hidden`）**共用同一個寬度容器**，所以兩者自動左右對齊。已就地留註解說明為什麼寬度不能掛在 `<header>` 上。
+  2. **走勢圖的方向配色實務上會誤導，已拿掉。** `trendTone` 拿 `points[0]`（**第一場的累積值**）跟最新值比來決定線是綠是紅，但第一個累積點只根據一場（打者約 4 個 AB）算出來，數值極端。**實際畫面**：鄭宗哲首戰累積打擊率偏高，於是 3A `.246` 與大聯盟 `.256` **兩張圖整季都是紅的**——一個大聯盟打 .256 的球員全紅，會被誤讀成「狀況很差」。batu 決定**統一用 `--accent`**，讓線本身說話。連帶清掉死碼：移除 `trendTone` 與 `Sparkline` 的 `higherIsBetter` prop。
+     - **但「AVG 越高越好、ERA 越低越好」這個資訊有價值、不該憑空消失**，改用**文字**承擔：走勢卡的線下方加一行小字「數字越高／越低越好」，用語與樣式**沿用 `components/glossary/bands-table.tsx` 尺標底下那行**（`font-mono text-[10px] uppercase tracking-wide text-muted-foreground`），全站同一種講法。`TrendCard` 的 `higherIsBetter` 因此**留著、但只服務這行字**（已就地註解說明它不再影響顏色），呼叫端也維持 `higherIsBetter` / `higherIsBetter={false}`。
+     - **測試同步換掉而非註解掉**：`season-trend.test.tsx` 的 `evaluates AVG and ERA directions independently` 隨 `trendTone` 移除，改為一則打者＋投手同時渲染、斷言兩行方向小字都在且 HTML 不含 `text-up`／`text-down` 的測試。`text-up`／`text-down` 兩個 token 在首頁異動快訊、時間軸、出賽預告仍在用，**不是死 CSS**、保留。
+  3. **球員頁「所屬球隊」從單字中間斷行。** `components/player-detail/player-hero.tsx` 四欄 `<dl>` 的 `<dd>` 用 `break-all`，長隊名會斷成「紅襪（Worcester Red So / x）」。改為 **`break-words`**（`overflow-wrap`）：優先在空白處換行，只有單一長字整個塞不下時才切開；中文本來就逐字換行，其餘三格（守備位置／年齡／投打）輸出不變。實測最長的「太空人（Sugar Land Space Cowboys）」現在斷成「太空人（Sugar Land / Space Cowboys）」，無字中斷點。
+  - **驗收方式是實際看畫面**（headless Chrome 截圖，不只跑測試）：`/`、`/players`、`/glossary` 三頁報頭分隔線皆跨滿 `max-w-6xl`；390px 窄螢幕以 CDP 點開漢堡選單，收合選單與報頭同邊界、開合正常；`/players/691907` 兩張走勢圖皆為暖橘且各帶「數字越高越好」；`/players/678906`（本機 DB 中最長隊名）「所屬球隊」不再從字中間斷開。
+  - `pnpm build` 綠（33 頁）、`pnpm typecheck` 綠、`pnpm test` **32 檔 / 181 測試**全綠（移除 1 則、補回 1 則，總數不變）。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
@@ -502,8 +511,8 @@
 
 ## 🗂️ 雜項 / 待整理
 
-- [ ] **球員頁季內走勢圖的兩個判斷待議**（2026-08-13 票 06 review 浮現；`components/player-detail/season-trend.tsx`、`lib/services/player-trend.ts`）。兩者都不是錯誤，batu 已知情、暫時維持現狀：
-  1. **線色是拿「第一場的累積值」跟最新值比**（`trendTone` 用 `points[0]` vs `points.at(-1)`）。但第一個累積點只根據一場（約 4 個 AB／少數出局數），數值極端——**某人首戰 4 打數無安打，之後整季的顏色幾乎注定是綠的**。顏色的資訊量比看起來低。若要更穩，可改跟某個基準比（前 N 場平均、球季中位數，或直接不上色只留單色）。
+- [ ] **球員頁季內走勢圖的兩個判斷待議**（2026-08-13 票 06 review 浮現；`components/player-detail/season-trend.tsx`、`lib/services/player-trend.ts`）。**第 1 點已於 2026-08-13 解決，第 2 點仍待議**：
+  1. ~~**線色是拿「第一場的累積值」跟最新值比**（`trendTone` 用 `points[0]` vs `points.at(-1)`）。但第一個累積點只根據一場（約 4 個 AB／少數出局數），數值極端——**某人首戰 4 打數無安打，之後整季的顏色幾乎注定是綠的**。顏色的資訊量比看起來低。若要更穩，可改跟某個基準比（前 N 場平均、球季中位數，或直接不上色只留單色）。~~ → **已解決**（2026-08-13，見 ✅ 已完成「票 01／06 事後修正」）。**採「直接不上色只留單色」**：實際畫面證實了這個疑慮——鄭宗哲首戰累積值偏高，3A `.246` 與大聯盟 `.256` **兩張圖整季都是紅的**，一個大聯盟打 .256 的球員全紅會被誤讀。線色統一為 `--accent`，`trendTone` 與 `Sparkline` 的 `higherIsBetter` prop 一併移除；「AVG 越高越好、ERA 越低越好」改由走勢卡下方的文字小字承擔（用語沿用名詞頁尺標的「數字越高／越低越好」），資訊沒有消失、只是換成不會誤導的載體。
   2. **`getPlayerTrend` 的 `season` 預設取 `new Date().getUTCFullYear()`**，把「本季」綁在牆上時鐘而不是資料。跨年後 ETL 尚未灌新球季時，**走勢圖會整區消失，但下方的球季數據仍顯示上一季**——兩處對「本季」的定義不同源。`season` 參數可注入，要修時從呼叫端傳入資料上的最新球季即可。
 
 - [ ] **名詞頁級距尺標的兩個外觀待議**（2026-08-13 票 05 review 浮現；`components/glossary/bands-table.tsx`）。兩者都不是錯誤，是設計取捨，batu 已知情、暫時維持現狀：

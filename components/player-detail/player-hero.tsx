@@ -84,7 +84,13 @@ export function PlayerHero({ player }: { player: PlayerDetail }) {
           {facts.map((fact) => (
             <div key={fact.label} className="min-w-0">
               <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{fact.label}</dt>
-              <dd className="mt-1 break-all font-serif text-lg font-black text-foreground">{fact.value}</dd>
+              {/*
+                `break-words`（overflow-wrap）而非 `break-all`：後者會從單字正
+                中間硬斷，長隊名就變成「紅襪（Worcester Red So / x）」。
+                `break-words` 優先在空白處換行，只有單一長字塞不下時才切開；
+                中文本來就能逐字換行，不受影響。
+              */}
+              <dd className="mt-1 break-words font-serif text-lg font-black text-foreground">{fact.value}</dd>
             </div>
           ))}
         </dl>

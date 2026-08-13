@@ -3,18 +3,15 @@ import { type PlayerTrend } from "@/lib/services/player-trend";
 
 type Point = { value: number };
 
-export function trendTone(
-  points: Point[],
-  higherIsBetter: boolean,
-): "up" | "down" | "neutral" {
-  const first = points[0]?.value;
-  const latest = points.at(-1)?.value;
-  if (first === undefined || latest === undefined || first === latest) return "neutral";
-  if (higherIsBetter) return latest > first ? "up" : "down";
-  return latest < first ? "up" : "down";
-}
-
-function Sparkline({ points, higherIsBetter }: { points: Point[]; higherIsBetter: boolean }) {
+/**
+ * 走勢線一律用 `--accent`，**不做方向配色**。曾經以 `points[0]`（第一場的累積
+ * 值）當基準判斷綠／紅，但第一個累積點只根據一場（打者約 4 個打數）算出來，
+ * 數值極端：鄭宗哲首戰累積打擊率偏高，於是 3A `.246` 與大聯盟 `.256` 兩張圖
+ * 整季都是紅的——一個大聯盟打 .256 的球員全紅，會被誤讀成「狀況很差」。
+ * 方向資訊改由卡片下方的「數字越高／越低越好」小字承擔（用語同
+ * `components/glossary/bands-table.tsx` 的尺標），線本身只負責畫形狀。
+ */
+function Sparkline({ points }: { points: Point[] }) {
   if (points.length === 0) return null;
 
   const width = 640;
@@ -32,13 +29,11 @@ function Sparkline({ points, higherIsBetter }: { points: Point[]; higherIsBetter
       return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
     })
     .join(" ");
-  const tone = trendTone(points, higherIsBetter);
-  const colorClass = tone === "up" ? "text-up" : tone === "down" ? "text-down" : "text-accent";
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className={`mt-5 h-32 w-full ${colorClass}`}
+      className="mt-5 h-32 w-full text-accent"
       role="img"
       aria-label="季內累積數據走勢"
     >
@@ -71,6 +66,7 @@ function TrendCard({
   title: string;
   /** 指標縮寫（AVG／ERA），放上排小標；`title` 是下方 h3 的完整敘述。 */
   metric: string;
+  /** 只用來寫下方那行「數字越高／越低越好」——不再影響線色，見 `Sparkline`。 */
   higherIsBetter: boolean;
   decimalPlaces: number;
 }) {
@@ -89,7 +85,10 @@ function TrendCard({
           {series.latest.toFixed(decimalPlaces)}
         </p>
       </div>
-      <Sparkline points={series.points} higherIsBetter={higherIsBetter} />
+      <Sparkline points={series.points} />
+      <p className="mt-1 text-center font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+        數字越{higherIsBetter ? "高" : "低"}越好
+      </p>
     </article>
   );
 }

@@ -253,6 +253,20 @@
     <li>新增 service／元件測試覆蓋跨層級不混算、門檻、AVG／ERA 手算與單點；真實 2026 資料驗證費爾柴德只出 3A（MLB 19 AB 隱藏）、李灝宇 MLB／3A 分卡、林昱珉 3A ERA 圖。現有資料沒有二刀流，打投同頁雙卡僅由 fixture 測試驗證。<code>pnpm test</code>、<code>pnpm typecheck</code>、<code>pnpm build</code> 綠。</li>
     </ul></li>
     </ul>
+    <ul class="todo">
+    <li class="done"><strong>票 01／06 事後修正——三個「看畫面才發現」的呈現層問題</strong>（同分支 <code>feat/ui-reskin-v2</code>；<code>docs/DEVLOG.html</code> 一併重建）。三者<strong>測試與 build 都抓不到</strong>，因為都是視覺／語意層面而非邏輯錯誤：
+    <ol>
+    <li><strong>報頭被壓成內容寬度並置中（全站，票 01 留下的）。</strong> <code>components/site-header.tsx</code> 把 <code>mx-auto max-w-6xl</code> 直接掛在 <code>&lt;header&gt;</code> 上，而 <code>&lt;header&gt;</code> 是 <code>app/layout.tsx:46</code> 那個 <code>flex min-h-dvh flex-col</code> body 的<strong>直接子元素</strong> ⇒ <code>margin-inline: auto</code> 取消了 flex 預設的 <code>align-items: stretch</code>，整個報頭縮成內容寬度置中，<code>border-b-4 border-primary</code> 的分隔線只有「PHOBOS｜球員名冊｜名詞」那麼寬。<strong>修法比照 <code>components/site-footer.tsx</code></strong>：<code>&lt;header&gt;</code> 外層不設寬度，寬度容器 <code>mx-auto max-w-6xl px-6 pt-6 sm:pt-10</code> 移到<strong>內層</strong> div。桌機那列與下方的行動版收合選單（<code>sm:hidden</code>）<strong>共用同一個寬度容器</strong>，所以兩者自動左右對齊。已就地留註解說明為什麼寬度不能掛在 <code>&lt;header&gt;</code> 上。</li>
+    <li><strong>走勢圖的方向配色實務上會誤導，已拿掉。</strong> <code>trendTone</code> 拿 <code>points[0]</code>（<strong>第一場的累積值</strong>）跟最新值比來決定線是綠是紅，但第一個累積點只根據一場（打者約 4 個 AB）算出來，數值極端。<strong>實際畫面</strong>：鄭宗哲首戰累積打擊率偏高，於是 3A <code>.246</code> 與大聯盟 <code>.256</code> <strong>兩張圖整季都是紅的</strong>——一個大聯盟打 .256 的球員全紅，會被誤讀成「狀況很差」。batu 決定<strong>統一用 <code>--accent</code></strong>，讓線本身說話。連帶清掉死碼：移除 <code>trendTone</code> 與 <code>Sparkline</code> 的 <code>higherIsBetter</code> prop。
+    <ul>
+    <li><strong>但「AVG 越高越好、ERA 越低越好」這個資訊有價值、不該憑空消失</strong>，改用<strong>文字</strong>承擔：走勢卡的線下方加一行小字「數字越高／越低越好」，用語與樣式<strong>沿用 <code>components/glossary/bands-table.tsx</code> 尺標底下那行</strong>（<code>font-mono text-[10px] uppercase tracking-wide text-muted-foreground</code>），全站同一種講法。<code>TrendCard</code> 的 <code>higherIsBetter</code> 因此<strong>留著、但只服務這行字</strong>（已就地註解說明它不再影響顏色），呼叫端也維持 <code>higherIsBetter</code> / <code>higherIsBetter={false}</code>。</li>
+    <li><strong>測試同步換掉而非註解掉</strong>：<code>season-trend.test.tsx</code> 的 <code>evaluates AVG and ERA directions independently</code> 隨 <code>trendTone</code> 移除，改為一則打者＋投手同時渲染、斷言兩行方向小字都在且 HTML 不含 <code>text-up</code>／<code>text-down</code> 的測試。<code>text-up</code>／<code>text-down</code> 兩個 token 在首頁異動快訊、時間軸、出賽預告仍在用，<strong>不是死 CSS</strong>、保留。</li>
+    </ul></li>
+    <li><strong>球員頁「所屬球隊」從單字中間斷行。</strong> <code>components/player-detail/player-hero.tsx</code> 四欄 <code>&lt;dl&gt;</code> 的 <code>&lt;dd&gt;</code> 用 <code>break-all</code>，長隊名會斷成「紅襪（Worcester Red So / x）」。改為 <strong><code>break-words</code></strong>（<code>overflow-wrap</code>）：優先在空白處換行，只有單一長字整個塞不下時才切開；中文本來就逐字換行，其餘三格（守備位置／年齡／投打）輸出不變。實測最長的「太空人（Sugar Land Space Cowboys）」現在斷成「太空人（Sugar Land / Space Cowboys）」，無字中斷點。</li>
+    <li><strong>驗收方式是實際看畫面</strong>（headless Chrome 截圖，不只跑測試）：<code>/</code>、<code>/players</code>、<code>/glossary</code> 三頁報頭分隔線皆跨滿 <code>max-w-6xl</code>；390px 窄螢幕以 CDP 點開漢堡選單，收合選單與報頭同邊界、開合正常；<code>/players/691907</code> 兩張走勢圖皆為暖橘且各帶「數字越高越好」；<code>/players/678906</code>（本機 DB 中最長隊名）「所屬球隊」不再從字中間斷開。</li>
+    <li><code>pnpm build</code> 綠（33 頁）、<code>pnpm typecheck</code> 綠、<code>pnpm test</code> <strong>32 檔 / 181 測試</strong>全綠（移除 1 則、補回 1 則，總數不變）。</li>
+    </ol></li>
+    </ul>
     <h3 id="sec-1-2">2026-08-10</h3>
     <ul class="todo">
     <li class="done"><strong><code>il-health-projection/01</code> 完成——傷兵狀態有可靠出口</strong>（票 <code>.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md</code>）。修正兩個獨立來源的長期錯誤：
@@ -826,9 +840,9 @@
   <section>
     <h2 id="sec-5">🗂️ 雜項 / 待整理</h2>
     <ul class="todo">
-    <li class=""><strong>球員頁季內走勢圖的兩個判斷待議</strong>（2026-08-13 票 06 review 浮現；<code>components/player-detail/season-trend.tsx</code>、<code>lib/services/player-trend.ts</code>）。兩者都不是錯誤，batu 已知情、暫時維持現狀：
+    <li class=""><strong>球員頁季內走勢圖的兩個判斷待議</strong>（2026-08-13 票 06 review 浮現；<code>components/player-detail/season-trend.tsx</code>、<code>lib/services/player-trend.ts</code>）。<strong>第 1 點已於 2026-08-13 解決，第 2 點仍待議</strong>：
     <ol>
-    <li><strong>線色是拿「第一場的累積值」跟最新值比</strong>（<code>trendTone</code> 用 <code>points[0]</code> vs <code>points.at(-1)</code>）。但第一個累積點只根據一場（約 4 個 AB／少數出局數），數值極端——<strong>某人首戰 4 打數無安打，之後整季的顏色幾乎注定是綠的</strong>。顏色的資訊量比看起來低。若要更穩，可改跟某個基準比（前 N 場平均、球季中位數，或直接不上色只留單色）。</li>
+    <li>~~<strong>線色是拿「第一場的累積值」跟最新值比</strong>（<code>trendTone</code> 用 <code>points[0]</code> vs <code>points.at(-1)</code>）。但第一個累積點只根據一場（約 4 個 AB／少數出局數），數值極端——<strong>某人首戰 4 打數無安打，之後整季的顏色幾乎注定是綠的</strong>。顏色的資訊量比看起來低。若要更穩，可改跟某個基準比（前 N 場平均、球季中位數，或直接不上色只留單色）。~~ → <strong>已解決</strong>（2026-08-13，見 ✅ 已完成「票 01／06 事後修正」）。<strong>採「直接不上色只留單色」</strong>：實際畫面證實了這個疑慮——鄭宗哲首戰累積值偏高，3A <code>.246</code> 與大聯盟 <code>.256</code> <strong>兩張圖整季都是紅的</strong>，一個大聯盟打 .256 的球員全紅會被誤讀。線色統一為 <code>--accent</code>，<code>trendTone</code> 與 <code>Sparkline</code> 的 <code>higherIsBetter</code> prop 一併移除；「AVG 越高越好、ERA 越低越好」改由走勢卡下方的文字小字承擔（用語沿用名詞頁尺標的「數字越高／越低越好」），資訊沒有消失、只是換成不會誤導的載體。</li>
     <li><strong><code>getPlayerTrend</code> 的 <code>season</code> 預設取 <code>new Date().getUTCFullYear()</code></strong>，把「本季」綁在牆上時鐘而不是資料。跨年後 ETL 尚未灌新球季時，<strong>走勢圖會整區消失，但下方的球季數據仍顯示上一季</strong>——兩處對「本季」的定義不同源。<code>season</code> 參數可注入，要修時從呼叫端傳入資料上的最新球季即可。</li>
     </ol></li>
     </ul>
