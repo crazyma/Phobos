@@ -75,3 +75,13 @@
 - 四格採打者 `AVG / OPS / HR / RBI`、投手 `ERA / WHIP / SO / IP`。`AVG / OPS / ERA / WHIP` 的 hint 僅從既有 glossary bands 讀取；`HR / RBI / SO / IP` 沒有已編寫的 bands，因此刻意留白，不編造評價。低於 `AA` 的層級同樣不顯示未授權的級距。
 - 完整表保留原有 20 欄、per-team 分列、合計列與缺值規則；`<details>` 使用原生 HTML，維持 `season-stats.tsx` 為 server component。進階指標仍經 `metricSlug()` 連回名詞頁。
 - 驗收時暫時移走 `wrc-plus.mdx`，`pnpm build` 依預期因 `getRegistry()` 護欄失敗，隨後已還原檔案並重新通過正式 build。
+
+### Review 記錄（2026-08-13）— 兩項知情保留、不修
+
+以下兩點在 review 時提出，batu 判斷**維持現狀**，記在此避免日後被當成缺陷重新「修正」：
+
+1. **`battingFocus` / `pitchingFocus` 的命名**：這兩個函式回傳的是 `FocusStat[]`（資料），不是 JSX，卻曾以 PascalCase 命名而看起來像 component、並被直接呼叫而非以 JSX 使用。**已於後續修正改為小寫開頭**，此點僅供追溯。
+
+2. **`STANDARD_SLUG` 是第二處「指標名 → 名詞頁 slug」的知識**（另一處是 `lib/glossary/registry.ts` 的 metric registry）。**這是無可避免的**：standard 類名詞依 `lib/glossary/schema.ts` 的 superRefine **明文禁止帶 `metric_keys`**，因此 registry 天生涵蓋不到 AVG／OPS／ERA／WHIP 這四則，只能以 slug 直接 `loadFrontmatter()`。
+   - **不要為此把 standard 名詞塞進 metric registry**——那會違反 schema 的驗證規則，而該規則是刻意的（standard 在 v1 只做解釋、不參與球員頁的指標註冊與範例挑選）。
+   - 若日後這份對照長大到難以維護，正解是在 glossary 側提供一個「以 slug 取 bands」的公開 helper，而不是繞過 schema。

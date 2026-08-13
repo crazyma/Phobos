@@ -15,6 +15,7 @@ import {
   type Perspective,
 } from "@/lib/glossary/metrics";
 import { metricSlug } from "@/lib/glossary/registry";
+import { isGraded } from "@/lib/glossary/schema";
 import { bandLabel } from "@/lib/glossary/bands";
 import { loadFrontmatter } from "@/lib/glossary/content";
 import { LevelBadge } from "@/components/magazine/level-badge";
@@ -84,8 +85,6 @@ const STANDARD_SLUG: Record<string, string> = {
   WHIP: "whip",
 };
 
-type GradedLevel = "mlb" | "aaa" | "aa";
-
 /** Read an authored glossary band; ungraded levels and prose-only terms stay blank. */
 function authoredBand(
   slug: string,
@@ -93,9 +92,8 @@ function authoredBand(
   level: string,
   value: number | null,
 ): string | undefined {
-  if (value === null || !(level in { mlb: true, aaa: true, aa: true })) return undefined;
-  const graded = level as GradedLevel;
-  const bands = loadFrontmatter(slug)?.bands?.[perspective]?.[graded];
+  if (value === null || !isGraded(level)) return undefined;
+  const bands = loadFrontmatter(slug)?.bands?.[perspective]?.[level];
   return bands ? bandLabel(bands, value) : undefined;
 }
 
@@ -167,16 +165,16 @@ function StatTable<T extends { team: { name: string; abbrev: string | null } | n
   );
 }
 
-function FullTable({
+function FullTable<T extends { team: { name: string; abbrev: string | null } | null }>({
   label,
   cols,
   rows,
   total,
 }: {
   label: string;
-  cols: Col<BattingLine>[] | Col<PitchingLine>[];
-  rows: BattingLine[] | PitchingLine[];
-  total: BattingLine | PitchingLine | null;
+  cols: Col<T>[];
+  rows: T[];
+  total: T | null;
 }) {
   return (
     <details className="mt-6 border-t border-border pt-3">
@@ -185,11 +183,7 @@ function FullTable({
       </summary>
       <p className="mt-3 font-mono text-[11px] text-muted-foreground lg:hidden">← 左右滑動查看更多欄位 →</p>
       <div className="mt-3">
-        <StatTable
-          cols={cols as Col<BattingLine>[]}
-          rows={rows as BattingLine[]}
-          total={total as BattingLine | null}
-        />
+        <StatTable cols={cols} rows={rows} total={total} />
       </div>
     </details>
   );

@@ -7,17 +7,13 @@
  */
 import { bandLabel, LEVEL_HEADERS } from "./bands.ts";
 import { formatMetric, type MetricKey } from "./metrics.ts";
-import { GRADED_LEVELS, type Frontmatter, type GradedLevel, type Perspective } from "./schema.ts";
+import { isGraded, type Frontmatter, type GradedLevel, type Perspective } from "./schema.ts";
 
 /** Sample thresholds for a metric to be representative (spec-04 §E rule 2). */
 export const MIN_BATTER_PA = 50;
 export const MIN_PITCHER_IP_OUTS = 60; // 20 IP
 
 const LEVEL_RANK: Record<GradedLevel, number> = { mlb: 0, aaa: 1, aa: 2 };
-
-function isGraded(level: string): level is GradedLevel {
-  return (GRADED_LEVELS as readonly string[]).includes(level);
-}
 
 /** Good-direction for a perspective; pitcher may invert the default (BB%/K%…). */
 function higherIsBetterFor(term: Frontmatter, perspective: Perspective): boolean {
