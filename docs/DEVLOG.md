@@ -9,7 +9,7 @@
 
 ### 2026-08-13
 
-- [x] **UI 拉皮票 01 完成——`/players` 換上雜誌風名冊，全站設計地基一併落地**（票 `.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`，分支 `feature/ui-reskin-v2-roster`）。
+- [x] **UI 拉皮票 01 完成——`/players` 換上雜誌風名冊，全站設計地基一併落地**（票 `.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`，切片整合分支 `feat/ui-reskin-v2`）。
   - **地基（純加法，故折進第一個垂直切片、不另開水平票）**：`next/font/google` 三角色分工（`Noto_Serif_TC` 標題／人名、`Noto_Sans_TC` 內文、`Geist_Mono` 所有數據與標籤）；`globals.css` 換深藍暖橘亮色盤並註冊 8 個新語意 token（`--mlb`／`--aaa`／`--aa`＋`-foreground`、`--up`／`--down`），另**自行補齊設計沒有的 `--a-plus`／`--a`／`--rookie`**——設計只有三階、我們有六階，漏掉的話低階徽章會是**沒有顏色**而不是 fallback。刪掉 `globals.css:85-117` 那 33 行**從未被觸發過**的深色盤（全 repo 無 `.dark` 掛載點，`@custom-variant dark` 是 class-based、不吃 `prefers-color-scheme`）。共用樣板 `SectionTitle`／`LevelBadge`／`TagButton`／`EmptyState`／卡片 hover 集中在 `components/magazine/`，單一落點供後續票沿用。
   - **名冊頁**：`/players` 改為依 `LEVEL_ORDER` 六階**動態分區**（六階皆有中英文字樣、空層級不出現）、層級篩選由原生 `<select>` 改 `TagButton` chip、卡片維持**純字排無頭像**（編號浮水印＋暖橘短線＋襯線大名＋mono 英文名＋守位·隊名，另安排狀態句與近況句）、歷史球員收進 `<details>`、篩不到人走 `EmptyState`；報頭／頁尾 kicker 化、容器 `max-w-5xl px-4` → `max-w-6xl px-6`。隊名沿用 `withLevel: false` 不重複印層級。**未動任何 `lib/services/*`**；以 dev server ＋ 本機 Chrome 實際檢視桌機與 390px 手機版。完成後其他頁面是「新報頭＋舊內文」的混搭狀態，如票面預期，由 02／04／05 收斂。
   - **事後 review 抓到並已在同分支修掉三件**：
@@ -340,6 +340,8 @@
 
 - [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（7 票，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06／07 待辦。
   - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦）、04 首頁、05 名詞、07 隊徽 **四票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
+  - **分支策略（2026-08-13，batu 定）：整批 7 票做完才 merge 進 main，用 `feat/ui-reskin-v2` 當切片整合分支。** 後續票**從該分支開子分支、做完併回它**，最後一次 `--no-ff` 進 main——**不要以 main 為基底**。理由：① 符合 repo 既有慣例，多票切片從來是一個分支扛完整批（`Merge spec-03 ETL pipeline` 7 票、`Merge feat/player-detail-page` 4 票、`Merge feat/glossary-and-advanced-metrics` 4 票），單票切片才單獨合；② 中間狀態是**刻意**的不一致（票 01 完成後其他頁面是「新報頭＋舊內文」，由 02／04／05 收斂），不該落在 main。
+    - **要接受的代價**：這 7 票的完成紀錄會積在分支上，**期間 main 的 DEVLOG 是落後的**，看真實進度要看分支。`spec-03` 那 7 票也是同樣情況，屬既有取捨。
   - **⚠️ 舊的 8 票（`.scratch/ui-reskin/issues/`）已作廢**，標記見 `.scratch/ui-reskin/SUPERSEDED.md`。舊批是未經 `/to-tickets` 手寫的，兩處實質偏差：跳過「Quiz the user」、且 `01 設計基礎` 是**水平**切片（明寫「不改任何頁面內容」、無法獨立 demo）。v2 以 skill 重開並經 batu 確認：**地基折進第一張頁面票**（已確認地基變更是純加法、不破壞既有頁面，故不適用 wide-refactor 的 expand–contract 例外）、每票只帶自己要的樣板、媒體集錦併入球員頁票。**兩批的技術決策一致**，差別在切分與流程。
   - **開票時查證出的一項修正（已回寫 plan §5.5）**：原建議 sparkline 打者畫 season-to-date OPS，**不成立**——`game_batting_lines`（`lib/db/schema/games.ts:28-52`）**沒有 `hbp` 也沒有 `sf`**（欄位只有 `pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb`），OBP 算不出來、OPS 也就算不出來。**改為投手 ERA（`er × 27 ÷ ipOuts`）、打者 AVG（`h ÷ ab`）**，兩者皆可精算。把 HBP/SF 當 0 近似 OBP **不做**——會系統性低估，等於在圖上放沒有出處的數字，與拒絕設計那個編造的 0-100「狀態分數」是同一條理由。日後要 OPS 須補 ETL 把 `hbp`／`sf` 寫進 `game_batting_lines`（schema＋ETL 變更），另案。
   - **票 07 另記兩個坑**：sparkline **自我正規化**（`range = max - min || 1`）⇒ 只表達形狀不表達幅度，故圖上**必須**標指標名與終點值；且 `sparkline.tsx:20` 的 `step = width / (data.length - 1)` 在單點資料會 `Infinity`。
@@ -350,7 +352,7 @@
   - **sparkline 走勢已決（2026-08-12，batu：選 B——季內累積走勢）**（plan §5.5、票 07）。不畫設計那個編造的 0-100「狀態分數」；**也不比照媒體用 mock**——媒體是「等資料源」，sparkline 是「等定義」，mock 一個編造分數等於把待決問題畫進 UI。打者指標的修正見上方「開票時查證出的一項修正」。
   - 「我想知道」問題牆為**全新頁**（需新內容模型 `FanQuestion`），可與拉皮脫鉤另議。
 
-- [x] ~~**UI 拉皮票 01：球員名冊改版＋設計地基**（`.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`）~~（2026-08-13 完成，見已完成區；分支 `feature/ui-reskin-v2-roster`）——`/players` 六階動態分區的雜誌風純字排名冊＋全站設計地基；含事後 review 修掉的頁尾 `mt-16` 失效、archived 降對比空轉、失效的排序下拉三項。
+- [x] ~~**UI 拉皮票 01：球員名冊改版＋設計地基**（`.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`）~~（2026-08-13 完成，見已完成區；切片整合分支 `feat/ui-reskin-v2`）——`/players` 六階動態分區的雜誌風純字排名冊＋全站設計地基；含事後 review 修掉的頁尾 `mt-16` 失效、archived 降對比空轉、失效的排序下拉三項。
 
 - [x] ~~**`team-names-zh`（1 票，`.scratch/team-names-zh/issues/`）**~~（2026-08-07 完成，見已完成區）——大聯盟 30 支手寫中文名、小聯盟由母隊推導。
 
