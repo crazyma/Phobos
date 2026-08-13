@@ -791,6 +791,27 @@
   <section>
     <h2 id="sec-3">❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）</h2>
     <ul class="todo">
+    <li class=""><strong>（2026-08-13 <code>sync_run #430</code> 對帳浮現）費爾柴德的投影說「水手・大聯盟」，上游名單說「Tacoma・3A」——<code>sign</code> 是不是該區分小聯盟約？</strong></li>
+    </ul>
+    <pre><code>  reconciliation mismatch: player 656413（史都華·費爾柴德）
+        team projected=136（水手・mlb）   observed=529（Tacoma Rainiers・aaa）
+        suggested_manual_event: depart/trade</code></pre>
+    <ul>
+    <li><strong>是新出現的</strong>：<code>#426</code>／<code>#427</code>／<code>#428</code>／<code>#429</code> 的 <code>sources_warnings</code> 都沒有 reconciliation 項，只有 <code>#430</code> 有。而<strong>事件面沒有新東西</strong>——該球員最新事件仍停在 <code>2026-08-08</code>、<code>transaction_events</code> 全表 242 筆 ⇒ <strong>變的是上游名單快照</strong>，不是我們漏抓事件。</li>
+    <li><strong>事件序列</strong>（新→舊）：</li>
+    </ul>
+    <pre><code>    08-08  sign        Seattle Mariners signed free agent CF Stuart Fairchild to a minor league contract
+        08-08  assign      CF Stuart Fairchild assigned to Tacoma Rainiers.
+        08-07  send_down   Seattle Mariners sent CF Stuart Fairchild outright to Tacoma Rainiers.
+        08-07  declare_fa  CF Stuart Fairchild elected free agency.</code></pre>
+    <ul>
+    <li><strong>推測成因</strong>：兩筆 <code>08-08</code> 事件<strong>同日</strong>，最終投影落在水手／大聯盟 ⇒ 勝出的是 <code>sign</code>。但那份合約的 description 明寫 <strong>minor league contract</strong>，同日還有一筆 <code>assign</code> 到 Tacoma，合理終態應是 <strong>Tacoma／3A</strong>（與上游快照一致）。亦即 <strong><code>sign</code> 一律投影到簽約球團的大聯盟層級、沒有區分小聯盟約</strong>，加上同日事件的先後決定了誰蓋過誰。</li>
+    <li><strong>與既有兩次投影修正同類</strong>：2026-07-27 的 <code>assign</code>（小聯盟指派被歸 <code>other</code>、投影不動隊）、2026-08-10 的裸 <code>activate</code>（傷兵狀態沒有出口）。兩次都是「上游用 description 表達語意、我們的 enum 對照沒接住」。</li>
+    <li><strong>目前影響</strong>：站上顯示他在「大聯盟・水手」，<strong>與實際名單不符</strong>。</li>
+    <li><strong>沒有自動修正是刻意的</strong>——對帳依 spec-03 §6 只發訊號、絕不自動改資料（事件為真相）。</li>
+    <li><strong>三個選項</strong>：① <code>uv run etl add-event</code> 補一筆 manual event 把他移到 Tacoma（治標，站上立刻正確）；② 開票查 <code>sign</code> 的投影規則、決定「小聯盟約」怎麼從 description 判定並處理同日排序（治本，比照 <code>assign</code> 那次）；③ 先不動，等上游後續事件自己補上。</li>
+    </ul>
+    <ul class="todo">
     <li class=""><strong>（2026-08-13 UI 拉皮浮現）分享卡的球隊 logo 要不要跟站內隊徽一樣推母隊？</strong> <code>lib/seo/open-graph.ts:41</code> 的 <code>teamLogoUrl(teamId)</code> 用的是<strong>球隊自己的 id</strong>（<code>https://midfield.mlbstatic.com/v1/team/{id}/spots/96</code>），小聯盟球員的 OG 圖因此是小聯盟隊的 spot 圖；而票 02 定的<strong>站內隊徽規則是「小聯盟一律顯示母隊」</strong>（<code>lib/services/team-logo.ts</code>）。兩者不一致。
     <ul>
     <li><strong>不是 bug</strong>：midfield 端點涵蓋小聯盟 team id，不會破圖；且 OG 走外連、不吃我們的授權清單。</li>

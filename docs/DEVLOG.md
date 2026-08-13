@@ -470,6 +470,28 @@
 
 ## ❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）
 
+- [ ] **（2026-08-13 `sync_run #430` 對帳浮現）費爾柴德的投影說「水手・大聯盟」，上游名單說「Tacoma・3A」——`sign` 是不是該區分小聯盟約？**
+
+  ```
+  reconciliation mismatch: player 656413（史都華·費爾柴德）
+    team projected=136（水手・mlb）   observed=529（Tacoma Rainiers・aaa）
+    suggested_manual_event: depart/trade
+  ```
+
+  - **是新出現的**：`#426`／`#427`／`#428`／`#429` 的 `sources_warnings` 都沒有 reconciliation 項，只有 `#430` 有。而**事件面沒有新東西**——該球員最新事件仍停在 `2026-08-08`、`transaction_events` 全表 242 筆 ⇒ **變的是上游名單快照**，不是我們漏抓事件。
+  - **事件序列**（新→舊）：
+    ```
+    08-08  sign        Seattle Mariners signed free agent CF Stuart Fairchild to a minor league contract
+    08-08  assign      CF Stuart Fairchild assigned to Tacoma Rainiers.
+    08-07  send_down   Seattle Mariners sent CF Stuart Fairchild outright to Tacoma Rainiers.
+    08-07  declare_fa  CF Stuart Fairchild elected free agency.
+    ```
+  - **推測成因**：兩筆 `08-08` 事件**同日**，最終投影落在水手／大聯盟 ⇒ 勝出的是 `sign`。但那份合約的 description 明寫 **minor league contract**，同日還有一筆 `assign` 到 Tacoma，合理終態應是 **Tacoma／3A**（與上游快照一致）。亦即 **`sign` 一律投影到簽約球團的大聯盟層級、沒有區分小聯盟約**，加上同日事件的先後決定了誰蓋過誰。
+  - **與既有兩次投影修正同類**：2026-07-27 的 `assign`（小聯盟指派被歸 `other`、投影不動隊）、2026-08-10 的裸 `activate`（傷兵狀態沒有出口）。兩次都是「上游用 description 表達語意、我們的 enum 對照沒接住」。
+  - **目前影響**：站上顯示他在「大聯盟・水手」，**與實際名單不符**。
+  - **沒有自動修正是刻意的**——對帳依 spec-03 §6 只發訊號、絕不自動改資料（事件為真相）。
+  - **三個選項**：① `uv run etl add-event` 補一筆 manual event 把他移到 Tacoma（治標，站上立刻正確）；② 開票查 `sign` 的投影規則、決定「小聯盟約」怎麼從 description 判定並處理同日排序（治本，比照 `assign` 那次）；③ 先不動，等上游後續事件自己補上。
+
 - [ ] **（2026-08-13 UI 拉皮浮現）分享卡的球隊 logo 要不要跟站內隊徽一樣推母隊？** `lib/seo/open-graph.ts:41` 的 `teamLogoUrl(teamId)` 用的是**球隊自己的 id**（`https://midfield.mlbstatic.com/v1/team/{id}/spots/96`），小聯盟球員的 OG 圖因此是小聯盟隊的 spot 圖；而票 02 定的**站內隊徽規則是「小聯盟一律顯示母隊」**（`lib/services/team-logo.ts`）。兩者不一致。
   - **不是 bug**：midfield 端點涵蓋小聯盟 team id，不會破圖；且 OG 走外連、不吃我們的授權清單。
   - 要決定的是**語意**：分享卡要呈現「他實際效力的那支小聯盟隊」還是「所屬母球團」。前者資訊更精確，後者與站內一致、辨識度也高（多數讀者認得母隊隊徽）。
