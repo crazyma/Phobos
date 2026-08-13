@@ -64,6 +64,11 @@
   - 另修票檔 `.scratch/ui-reskin-v2/issues/05-glossary.md` 有兩個 `## Comments` 標題，已合併成一個、內容全留。
   - `pnpm typecheck` 綠、`pnpm test` **30 檔 / 174 測試**全綠（原 170，新增 4）、`pnpm build` 綠（33 頁）、`app/seo.test.ts` 綠且 sitemap 仍含 **24** 條名詞 URL；幾何與配色皆從 `.next/server/app/glossary/*.html` 量實際輸出驗證，不只目視。
 
+- [x] **UI 拉皮票 06 完成——球員頁新增依層級的季內累積走勢圖**（票 `.scratch/ui-reskin-v2/issues/06-season-trend-chart.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - 新增 `player-trend` service，以本季全部逐場資料按 `game_date_us`／`game_pk` 排序，按層級各自累積；打者精算 AVG（`H / AB`），投手精算 ERA（`ER × 27 / outs`），不近似 OBP／OPS。門檻具名為 20 AB／30 outs，未達則整張卡隱藏。
+  - 球員頁數據區下方新增純 server SVG 卡片；每張標示「本季累積打擊率／自責分率走勢」與最新值，單點以 `step = 0` 防止 `Infinity`。線色依進步方向判斷：AVG 越高越好、ERA 越低越好。
+  - 新增 service／元件測試覆蓋跨層級不混算、門檻、AVG／ERA 手算與單點；真實 2026 資料驗證費爾柴德只出 3A（MLB 19 AB 隱藏）、李灝宇 MLB／3A 分卡、林昱珉 3A ERA 圖。現有資料沒有二刀流，打投同頁雙卡僅由 fixture 測試驗證。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
@@ -382,11 +387,12 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01／02／03／04／05 已完成，票 06 待辦。
+- [x] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，六張切片均已完成，詳見 2026-08-13 已完成區。
 - [x] 票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。
 - [x] 票 03：球員個人頁數據區（四格重點、可展開完整表、進階數據樣式）——已完成，詳見 2026-08-13 已完成區。
 - [x] 票 04：首頁改版——已完成，詳見 2026-08-13 已完成區。
 - [x] 票 05：名詞索引與名詞頁——已完成，詳見 2026-08-13 已完成區。
+- [x] 票 06：球員頁季內走勢圖（依層級累積 AVG／ERA）——已完成，詳見 2026-08-13 已完成區。
   - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 **三票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
   - **票 07「球隊隊徽」已併入票 02（2026-08-13，batu）**，`07-team-logos.md` 標 `superseded-by-02`、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 `PlayerCard` 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 `parentOrgTeamId` 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 `lib/services/*` 的地方。**落點於 2026-08-13 事後修正**：不放在會 import DB client 的 `team-map.ts`（那會讓 client bundle 拉進 `pg`），改為純模組 `lib/services/team-logo.ts` ＋ server 端解析成 `team.logoSrc`。
   - **票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）**：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 `MAGAZINE_CARD_HOVER`），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 `PlayerCard` 依自己的 `archived` prop 決定、**不從外面用 descendant selector 覆寫**。

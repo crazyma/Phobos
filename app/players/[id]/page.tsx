@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getPlayerDetail } from "@/lib/services";
+import { getPlayerDetail, getPlayerTrend } from "@/lib/services";
 import { PlayerHero } from "@/components/player-detail/player-hero";
 import { SeasonStats } from "@/components/player-detail/season-stats";
 import { GameLog } from "@/components/player-detail/game-log";
@@ -8,6 +8,7 @@ import { Timeline } from "@/components/player-detail/timeline";
 import { Upcoming } from "@/components/player-detail/upcoming";
 import { playerShareMetadata } from "@/lib/seo/open-graph";
 import { MediaCarousel } from "@/components/player-detail/media-carousel";
+import { SeasonTrend } from "@/components/player-detail/season-trend";
 import { PLAYER_MEDIA_MOCK } from "@/lib/services/media.mock";
 
 // ISR: data refreshes twice a day (spec-03); a 30-min revalidate suffices
@@ -52,6 +53,7 @@ export default async function PlayerPage({
   if (!player) notFound();
 
   const isArchived = player.lifecycle === "archived";
+  const trend = isArchived ? null : await getPlayerTrend(playerId);
 
   return (
     <article className="mx-auto min-w-0 max-w-6xl overflow-x-hidden px-6 py-10 pb-16">
@@ -70,6 +72,7 @@ export default async function PlayerPage({
         heading={isArchived ? "生涯總成績" : "球季數據"}
         currentTeamId={player.team?.id ?? null}
       />
+      {trend && <SeasonTrend trend={trend} />}
 
       {/* zones 3–5 hidden for archived players (spec-02 §2.3) */}
       {!isArchived && (

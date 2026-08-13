@@ -245,6 +245,14 @@
     <li><code>pnpm typecheck</code> 綠、<code>pnpm test</code> <strong>30 檔 / 174 測試</strong>全綠（原 170，新增 4）、<code>pnpm build</code> 綠（33 頁）、<code>app/seo.test.ts</code> 綠且 sitemap 仍含 <strong>24</strong> 條名詞 URL；幾何與配色皆從 <code>.next/server/app/glossary/*.html</code> 量實際輸出驗證，不只目視。</li>
     </ol></li>
     </ul>
+    <ul class="todo">
+    <li class="done"><strong>UI 拉皮票 06 完成——球員頁新增依層級的季內累積走勢圖</strong>（票 <code>.scratch/ui-reskin-v2/issues/06-season-trend-chart.md</code>，切片整合分支 <code>feat/ui-reskin-v2</code>）。
+    <ul>
+    <li>新增 <code>player-trend</code> service，以本季全部逐場資料按 <code>game_date_us</code>／<code>game_pk</code> 排序，按層級各自累積；打者精算 AVG（<code>H / AB</code>），投手精算 ERA（<code>ER × 27 / outs</code>），不近似 OBP／OPS。門檻具名為 20 AB／30 outs，未達則整張卡隱藏。</li>
+    <li>球員頁數據區下方新增純 server SVG 卡片；每張標示「本季累積打擊率／自責分率走勢」與最新值，單點以 <code>step = 0</code> 防止 <code>Infinity</code>。線色依進步方向判斷：AVG 越高越好、ERA 越低越好。</li>
+    <li>新增 service／元件測試覆蓋跨層級不混算、門檻、AVG／ERA 手算與單點；真實 2026 資料驗證費爾柴德只出 3A（MLB 19 AB 隱藏）、李灝宇 MLB／3A 分卡、林昱珉 3A ERA 圖。現有資料沒有二刀流，打投同頁雙卡僅由 fixture 測試驗證。<code>pnpm test</code>、<code>pnpm typecheck</code>、<code>pnpm build</code> 綠。</li>
+    </ul></li>
+    </ul>
     <h3 id="sec-1-2">2026-08-10</h3>
     <ul class="todo">
     <li class="done"><strong><code>il-health-projection/01</code> 完成——傷兵狀態有可靠出口</strong>（票 <code>.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md</code>）。修正兩個獨立來源的長期錯誤：
@@ -679,11 +687,12 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
-    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（原 7 票 → </strong>6 票<strong>，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，五個待決項已於 2026-08-12 全數拍板；票 01／02／03／04／05 已完成，票 06 待辦。</li>
+    <li class="done"><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（原 7 票 → </strong>6 票<strong>，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，六張切片均已完成，詳見 2026-08-13 已完成區。</li>
     <li class="done">票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。</li>
     <li class="done">票 03：球員個人頁數據區（四格重點、可展開完整表、進階數據樣式）——已完成，詳見 2026-08-13 已完成區。</li>
     <li class="done">票 04：首頁改版——已完成，詳見 2026-08-13 已完成區。</li>
-    <li class="done">票 05：名詞索引與名詞頁——已完成，詳見 2026-08-13 已完成區。
+    <li class="done">票 05：名詞索引與名詞頁——已完成，詳見 2026-08-13 已完成區。</li>
+    <li class="done">票 06：球員頁季內走勢圖（依層級累積 AVG／ERA）——已完成，詳見 2026-08-13 已完成區。
     <ul>
     <li><strong>相依順序</strong>：<strong>01 球員名冊改版（含設計地基）★</strong>（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 <strong>三票可並行</strong> → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。</li>
     <li><strong>票 07「球隊隊徽」已併入票 02（2026-08-13，batu）</strong>，<code>07-team-logos.md</code> 標 <code>superseded-by-02</code>、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 <code>PlayerCard</code> 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 <code>parentOrgTeamId</code> 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 <code>lib/services/*</code> 的地方。<strong>落點於 2026-08-13 事後修正</strong>：不放在會 import DB client 的 <code>team-map.ts</code>（那會讓 client bundle 拉進 <code>pg</code>），改為純模組 <code>lib/services/team-logo.ts</code> ＋ server 端解析成 <code>team.logoSrc</code>。</li>
