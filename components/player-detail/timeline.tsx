@@ -1,21 +1,5 @@
 import type { Timeline } from "@/lib/services";
-
-const EVENT_TONE: Record<Timeline[number]["type"], "up" | "down" | "neutral"> = {
-  sign: "up",
-  call_up: "up",
-  il_off: "up",
-  activate: "up",
-  send_down: "down",
-  dfa: "down",
-  release: "down",
-  declare_fa: "down",
-  depart: "down",
-  il_on: "down",
-  trade: "neutral",
-  waiver_claim: "neutral",
-  assign: "neutral",
-  other: "neutral",
-};
+import { eventTone } from "@/components/magazine/event-tone";
 
 /**
  * Zone 4 (spec-02 §2.3): the transaction timeline, newest first. Each entry
@@ -38,7 +22,7 @@ export function Timeline({ timeline }: { timeline: Timeline }) {
                 {e.date}
               </time>
               <div>
-                <span className={EVENT_TONE[e.type] === "up" ? "font-serif text-lg font-black text-up" : EVENT_TONE[e.type] === "down" ? "font-serif text-lg font-black text-down" : "font-serif text-lg font-black text-foreground"}>
+                <span className={eventTone(e.type) === "up" ? "font-serif text-lg font-black text-up" : eventTone(e.type) === "down" ? "font-serif text-lg font-black text-down" : "font-serif text-lg font-black text-foreground"}>
                   {e.typeLabel}
                 </span>
                 {e.description && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{e.description}</p>}

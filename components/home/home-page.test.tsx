@@ -25,12 +25,15 @@ describe("HomePageView", () => {
   it("renders result cards, transaction feed, and upcoming-game tag", () => {
     const html = renderToStaticMarkup(<HomePageView home={activeHome} />);
 
-    expect(html).toContain("最新賽況");
+    expect(html).toContain("近期賽果");
+    expect(html).toContain("今日焦點");
+    expect(html).toContain("IP 局數");
     expect(html).toContain("5.2 局");
     expect(html).toContain("上一場飆 7K");
     expect(html).toContain("升上大聯盟");
     expect(html).toContain("確定先發");
     expect(html).toContain("/players/1");
+    expect(html).toContain("text-up");
   });
 
   it("replaces no-result placeholder with season review and glossary picks", () => {
