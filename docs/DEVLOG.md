@@ -400,7 +400,10 @@
   - **兩個獨立成因，各自都足以造成這次的錯誤**：**A** `_ROSTER_TYPES` 含 `sign` ⇒ 取 `to_team` 的隊/層級，而小聯盟約的 `to_team` 是**母球團（mlb）**——**實測六筆 `sign` 事件 100% 都是 minor league contract、100% 都投影成 mlb，這條規則對我們的資料從來沒有正確過**，只是多數情況被後續事件蓋掉；**B** 排序鍵 `(effective_date, announced_at, id)` 在同日退化成 `id`——**實測 38 組同日多事件的 `announced_at` 100% 相同**，等於每個多事件日的結果都由 ingest 順序決定。
   - **建議做法 A**：小聯盟約的 `sign` 對隊伍與層級 **no-op**，落點交給同時期的 `assign` 決定。與既有兩個先例一致（`assign` 的「無法解析→不變、不清隊」、裸 `activate` 的「**絕不以文字猜測隊伍**」），且**順帶讓結果與同日排序無關**。
   - **成因 B 不建議修排序**——上游沒給同日語意順序，任何猜測都是硬編；正解是讓規則盡量與順序無關，並把這個限制寫進 spec。
-  - **這是同一個模式第三次出現**（2026-07-27 `assign`、2026-08-10 裸 `activate`）：上游用 description 散文表達語意、我們的 enum 對照沒接住。
+  - **這是同一個模式第五次出現**（見「未來 Phase」的盤點條目）：上游用 typeCode／description 表達語意、我們的對照沒接住。
+  - **已補 manual event 治標，站上先正確（2026-08-13）**：依 spec-01 §B.1 補錄 `manual event #6153`（`player 656413`／`assign`／`2026-08-08`／`to_team=529 Tacoma Rainiers`），投影變為 `rostered / active / aaa / Tacoma Rainiers`、其餘四名球員不變，重跑 `manual`（`sync_run #433`）**對帳已無 reconciliation 警告**，名冊頁也改列在 3A 分區。
+    - ⚠️ **根因未修，且這筆補錄本身就靠成因 B 才生效**——它與既有兩筆 08-08 事件同 `effective_date`／同 `announced_at`，是靠 `id` 最大才最後套用。修根因時**必須回頭處理它**（票面有專節：先在不刪的情況下重放確認結果不變，再評估刪除，因為上游本來就有一筆同義的 `assign` id 5280，留著時間軸會有兩筆重複指派）。
+  - **順帶發現**：`etl/src/etl/cli.py` 的 `TRANSACTION_TYPES` **少了 `waiver_claim`**（註解宣稱鏡像 Drizzle enum，2026-08-07 新增後沒同步）⇒ 目前無法用 CLI 補 manual `waiver_claim` 事件。與本票同源，已記在票面 Comments、順手修即可。
 
 - [x] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，六張切片均已完成，詳見 2026-08-13 已完成區。
 - [x] 票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。

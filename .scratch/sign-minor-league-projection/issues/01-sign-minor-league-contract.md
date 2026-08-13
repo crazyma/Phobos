@@ -117,7 +117,29 @@ id   | effective_date | announced_at            | type   | to_team
 - [ ] `uv run pytest` 全綠
 - [ ] Node 側 `pnpm test`／`pnpm typecheck` 綠（投影結果會流進 `lib/services`）
 
+## ⚠️ 已補一筆 manual event 治標（2026-08-13）——修根因時必須處理它
+
+站上先正確，但**根因未修**。已依 spec-01 §B.1 補錄：
+
+```
+manual event #6153  player 656413  type=assign
+  effective_date=2026-08-08  announced_at=2026-08-08  to_team_id=529（Tacoma Rainiers）
+  description: 人工補錄：對齊上游名單（Tacoma Rainiers）。事件重放因 sign 未區分
+               小聯盟約而誤投影至水手大聯盟；治本見 sign-minor-league-projection 票。
+```
+
+補錄後投影為 `rostered / active / aaa / Tacoma Rainiers`，其餘四名 tracked 球員不變；重跑 `manual`（`sync_run #433`）**對帳已無 reconciliation 警告**。
+
+**它為什麼能生效**：`assign` 與既有的兩筆 08-08 事件同 `effective_date`、同 `announced_at`，排序落到 `id`，而 #6153 是最大的 ⇒ 最後套用、蓋掉 `sign`。**注意這正是成因 B**——這筆補錄本身就是靠「排序退化成 `id`」才成立的，並不穩固。
+
+**修根因時要做的**：
+
+- 改完規則後，**先在不刪這筆的情況下重放**，確認結果仍是 Tacoma（做法 A 會讓上游那筆 `assign` 自己勝出，這筆補錄變成冗餘但無害的重複）。
+- 然後**評估是否刪除 #6153**。它記載的事實（他被指派到 Tacoma）上游本來就有一筆同義的 `assign`（id 5280），**留著會讓時間軸出現兩筆語意重複的指派**。建議規則修好後刪掉，並重放驗證。
+- ⚠️ **這是本票唯一准許動資料的地方**，而且只准刪這一筆補錄；其餘一律靠規則修正。
+
 ## Comments
 
+- **`etl/src/etl/cli.py` 的 `TRANSACTION_TYPES` 少了 `waiver_claim`**（2026-08-13 補事件時發現）。註解寫著「Mirrors the Drizzle `transaction_type` enum」，但 2026-08-07 新增 `waiver_claim` 時沒同步 ⇒ **目前無法用 CLI 補一筆 manual `waiver_claim` 事件**。與本票同源（enum 擴充、鏡像沒跟上），順手修掉即可，不必另開票。
 - **不要直接改 `player_current_status`**。spec-01 §B.1 明訂：投影表由事件流重放產生，**禁止**直接改；上游漏事件時才人工補 `source='manual'` 事件。本票要修的是規則本身，不是資料。
 - 對帳是**只發訊號、絕不自動修正**（spec-03 §6），這次它正確地做了它該做的事——本票不要改動這個行為。

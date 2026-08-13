@@ -706,7 +706,12 @@
     <li><strong>兩個獨立成因，各自都足以造成這次的錯誤</strong>：<strong>A</strong> <code>_ROSTER_TYPES</code> 含 <code>sign</code> ⇒ 取 <code>to_team</code> 的隊/層級，而小聯盟約的 <code>to_team</code> 是<strong>母球團（mlb）</strong>——<strong>實測六筆 <code>sign</code> 事件 100% 都是 minor league contract、100% 都投影成 mlb，這條規則對我們的資料從來沒有正確過</strong>，只是多數情況被後續事件蓋掉；<strong>B</strong> 排序鍵 <code>(effective_date, announced_at, id)</code> 在同日退化成 <code>id</code>——<strong>實測 38 組同日多事件的 <code>announced_at</code> 100% 相同</strong>，等於每個多事件日的結果都由 ingest 順序決定。</li>
     <li><strong>建議做法 A</strong>：小聯盟約的 <code>sign</code> 對隊伍與層級 <strong>no-op</strong>，落點交給同時期的 <code>assign</code> 決定。與既有兩個先例一致（<code>assign</code> 的「無法解析→不變、不清隊」、裸 <code>activate</code> 的「<strong>絕不以文字猜測隊伍</strong>」），且<strong>順帶讓結果與同日排序無關</strong>。</li>
     <li><strong>成因 B 不建議修排序</strong>——上游沒給同日語意順序，任何猜測都是硬編；正解是讓規則盡量與順序無關，並把這個限制寫進 spec。</li>
-    <li><strong>這是同一個模式第三次出現</strong>（2026-07-27 <code>assign</code>、2026-08-10 裸 <code>activate</code>）：上游用 description 散文表達語意、我們的 enum 對照沒接住。</li>
+    <li><strong>這是同一個模式第五次出現</strong>（見「未來 Phase」的盤點條目）：上游用 typeCode／description 表達語意、我們的對照沒接住。</li>
+    <li><strong>已補 manual event 治標，站上先正確（2026-08-13）</strong>：依 spec-01 §B.1 補錄 <code>manual event #6153</code>（<code>player 656413</code>／<code>assign</code>／<code>2026-08-08</code>／<code>to_team=529 Tacoma Rainiers</code>），投影變為 <code>rostered / active / aaa / Tacoma Rainiers</code>、其餘四名球員不變，重跑 <code>manual</code>（<code>sync_run #433</code>）<strong>對帳已無 reconciliation 警告</strong>，名冊頁也改列在 3A 分區。
+    <ul>
+    <li>⚠️ <strong>根因未修，且這筆補錄本身就靠成因 B 才生效</strong>——它與既有兩筆 08-08 事件同 <code>effective_date</code>／同 <code>announced_at</code>，是靠 <code>id</code> 最大才最後套用。修根因時<strong>必須回頭處理它</strong>（票面有專節：先在不刪的情況下重放確認結果不變，再評估刪除，因為上游本來就有一筆同義的 <code>assign</code> id 5280，留著時間軸會有兩筆重複指派）。</li>
+    </ul></li>
+    <li><strong>順帶發現</strong>：<code>etl/src/etl/cli.py</code> 的 <code>TRANSACTION_TYPES</code> <strong>少了 <code>waiver_claim</code></strong>（註解宣稱鏡像 Drizzle enum，2026-08-07 新增後沒同步）⇒ 目前無法用 CLI 補 manual <code>waiver_claim</code> 事件。與本票同源，已記在票面 Comments、順手修即可。</li>
     </ul></li>
     </ul>
     <ul class="todo">
