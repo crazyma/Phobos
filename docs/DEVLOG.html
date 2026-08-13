@@ -614,9 +614,11 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
-    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（7 票，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06／07 待辦。
+    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（原 7 票 → </strong>6 票<strong>，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06 待辦。
     <ul>
-    <li><strong>相依順序</strong>：<strong>01 球員名冊改版（含設計地基）★</strong>（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦）、04 首頁、05 名詞、07 隊徽 <strong>四票可並行</strong> → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。</li>
+    <li><strong>相依順序</strong>：<strong>01 球員名冊改版（含設計地基）★</strong>（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 <strong>三票可並行</strong> → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。</li>
+    <li><strong>票 07「球隊隊徽」已併入票 02（2026-08-13，batu）</strong>，<code>07-team-logos.md</code> 標 <code>superseded-by-02</code>、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 <code>PlayerCard</code> 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。<code>teamLogo()</code> 走 <code>parentOrgTeamId</code> 推母隊、放進既有的 <code>lib/services/team-map.ts</code>（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 <code>lib/services/*</code> 的地方。</li>
+    <li><strong>票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）</strong>：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 <code>MAGAZINE_CARD_HOVER</code>），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 <code>PlayerCard</code> 依自己的 <code>archived</code> prop 決定、<strong>不從外面用 descendant selector 覆寫</strong>。</li>
     <li><strong>分支策略（2026-08-13，batu 定）：整批 7 票做完才 merge 進 main，用 <code>feat/ui-reskin-v2</code> 當切片整合分支。</strong> 後續票<strong>從該分支開子分支、做完併回它</strong>，最後一次 <code>--no-ff</code> 進 main——<strong>不要以 main 為基底</strong>。理由：① 符合 repo 既有慣例，多票切片從來是一個分支扛完整批（<code>Merge spec-03 ETL pipeline</code> 7 票、<code>Merge feat/player-detail-page</code> 4 票、<code>Merge feat/glossary-and-advanced-metrics</code> 4 票），單票切片才單獨合；② 中間狀態是<strong>刻意</strong>的不一致（票 01 完成後其他頁面是「新報頭＋舊內文」，由 02／04／05 收斂），不該落在 main。
     <ul>
     <li><strong>要接受的代價</strong>：這 7 票的完成紀錄會積在分支上，<strong>期間 main 的 DEVLOG 是落後的</strong>，看真實進度要看分支。<code>spec-03</code> 那 7 票也是同樣情況，屬既有取捨。</li>
