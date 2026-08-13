@@ -525,6 +525,25 @@
 - [ ] 功能 4：專欄 / 寫手（DB 已預留 `articles` + `authors` domain 邊界）
 - [ ] 視需要把 `lib/services` 抽成獨立後端服務
 - [ ] ISR 升級為 ETL 完成後 on-demand revalidate（spec-02 §8 v2；需 ETL 呼叫 revalidate endpoint）
+- [ ] **系統性盤點 StatsAPI 異動語彙的對照完整性，並讓未知型別自己發聲**（2026-08-13 記；起因見下方五次同型事故）。
+
+  **這個模式在 17 天內出現了五次**，每次都是「上游用 typeCode／typeDesc／description 散文表達語意，我們的 enum 對照沒接住 ⇒ 事件落進 `other` 或對照錯 ⇒ 投影靜默出錯」，而且**每次都是靠事後對帳或人工看畫面才發現**：
+
+  | 日期 | 型別 | 上游怎麼表達 | 沒接住的後果 |
+  |---|---|---|---|
+  | 2026-07-27 | `declare_fa` | 「Declared Free Agency」／`DFA` | `affiliation` 的 `free_agent` **完全不可達** |
+  | 2026-07-27 | `assign` | 「assigned to [隊]」／`ASG` | 歸 `other`、投影不動隊 ⇒ 費爾柴德、林昱珉**顯示錯隊** |
+  | 2026-08-07 | `waiver_claim` | 「Claimed Off Waivers」／`CLW` | 歸 `other`（no-op）＋`dfa` 保留原隊 ⇒ 鄭宗哲連四次 claim **把 DFA 記在前一支球隊**，網站錯兩個月 |
+  | 2026-08-10 | `activate`（裸） | `SC` ＋ description 含 `activated` | **傷兵狀態沒有出口** ⇒ 費爾柴德 759 天、李灝宇 372 天的假 IL 段 |
+  | 2026-08-13 | `sign`（小聯盟約） | description 含 `minor league contract` | 取母隊 `to_team` ⇒ **六筆 100% 投影成 mlb**（見 `.scratch/sign-minor-league-projection/`） |
+
+  **兩件該做的事：**
+
+  1. **全量盤點**：掃 `raw_payloads` 裡所有 transactions 回應，列出出現過的 `(typeCode, typeDesc)` 組合與 description 的片語模式，比對現有對照找缺口。`spec-03 §9` 已有 12 組實測表可當起點——**但那張表是「目前抓到的」，不是「上游可能給的」**，這正是每次都漏的原因。
+  2. **讓未知型別不再靜默**（更重要）：目前未對照的 typeCode 會安靜地落進 `other`，而 `other` 在投影是 no-op ⇒ **錯誤不會有任何訊號**，只能等對帳或使用者發現。應改為**未知 `(typeCode, typeDesc)` 照樣落 `other`、但發 warning 進 `sync_runs.detail`**。
+     - **這個 repo 已有一模一樣的先例**：2026-08-06 的 raw 保留策略決定「**未分類的 `(source, endpoint)` 保留不刪並發 warning**」——沒有 catch-all 預設天數，新 endpoint 必須被有意識地分類。異動型別該套用同一條原則。
+     - warning 通道已經現成（2026-08-06 `batch-warnings` 做好的 `sources_warnings`）。
+
 - [ ] Open Graph 動態合成圖（spec-02 §8 v2；v1 用球隊 logo／站台預設圖）
 - [ ] **加一道 lint／format 關卡**（2026-08-13 UI 拉皮浮現）。實測：`package.json` **沒有 `lint` script**、無 eslint／prettier／biome 設定檔，devDependencies 裡也沒有任何 lint 工具 ⇒ **純風格類問題目前沒有任何自動關卡**，只靠 `tsc --noEmit` 與 `next build` 順帶擋掉部分未使用 import。
   - **這不是理論問題**：UI 拉皮前三張票由人工 review 抓到的缺陷裡，有一部分正是這類——重複定義已存在的型別、PascalCase 命名了回傳資料的函式、測試檔寫出完整 Tailwind class 字串（反而讓死掉的 utility 被編回 CSS）。這些都不會讓 typecheck 或測試變紅。
