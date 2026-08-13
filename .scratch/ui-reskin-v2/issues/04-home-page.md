@@ -4,7 +4,7 @@
 
 **Blocked by:** 01（字體／語意色／外框／共用樣板）。
 
-**Status:** ready-for-agent
+**Status:** done
 
 決策依據：`docs/plan/ui-reskin-2026-08-12.md` §2.1、§3、§5.1、§5.4。
 
@@ -62,17 +62,24 @@
 
 ## Checklist
 
-- [ ] 大標區
-- [ ] 今日焦點跨頁：近況一句話當引言、四格數據、連向球員頁；**無人物圖像、無 `summary`**
-- [ ] 焦點取 `gameCards[0]`，無賽事時整區隱藏；**未新增 service 邏輯或排序規則**
-- [ ] 近期賽果改雜誌列，數據改「大數字＋小標」橫排
-- [ ] 異動快訊：類型→色調對照在呈現層，升降吃 `--up`／`--down`；**與票 02 共用同一份**
-- [ ] 即將出賽自製，tag 配色與票 02 一致，`il` 既有行為不變
-- [ ] 空狀態三塊都改樣式，三種 fallback 判斷不變
-- [ ] `TestingEntry` 沒有被搬進來
-- [ ] `components/home/home-page.test.tsx` 更新並綠
-- [ ] `pnpm typecheck` 綠
+- [x] 大標區
+- [x] 今日焦點跨頁：近況一句話當引言、四格數據、連向球員頁；**無人物圖像、無 `summary`**
+- [x] 焦點取 `gameCards[0]`，無賽事時整區隱藏；**未新增 service 邏輯或排序規則**
+- [x] 近期賽果改雜誌列，數據改「大數字＋小標」橫排
+- [x] 異動快訊：類型→色調對照在呈現層，升降吃 `--up`／`--down`；**與票 02 共用同一份**
+- [x] 即將出賽自製，tag 配色與票 02 一致，`il` 既有行為不變
+- [x] 空狀態三塊都改樣式，三種 fallback 判斷不變
+- [x] `TestingEntry` 沒有被搬進來
+- [x] `components/home/home-page.test.tsx` 更新並綠
+- [x] `pnpm typecheck` 綠
+- [x] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）
 
 ## Comments
 
 - 首頁四區順序（賽果 → 動態 → 即將出賽）由 PRD §5 F1-0 定，**不要因為設計只有三區就調整順序或刪區**。
+
+## Comments
+
+- 今日焦點四格使用 `gameCards[0]` 的單場資料：打者為安打／全壘打／打點／保送，投手為局數／被安打／自責分／三振；沒有撈球季成績，也沒有新增 service 邏輯。
+- 首頁空狀態的名詞推薦先在 `home-page.tsx` 做局部樣式，沒有新增共用元件；票 05 建立名詞頁樣板時可評估是否抽取，這是刻意保留的重複點。
+- `EVENT_TONE` 已移至 `components/magazine/event-tone.ts`，首頁與票 02 的 `Timeline` 共用同一份對照。

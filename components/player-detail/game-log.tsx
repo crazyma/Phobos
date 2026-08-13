@@ -16,74 +16,36 @@ function vs(g: { isHome: boolean | null; opponent: { abbrev: string | null; name
   return `${at} ${g.opponent.abbrev ?? g.opponent.name}`;
 }
 
-function BattingTable({ rows }: { rows: BattingGame[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-max border-collapse text-right text-xs tabular-nums">
-        <thead>
-          <tr className="border-b border-border text-muted-foreground">
-            <th className="px-2 py-1 text-left font-medium">日期</th>
-            <th className="px-2 py-1 text-left font-medium">對手</th>
-            {["AB", "H", "2B", "3B", "HR", "RBI", "R", "BB", "SO", "SB", "OPS"].map((c) => (
-              <th key={c} className="px-2 py-1 font-medium">{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((g) => (
-            <tr key={g.gamePk} className="border-b border-border/50">
-              <td className="px-2 py-1 text-left">{shortDate(g.gameDate)}</td>
-              <td className="px-2 py-1 text-left">{vs(g)}</td>
-              <td className="px-2 py-1">{g.ab}</td>
-              <td className="px-2 py-1">{g.h}</td>
-              <td className="px-2 py-1">{g.doubles}</td>
-              <td className="px-2 py-1">{g.triples}</td>
-              <td className="px-2 py-1">{g.hr}</td>
-              <td className="px-2 py-1">{g.rbi}</td>
-              <td className="px-2 py-1">{g.r}</td>
-              <td className="px-2 py-1">{g.bb}</td>
-              <td className="px-2 py-1">{g.so}</td>
-              <td className="px-2 py-1">{g.sb}</td>
-              <td className="px-2 py-1">{formatRate3(g.ops)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+type Stat = { label: string; value: string };
 
-function PitchingTable({ rows }: { rows: PitchingGame[] }) {
+function StatList({
+  title,
+  rows,
+  stats,
+}: {
+  title: string;
+  rows: BattingGame[] | PitchingGame[];
+  stats: (row: BattingGame | PitchingGame) => Stat[];
+}) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-max border-collapse text-right text-xs tabular-nums">
-        <thead>
-          <tr className="border-b border-border text-muted-foreground">
-            <th className="px-2 py-1 text-left font-medium">日期</th>
-            <th className="px-2 py-1 text-left font-medium">對手</th>
-            {["IP", "H", "R", "ER", "BB", "SO", "HR", "ERA", "WHIP"].map((c) => (
-              <th key={c} className="px-2 py-1 font-medium">{c}</th>
+    <div className="border-t-2 border-foreground">
+      <p className="py-3 font-serif text-xl font-black">{title}</p>
+      {rows.map((g) => (
+        <div key={g.gamePk} className="flex flex-col gap-4 border-b border-border py-5 lg:flex-row lg:items-center">
+          <div className="flex items-center gap-3 lg:w-56 lg:shrink-0">
+            <span className="font-mono text-lg font-black text-accent">{shortDate(g.gameDate)}</span>
+            <span className="font-mono text-xs font-bold text-muted-foreground">{vs(g)}</span>
+          </div>
+          <div className="flex flex-1 flex-wrap gap-x-8 gap-y-3">
+            {stats(g).map((stat) => (
+              <div key={stat.label} className="min-w-[3rem]">
+                <span className="font-mono text-2xl font-black leading-none text-foreground">{stat.value}</span>
+                <span className="ml-1.5 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">{stat.label}</span>
+              </div>
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((g) => (
-            <tr key={g.gamePk} className="border-b border-border/50">
-              <td className="px-2 py-1 text-left">{shortDate(g.gameDate)}</td>
-              <td className="px-2 py-1 text-left">{vs(g)}</td>
-              <td className="px-2 py-1">{formatInningsPitched(g.ipOuts)}</td>
-              <td className="px-2 py-1">{g.h}</td>
-              <td className="px-2 py-1">{g.r}</td>
-              <td className="px-2 py-1">{g.er}</td>
-              <td className="px-2 py-1">{g.bb}</td>
-              <td className="px-2 py-1">{g.so}</td>
-              <td className="px-2 py-1">{g.hr}</td>
-              <td className="px-2 py-1">{formatEra(g.era)}</td>
-              <td className="px-2 py-1">{formatEra(g.whip)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -97,23 +59,38 @@ export function GameLog({ gameLog }: { gameLog: GameLog }) {
   const hasPitching = gameLog.pitching.length > 0;
 
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-semibold">逐場成績</h2>
+    <section className="mt-16">
+      <div className="mb-6">
+        <p className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-accent">GAME LOG</p>
+        <h2 className="font-serif text-3xl font-black tracking-tight">近期比賽紀錄</h2>
+      </div>
       {!hasBatting && !hasPitching ? (
         <p className="mt-2 text-sm text-muted-foreground">尚無逐場成績。</p>
       ) : (
-        <div className="mt-4 space-y-5">
+        <div className="space-y-8">
           {hasBatting && (
-            <div>
-              <p className="mb-1 text-sm font-medium text-muted-foreground">打擊</p>
-              <BattingTable rows={gameLog.batting} />
-            </div>
+            <StatList title="打擊" rows={gameLog.batting} stats={(g) => {
+              const row = g as BattingGame;
+              return [
+                { label: "AB", value: String(row.ab) },
+                { label: "H", value: String(row.h) },
+                { label: "HR", value: String(row.hr) },
+                { label: "RBI", value: String(row.rbi) },
+                { label: "OPS", value: formatRate3(row.ops) },
+              ];
+            }} />
           )}
           {hasPitching && (
-            <div>
-              <p className="mb-1 text-sm font-medium text-muted-foreground">投球</p>
-              <PitchingTable rows={gameLog.pitching} />
-            </div>
+            <StatList title="投球" rows={gameLog.pitching} stats={(g) => {
+              const row = g as PitchingGame;
+              return [
+                { label: "IP", value: formatInningsPitched(row.ipOuts) },
+                { label: "H", value: String(row.h) },
+                { label: "ER", value: String(row.er) },
+                { label: "SO", value: String(row.so) },
+                { label: "ERA", value: formatEra(row.era) },
+              ];
+            }} />
           )}
         </div>
       )}

@@ -7,6 +7,77 @@
 
 ## ✅ 已完成
 
+### 2026-08-13
+
+- [x] **UI 拉皮票 01 完成——`/players` 換上雜誌風名冊，全站設計地基一併落地**（票 `.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - **地基（純加法，故折進第一個垂直切片、不另開水平票）**：`next/font/google` 三角色分工（`Noto_Serif_TC` 標題／人名、`Noto_Sans_TC` 內文、`Geist_Mono` 所有數據與標籤）；`globals.css` 換深藍暖橘亮色盤並註冊 8 個新語意 token（`--mlb`／`--aaa`／`--aa`＋`-foreground`、`--up`／`--down`），另**自行補齊設計沒有的 `--a-plus`／`--a`／`--rookie`**——設計只有三階、我們有六階，漏掉的話低階徽章會是**沒有顏色**而不是 fallback。刪掉 `globals.css:85-117` 那 33 行**從未被觸發過**的深色盤（全 repo 無 `.dark` 掛載點，`@custom-variant dark` 是 class-based、不吃 `prefers-color-scheme`）。共用樣板 `SectionTitle`／`LevelBadge`／`TagButton`／`EmptyState`／卡片 hover 集中在 `components/magazine/`，單一落點供後續票沿用。
+  - **名冊頁**：`/players` 改為依 `LEVEL_ORDER` 六階**動態分區**（六階皆有中英文字樣、空層級不出現）、層級篩選由原生 `<select>` 改 `TagButton` chip、卡片維持**純字排無頭像**（編號浮水印＋暖橘短線＋襯線大名＋mono 英文名＋守位·隊名，另安排狀態句與近況句）、歷史球員收進 `<details>`、篩不到人走 `EmptyState`；報頭／頁尾 kicker 化、容器 `max-w-5xl px-4` → `max-w-6xl px-6`。隊名沿用 `withLevel: false` 不重複印層級。**未動任何 `lib/services/*`**；以 dev server ＋ 本機 Chrome 實際檢視桌機與 390px 手機版。完成後其他頁面是「新報頭＋舊內文」的混搭狀態，如票面預期，由 02／04／05 收斂。
+  - **事後 review 抓到並已在同分支修掉三件**：
+    1. **頁尾的 `mt-16` 從來沒有生效。** `components/site-footer.tsx` 同時掛 `mt-auto` 與 `mt-16`，兩者都是 `margin-top`、同 specificity，編譯後 `mt-auto` 排在後面而勝出，`mt-16` 被**靜默丟掉**。修法是**單純移除 `mt-16`、不補其他間距**——頁面 section 本身已有 `pb-16`（`app/players/page.tsx:15`），而且既然它從未生效，實作時用 dev server 檢視並確認過的版面**就是「沒有這 4rem」的樣子**，補上反而會改變已驗收的外觀。已就地留註解說明日後不要在此用 `mt-*` 加間距（要留白就加在 `<main>` 或頁面自己的 section）。
+    2. **歷史球員卡片的「降對比」永遠看不到。** `<ul>` 上是 `opacity-60 transition-opacity group-open:opacity-100`——`<details>` 收合時子節點根本不顯示（`opacity-60` 空轉），展開時 `group-open` 又把它拉回全不透明，**兩種狀態都沒有降對比**。改法不是調整透明度，而是**改成 `PlayerCard` 的 `archived` prop**：呼叫端只表達語意，由元件內部「壓底色 ＋ 去掉橘色重點」（`bg-muted`，短線與引言直線換 `bg-muted-foreground`／`border-muted-foreground`）。理由是整張卡片是可點的 `<a>`、**不適用 WCAG「非作用中元件」豁免**，而整體透明度會把次要文字壓到 AA 以下——**實測對比（headless Chrome 截圖逐像素算出）：不降 5.99:1、透明度 0.75 只剩 3.47:1、0.6 約 2.6:1；改壓底色後回到 5.04:1**，所有文字皆過 AA 4.5:1（姓名與狀態句 13.85:1）。
+    3. **「排序」下拉在改版後完全沒有作用，已移除。** 改版後名冊依 `LEVEL_ORDER` 固定順序分區渲染，**區內成員層級必然相同 ⇒ `levelRank` 差恆為 0 ⇒「依姓名」與「依層級」輸出完全一致**。**拿掉的是控制項、不是排序本身**——區內仍固定以 `localeCompare(…, "zh-Hant")` 依姓名排序，避免退化成 DB 回傳順序（已補測試：DB 順序刻意反過來，輸出仍為姓名序）。連帶移除 `sort` state、`SortKey` type 與 `levelRank()`。
+       - **成因值得記一筆**：這是**開票時**「排序保留下拉」（票面理由「chip 表達不了排序語意」）與「層級分區」兩條要求相撞，實作照票做但沒察覺兩者衝突。
+  - **實作過程發現的一個坑**：**測試檔裡寫出完整的 Tailwind class 字串（例如斷言某個 class 不存在）會被 Tailwind 掃成候選字，把那個已死的 utility 重新編回 CSS bundle**——斷言「它不存在」反而讓它存在。已改用不會構成合法候選的 regex 比對（如 `/opacity-\d/`、`/bg-muted(?![-\w])/`，後者順帶避開誤中 `bg-muted-foreground`），並在 `players-view.test.tsx` 與 `player-card.tsx` 原處留註解說明。
+  - `pnpm typecheck` 綠、`pnpm test` 綠。
+
+- [x] **UI 拉皮票 02 完成——球員個人頁檔案與動態改為雜誌風**（票 `.scratch/ui-reskin-v2/issues/02-player-page-profile-and-moves.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - `/players/[id]` 非數據區更新為深藍 hero（姓氏浮水印、LevelBadge、四格資料、狀態引言、近況句）、StatList 近期比賽、媒體 mock carousel、動態時間軸、出賽預告與 archived 提示；本季／逐季／進階數據刻意保留給票 03。
+  - `teamLogo()` 落在既有 `lib/services/team-map.ts`，用已載入的 TeamMap 記憶體推導小聯盟母隊，無新增 DB 往返；hero／名冊卡均接上可選 slot。素材尚未授權提供，fallback 為 null 並省略元素。封存卡片 hover 改為灰色邊框仍保留互動回饋。**（⚠️ 此段已被同日的事後修正取代——見下一則：那個放法會把 `pg` 拉進 client bundle 而讓 `pnpm build` 失敗，解析已改為 server 端的 `team.logoSrc`。）**
+  - 媒體資料放 `lib/services/media.mock.ts`（含 MOCK 警語、不進 barrel、不納入驗收數字）；異動色調與出賽 tag 均在呈現層實作，未改 schema 或既有商業邏輯。以 dev server＋Chrome 實際檢視桌機與 390px 手機球員頁。
+  - 相關測試與 typecheck 綠；完整 `pnpm test` 結果記於本次交付回報。
+
+- [x] **票 02 事後修正——`pnpm build` 被隊徽的 client/server 邊界打掛，順帶清掉一個會靜默答錯的可變全域**（同分支 `feat/ui-reskin-v2`；`docs/DEVLOG.html` 一併重建）。
+  1. **`pnpm build` 完全失敗（blocker）。** 票 02 讓 `components/players/player-card.tsx` 去 import `teamLogo`，而它住在會 `import { db } from "lib/db/client.ts"` 的 `lib/services/team-map.ts`；`PlayerCard` 由 `"use client"` 的 `players-view.tsx` 使用，於是 `app/players/page.tsx → players-view → player-card → team-map → db/client → pg` 整條被拉進瀏覽器 bundle，`next build` 死在 `Module not found: 'dns' / 'fs' / 'util/types'`。**`pnpm typecheck` 與 `pnpm test` 都是綠的**——tsc 只看型別，vitest 在 Node 下跑、`pg` import 得到，**只有 `next build` 會驗 RSC 的 client/server 邊界**。已在票 02–06 的 checklist 全部補上「`pnpm build` 綠」，教訓記在票 02 的 Comments。
+  2. **修法：logo 解析回到 server，元件只收算好的值。** `PlayerSummary.team` / `PlayerDetail.team` 兩個 Zod schema 各加一個 `logoSrc: string | null`，由 `getPlayerSummaries()` / `getPlayerDetail()` 在既有的母隊 self-join 上**多取一個母隊 id**後解析（**未新增查詢**）；規則本身搬到新的純模組 `lib/services/team-logo.ts`（**只有 type-only import，零 DB 依賴**）。`PlayerCard` 與 `PlayerHero` 兩處都改吃 `player.team?.logoSrc`，不再有任何呈現層模組碰得到解析器。
+  3. **移除 `team-map.ts` 的 module 層級可變全域 `latestTeamMap`。** 它不只是「跨請求共用可變狀態」的體質問題，而是**已經答錯**：名冊頁的資料來源 `getPlayerSummaries()` 從來沒呼叫過 `loadTeamMap()`，`/players` 渲染時那個全域可能是空的 → `rootId` 退回球員自己的 `teamId` → **小聯盟球員永遠推不到母隊隊徽、大聯盟球員剛好會對**，而且相依於哪個頁面先被請求。授權清單目前為空所以還看不出來，**素材一放進去就會爆**。連帶把只服務於它的 `TeamRef.parentTeamId` 也拿掉。
+  4. **測試改測實際會走的路。** 原本 `team-map.test.ts` 的三個 `teamLogo` 測試**每次都明確傳 `map` 進去**，而真實呼叫端是 `teamLogo(player.team?.id)`（不傳、走全域）——測試是綠的卻保護不到上線那條路。改為在 `players.test.ts` / `player-detail.test.ts` 以 DB fixture 從 service 輸出斷言：小聯盟解析到母隊、大聯盟直取自己的 id、母隊推不出時為 null（**不退回球隊自己的 id**）、素材未到位時為 null；`players.test.ts` 為此新增大聯盟球員與「無母隊的 3A 隊」兩組 fixture。元件端則在 `players-view.test.tsx` / `player-hero.test.tsx` 各補一則：`logoSrc` 為 null 時不出現 `<img>`、有值時畫出對應 `src`。
+  - `pnpm build` 綠（修正前 `Module not found`，修正後 33 頁全數產出）、`pnpm typecheck` 綠、`pnpm test` **30 檔 / 160 測試**全綠（原 154，新增 9、移除 3 個走全域的舊 `teamLogo` 測試）；另起 dev server 實測 `/players`、`/players/[id]`、`/` 與 `/api/players` 皆 200，小聯盟球員的 `team.logoSrc` 如預期為 null（素材未到位）。
+
+- [x] **UI 拉皮票 03 完成——球員個人頁數據區改為重點四格＋可展開完整表**（票 `.scratch/ui-reskin-v2/issues/03-player-page-stats.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - 每個球季×層級保留原有分組、per-team 列與合計列，新增 `LevelBadge`、場次、目前所在標記，以及打者 `AVG / OPS / HR / RBI`、投手 `ERA / WHIP / SO / IP` 四格；級距 hint 僅讀既有 glossary bands，沒有出處的計數／`IP` 刻意留白。
+  - 完整打擊／投球 20 欄表收進原生 `<details>`，保留 `teamCell()`、缺值規則與 archived heading，加入 sticky 左欄、窄螢幕橫滑提示與合計列視覺層次；進階指標改 StatBlock 排版但維持 `metricSlug()` 名詞頁連結。
+  - `season-stats.tsx` 維持 server component，未改 `lib/services/*`；以 dev server＋Chrome 實際檢視桌機與 390px 手機球員頁。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠，並實測移走 `wrc-plus.mdx` 時 registry 護欄會讓 build 失敗後還原。
+
+- [x] **UI 拉皮票 04 完成——首頁改為雜誌封面式動態首頁**（票 `.scratch/ui-reskin-v2/issues/04-home-page.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - 首頁改為大標、今日焦點跨頁、近期賽果、異動快訊、即將出賽四區；焦點取既有 `gameCards[0]`，四格使用單場資料，沒有新增 service 邏輯或人物圖像。
+  - `EVENT_TONE` 提到 `components/magazine/` 由首頁與球員時間軸共用；即將出賽沿用票 02 的三種 tag 語意與 IL 隱藏對手／時間規則；休賽季保留回顧與名詞推薦空狀態。
+  - `home-page.tsx` 維持 server component，未改 `lib/services/*`；以 dev server 檢視首頁 active state，空狀態則以既有 fixture 測試完整 render。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠。
+
+- [x] **UI 拉皮票 05 完成——名詞索引搜尋與獨立名詞頁改版**（票 `.scratch/ui-reskin-v2/issues/05-glossary.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - `/glossary` 維持 `force-static`，server 傳 frontmatter 給 client 搜尋／卡片牆；分類沿用既有 registry，卡片是真 `<Link>`，standard 類另配圖示與標題，無結果使用 `EmptyState`。
+  - `/glossary/[slug]` 保留 24 個 SSG URL、metadata、sitemap 與 `getRegistry()` build-fail 護欄，套用導讀／級距／定義算法／延伸參考／範例球員五段骨架；`BandsTable` 改為每層級一條垂直尺標並依兩種 higher-is-better 欄位著色。
+  - `baseball-icons.tsx` 自設計 repo 移植；未修改任何 MDX 或 `lib/services/*`。`pnpm test`、`pnpm typecheck`、`pnpm build` 與 SEO 測試綠，實際檢視 `/glossary` 搜尋結果／空結果及 `k-pct` 雙視角尺標。
+
+- [x] **票 04 事後修正——`EVENT_TONE` 搬家弄丟窮盡型別保護、空狀態吃掉二刀流的投球那份**（同分支 `feat/ui-reskin-v2`；code review 抓到）。
+  1. **`EVENT_TONE` 從窮盡 `Record` 退化成 `Record<string, …>`。** 搬到 `components/magazine/event-tone.ts` 共用時，key 的型別由 transaction type union 放寬成 `string`，並補了 `?? "neutral"` fallback ⇒ **新增 `transaction_type` enum 值卻沒替它分類時不再有任何提醒，會靜默變成中性色**。這個 repo 六週內就新增了四個 enum 值（`declare_fa`／`assign`／`waiver_claim`／`activate`），每次都需要人為決定它是升是降。已改回 `Record<TransactionType, Tone>`（`TransactionType` 取自 `Timeline[number]["type"]`，**`import type` 取得、編譯後完全抹除**——票 02 的教訓：`components/` 下用值 import 碰到 `lib/services` 會把 `pg` 拉進瀏覽器 bundle 而讓 `next build` 死掉），窮盡後 `?? "neutral"` 不可達已一併移除。**反向驗證**：刪掉 `waiver_claim` 後 `pnpm typecheck` 如預期報 `TS2741: Property 'waiver_claim' is missing …`，補回後回綠。
+  2. **空狀態的回顧卡用單一三元運算子，二刀流球員會少一半數據。** `EmptyFallback` 寫成 `card.batting ? … : card.pitching ? … : "—"`，但 `lib/services/home.ts:222-223` 的 `battingLine`／`pitchingLine` 是**各自算的**、schema 兩欄各自 nullable ⇒ 兩者皆非 null 的二刀流球員**只會出打擊那份**。改回打擊／投球各自判斷、都有就都顯示，兩者皆無才留 `—` 佔位；維持新版面的 mono 小字語彙（單行時輸出與修正前逐字元相同，只是多一層 `<div>` 容器）。
+  3. **補測試（163 → 168）**：`home-page.test.tsx` 新增「二刀流兩份都出現」（本次的護欄，實測還原成三元寫法會失敗）、「兩份皆無留佔位」、「今日焦點有賽事才出現」、「賽果 → 本季回顧 → 全空佔位三層 fallback」、「異動三種語氣色彩互不相同」。最後一則刻意**不寫出 Tailwind class 字串**（票 01 的坑：測試檔會被 Tailwind 掃成候選字），改為比對三個連結的 class 互不相同，順帶取代原本脆弱的 `toContain("text-up")`。
+  4. **排版**：`home-page.tsx` 上一輪幾乎整檔寫成單行（`EmptyFallback` 一行超過 1400 字元），此 repo 沒有 formatter 關卡（已記在「未來 Phase」），已排回與其他元件一致的多行 JSX。**純排版、零渲染差異**——以「新舊版本同時渲染同一組 fixture 逐字元比對」驗證：active／全空兩組 HTML **byte-identical**，唯一差異就是上述二刀流那格。
+  - `pnpm typecheck` 綠、`pnpm test` **30 檔 / 168 測試**全綠、`pnpm build` 綠（33 頁）；dev server 首頁 200，四區與今日焦點如常。
+
+- [x] **票 05 事後修正——級距尺標的數值整排左移一格（讀起來會是錯的），配色改回設計稿的暖橘漸層**（同分支 `feat/ui-reskin-v2`；code review 抓到）。
+  1. **接縫數值全部落在它所標界線的左邊一整格（資料視覺化的座標錯誤）。** `band.max` 是該段的**右緣**，但數值列用 flex 排、每個 `<span>` 寬度等於自己那段的寬度 ⇒ 標籤永遠停在自己那段的**左緣**；`border-l` 還在錯的位置畫了刻度線強化誤讀。從建置產物量到的實際幾何：`k-pct` 五段各 20%，`0.15` 畫在 x=0%、`0.2` 在 20%、`0.25` 在 40%、`0.3` 在 60%——**每個數字都比它真正的界線早一格**。改採設計稿 `ScaleBar` 的結構：區間標籤在色帶**上方**、色帶收成 `h-3 rounded-full`、接縫數值改**絕對定位**（`-translate-x-1/2` + `left: X%`）。⚠️ 設計稿的 `left%` 是用 `((b - min) / span) * 100` 從數值算的，**我們兩端都是開放區間、沒有真正的 min/max**，所以接縫位置改用**累積區段寬度**（第 i 個接縫 = 前 i 段寬度總和 ÷ 總寬），沿用既有的 `segmentWidths()`。修正後量到 `k-pct` 的接縫為 **20% / 40% / 60% / 80%**，與色帶交界完全重合；`wrc-plus`（中間那段較寬）為 **19.0476 / 38.0952 / 61.9048 / 80.9524%**，同樣等於累積寬度。
+  2. **色帶配色從綠／紅改回設計稿的暖橘漸層。** 原本 `bg-up`／`bg-down`／`bg-muted`（只有頭尾上色、中間全灰）；綠／紅在站上已經是**升降與勝敗**的語彙（異動時間軸、首頁異動快訊、近期戰績），挪來表示級距好壞會混淆，設計原則也明列「深藍為主、暖橘為輔」。改用設計稿的 `{low: bg-muted, mid: bg-accent/40, high: bg-accent}`。⚠️ **我們的 `Band` 沒有 `tone` 欄位**（設計的假資料才有），所以由**位置＋方向**推導：**最差端 → `low`、最好端 → `high`、中間全部 → `mid`；哪端是最好取決於 `higherIsBetter`（投手視角吃 `higher_is_better_pitcher` 覆蓋）；只有一段時不構成端點，給 `mid`。** 建置產物實測 `k-pct`：打者側 `accent → muted`（低 K% 好）、投手側 `muted → accent`（高 K% 好），方向確實相反。
+  3. **補測試把幾何釘住（座標錯誤 typecheck 與 build 都抓不到）。** 把幾何抽成純函式 `scaleGeometry()`／`bandTones()` 並加三則測試：① 用**刻意不等寬**的 bands（等寬會蓋掉差一格的錯誤）斷言每個接縫的位置等於**它左邊所有區段寬度的累積和**；② 從實際 render 的 HTML 抓出所有 `left:X%`，確認是絕對定位而非 flex 欄；③ `k-pct` 的五段對齊 20% 網格。tone 測試也由原本比對 `bg-up`／`bg-down` 改為斷言 `bandTones()` 的 ramp 與「不得出現 up/down 色盤」。
+  4. **兩個分類共用同一個圖示。** `CATEGORY_ICONS` 把 `shared_adv` 與 `standard` 都指向 `DiamondIcon`（兩區標題長得一樣），且 `GloveIcon` 有 import 沒使用。`shared_adv` 改用 lucide `Trophy`（設計稿的「綜合評估數據」就是它），`standard` 留 `DiamondIcon`，五類已各有辨識度（建置產物驗過五個 `<svg>` 互不相同）；未使用的 import 清掉。`GloveIcon` 的**定義**保留在圖示集裡（設計稿的「防守數據」我們還沒有這個分類）。`satisfies` 的型別由 `typeof BatIcon` 放寬成 `ComponentType<SVGProps<SVGSVGElement>>`——lucide 的 forwardRef 元件回傳 `ReactNode`，套原本的型別會 `TS2322`。
+  5. **排版**：`glossary-index-client.tsx`（單行超過 1500 字元）、`bands-table.tsx`、`baseball-icons.tsx` 三檔排回多行 JSX，密度對齊 `players-view.tsx`／`season-stats.tsx`。**票 04 才剛因為同樣的事被退回一次**——此 repo 沒有 formatter 關卡（已記在「未來 Phase」）。色帶以外**零渲染差異**。
+  - 另修票檔 `.scratch/ui-reskin-v2/issues/05-glossary.md` 有兩個 `## Comments` 標題，已合併成一個、內容全留。
+  - `pnpm typecheck` 綠、`pnpm test` **30 檔 / 174 測試**全綠（原 170，新增 4）、`pnpm build` 綠（33 頁）、`app/seo.test.ts` 綠且 sitemap 仍含 **24** 條名詞 URL；幾何與配色皆從 `.next/server/app/glossary/*.html` 量實際輸出驗證，不只目視。
+
+- [x] **UI 拉皮票 06 完成——球員頁新增依層級的季內累積走勢圖**（票 `.scratch/ui-reskin-v2/issues/06-season-trend-chart.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - 新增 `player-trend` service，以本季全部逐場資料按 `game_date_us`／`game_pk` 排序，按層級各自累積；打者精算 AVG（`H / AB`），投手精算 ERA（`ER × 27 / outs`），不近似 OBP／OPS。門檻具名為 20 AB／30 outs，未達則整張卡隱藏。
+  - 球員頁數據區下方新增純 server SVG 卡片；每張標示「本季累積打擊率／自責分率走勢」與最新值，單點以 `step = 0` 防止 `Infinity`。線色依進步方向判斷：AVG 越高越好、ERA 越低越好。
+  - 新增 service／元件測試覆蓋跨層級不混算、門檻、AVG／ERA 手算與單點；真實 2026 資料驗證費爾柴德只出 3A（MLB 19 AB 隱藏）、李灝宇 MLB／3A 分卡、林昱珉 3A ERA 圖。現有資料沒有二刀流，打投同頁雙卡僅由 fixture 測試驗證。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠。
+
+- [x] **票 01／06 事後修正——三個「看畫面才發現」的呈現層問題**（同分支 `feat/ui-reskin-v2`；`docs/DEVLOG.html` 一併重建）。三者**測試與 build 都抓不到**，因為都是視覺／語意層面而非邏輯錯誤：
+  1. **報頭被壓成內容寬度並置中（全站，票 01 留下的）。** `components/site-header.tsx` 把 `mx-auto max-w-6xl` 直接掛在 `<header>` 上，而 `<header>` 是 `app/layout.tsx:46` 那個 `flex min-h-dvh flex-col` body 的**直接子元素** ⇒ `margin-inline: auto` 取消了 flex 預設的 `align-items: stretch`，整個報頭縮成內容寬度置中，`border-b-4 border-primary` 的分隔線只有「PHOBOS｜球員名冊｜名詞」那麼寬。**修法比照 `components/site-footer.tsx`**：`<header>` 外層不設寬度，寬度容器 `mx-auto max-w-6xl px-6 pt-6 sm:pt-10` 移到**內層** div。桌機那列與下方的行動版收合選單（`sm:hidden`）**共用同一個寬度容器**，所以兩者自動左右對齊。已就地留註解說明為什麼寬度不能掛在 `<header>` 上。
+  2. **走勢圖的方向配色實務上會誤導，已拿掉。** `trendTone` 拿 `points[0]`（**第一場的累積值**）跟最新值比來決定線是綠是紅，但第一個累積點只根據一場（打者約 4 個 AB）算出來，數值極端。**實際畫面**：鄭宗哲首戰累積打擊率偏高，於是 3A `.246` 與大聯盟 `.256` **兩張圖整季都是紅的**——一個大聯盟打 .256 的球員全紅，會被誤讀成「狀況很差」。batu 決定**統一用 `--accent`**，讓線本身說話。連帶清掉死碼：移除 `trendTone` 與 `Sparkline` 的 `higherIsBetter` prop。
+     - **但「AVG 越高越好、ERA 越低越好」這個資訊有價值、不該憑空消失**，改用**文字**承擔：走勢卡的線下方加一行小字「數字越高／越低越好」，用語與樣式**沿用 `components/glossary/bands-table.tsx` 尺標底下那行**（`font-mono text-[10px] uppercase tracking-wide text-muted-foreground`），全站同一種講法。`TrendCard` 的 `higherIsBetter` 因此**留著、但只服務這行字**（已就地註解說明它不再影響顏色），呼叫端也維持 `higherIsBetter` / `higherIsBetter={false}`。
+     - **測試同步換掉而非註解掉**：`season-trend.test.tsx` 的 `evaluates AVG and ERA directions independently` 隨 `trendTone` 移除，改為一則打者＋投手同時渲染、斷言兩行方向小字都在且 HTML 不含 `text-up`／`text-down` 的測試。`text-up`／`text-down` 兩個 token 在首頁異動快訊、時間軸、出賽預告仍在用，**不是死 CSS**、保留。
+  3. **球員頁「所屬球隊」從單字中間斷行。** `components/player-detail/player-hero.tsx` 四欄 `<dl>` 的 `<dd>` 用 `break-all`，長隊名會斷成「紅襪（Worcester Red So / x）」。改為 **`break-words`**（`overflow-wrap`）：優先在空白處換行，只有單一長字整個塞不下時才切開；中文本來就逐字換行，其餘三格（守備位置／年齡／投打）輸出不變。實測最長的「太空人（Sugar Land Space Cowboys）」現在斷成「太空人（Sugar Land / Space Cowboys）」，無字中斷點。
+  - **驗收方式是實際看畫面**（headless Chrome 截圖，不只跑測試）：`/`、`/players`、`/glossary` 三頁報頭分隔線皆跨滿 `max-w-6xl`；390px 窄螢幕以 CDP 點開漢堡選單，收合選單與報頭同邊界、開合正常；`/players/691907` 兩張走勢圖皆為暖橘且各帶「數字越高越好」；`/players/678906`（本機 DB 中最長隊名）「所屬球隊」不再從字中間斷開。
+  - `pnpm build` 綠（33 頁）、`pnpm typecheck` 綠、`pnpm test` **32 檔 / 181 測試**全綠（移除 1 則、補回 1 則，總數不變）。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
@@ -325,8 +396,17 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（7 票，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板，**票已開、尚未動工**。
-  - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦）、04 首頁、05 名詞、07 隊徽 **四票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
+- [x] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，六張切片均已完成，詳見 2026-08-13 已完成區。
+- [x] 票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。
+- [x] 票 03：球員個人頁數據區（四格重點、可展開完整表、進階數據樣式）——已完成，詳見 2026-08-13 已完成區。
+- [x] 票 04：首頁改版——已完成，詳見 2026-08-13 已完成區。
+- [x] 票 05：名詞索引與名詞頁——已完成，詳見 2026-08-13 已完成區。
+- [x] 票 06：球員頁季內走勢圖（依層級累積 AVG／ERA）——已完成，詳見 2026-08-13 已完成區。
+  - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 **三票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
+  - **票 07「球隊隊徽」已併入票 02（2026-08-13，batu）**，`07-team-logos.md` 標 `superseded-by-02`、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 `PlayerCard` 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 `parentOrgTeamId` 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 `lib/services/*` 的地方。**落點於 2026-08-13 事後修正**：不放在會 import DB client 的 `team-map.ts`（那會讓 client bundle 拉進 `pg`），改為純模組 `lib/services/team-logo.ts` ＋ server 端解析成 `team.logoSrc`。
+  - **票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）**：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 `MAGAZINE_CARD_HOVER`），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 `PlayerCard` 依自己的 `archived` prop 決定、**不從外面用 descendant selector 覆寫**。
+  - **分支策略（2026-08-13，batu 定）：整批 7 票做完才 merge 進 main，用 `feat/ui-reskin-v2` 當切片整合分支。** 後續票**從該分支開子分支、做完併回它**，最後一次 `--no-ff` 進 main——**不要以 main 為基底**。理由：① 符合 repo 既有慣例，多票切片從來是一個分支扛完整批（`Merge spec-03 ETL pipeline` 7 票、`Merge feat/player-detail-page` 4 票、`Merge feat/glossary-and-advanced-metrics` 4 票），單票切片才單獨合；② 中間狀態是**刻意**的不一致（票 01 完成後其他頁面是「新報頭＋舊內文」，由 02／04／05 收斂），不該落在 main。
+    - **要接受的代價**：這 7 票的完成紀錄會積在分支上，**期間 main 的 DEVLOG 是落後的**，看真實進度要看分支。`spec-03` 那 7 票也是同樣情況，屬既有取捨。
   - **⚠️ 舊的 8 票（`.scratch/ui-reskin/issues/`）已作廢**，標記見 `.scratch/ui-reskin/SUPERSEDED.md`。舊批是未經 `/to-tickets` 手寫的，兩處實質偏差：跳過「Quiz the user」、且 `01 設計基礎` 是**水平**切片（明寫「不改任何頁面內容」、無法獨立 demo）。v2 以 skill 重開並經 batu 確認：**地基折進第一張頁面票**（已確認地基變更是純加法、不破壞既有頁面，故不適用 wide-refactor 的 expand–contract 例外）、每票只帶自己要的樣板、媒體集錦併入球員頁票。**兩批的技術決策一致**，差別在切分與流程。
   - **開票時查證出的一項修正（已回寫 plan §5.5）**：原建議 sparkline 打者畫 season-to-date OPS，**不成立**——`game_batting_lines`（`lib/db/schema/games.ts:28-52`）**沒有 `hbp` 也沒有 `sf`**（欄位只有 `pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb`），OBP 算不出來、OPS 也就算不出來。**改為投手 ERA（`er × 27 ÷ ipOuts`）、打者 AVG（`h ÷ ab`）**，兩者皆可精算。把 HBP/SF 當 0 近似 OBP **不做**——會系統性低估，等於在圖上放沒有出處的數字，與拒絕設計那個編造的 0-100「狀態分數」是同一條理由。日後要 OPS 須補 ETL 把 `hbp`／`sf` 寫進 `game_batting_lines`（schema＋ETL 變更），另案。
   - **票 07 另記兩個坑**：sparkline **自我正規化**（`range = max - min || 1`）⇒ 只表達形狀不表達幅度，故圖上**必須**標指標名與終點值；且 `sparkline.tsx:20` 的 `step = width / (data.length - 1)` 在單點資料會 `Infinity`。
@@ -336,6 +416,8 @@
   - **待決四題**：① ~~球員照片~~ **已收斂（2026-08-12，batu：一律不放人物圖像，改純字排＋隊徽）**——先更正初稿：設計用的**不是真人肖像**（`public/players/` 只有 `pitcher-portrait.png`／`batter-portrait.png` 兩檔、六名球員按 type 共用、alt 寫「示意插畫」），**未違反 `requirements.md:233`**，原本寫成「正面衝突」是講重了。真正的問題是密度——5 名 tracked 球員照設計原樣會是五張卡、四張投手圖一模一樣，80×80 的框比留白更糟。三個缺口改法：hero 換隊徽（姓氏浮水印本就在）、名冊卡拿掉圖框走純字排（保留編號浮水印）、首頁封面跨頁改**引言跨頁**（左半大字近況一句話＋層級 badge、右半四格數據）。連帶解掉 `headshot` 與 `summary` 兩項資料缺口。**隊徽本身另計**：30 支大聯盟隊徽下載進 `public/logos/`（不 hotlink）、小聯盟一律用母隊隊徽（與 2026-08-07 中文隊名決策同構、走 `parentOrgTeamId`），**時機未定但三個版面沒有隊徽也成立、不阻斷主線**；② ~~深色模式~~ **已收斂（2026-08-12，batu：不做）**——且這不是移除功能而是刪未曾生效的碼：全 repo **沒有任何地方掛 `.dark` class**（無 theme toggle、無 `next-themes`），而 `globals.css:5` 的 `@custom-variant dark (&:is(.dark *))` 是 class-based、不吃 `prefers-color-scheme` ⇒ `globals.css:85-117` 那 33 行深色盤**從未被觸發過**。連帶清理兩處不可達的 `dark:`（`ui/button.tsx` shadcn 原樣、`upcoming.tsx:68` 的 `dark:text-emerald-400`，後者改吃 `--up`／`--down` 後自然消失）；③ ~~名詞頁 modal vs 獨立頁~~ **已收斂（2026-08-12 討論，見 plan §5.3）：先 A（保留 `/glossary/[slug]` 全頁、只借 modal 的五段版面骨架，索引頁補搜尋＋卡片牆），B（intercepting routes `@modal/(.)glossary/[slug]`，兩全）留作後續 polish 且開票前需一次 spike**——modal-only 會讓 24 個可索引 URL 收斂成 1 個、sitemap 掉 24 條、per-term OG 全失，且 `season-stats.tsx:150` 的雙向連結與 `getRegistry()` 的 build-fail 護欄都掛在名詞頁上；`requirements.md` §8 該句是驗收條件；④ 資料缺口四項——`headshot`／`summary` 由 ① 解掉（不做）；**媒體與新聞集錦已決（2026-08-12，batu：先用 mock data）**，紀律三條見 plan §5.4（檔名自帶 `MOCK`、不進 `lib/services/index.ts` barrel、列技術債且不納入任何對帳驗收數字）。
   - **sparkline 走勢已決（2026-08-12，batu：選 B——季內累積走勢）**（plan §5.5、票 07）。不畫設計那個編造的 0-100「狀態分數」；**也不比照媒體用 mock**——媒體是「等資料源」，sparkline 是「等定義」，mock 一個編造分數等於把待決問題畫進 UI。打者指標的修正見上方「開票時查證出的一項修正」。
   - 「我想知道」問題牆為**全新頁**（需新內容模型 `FanQuestion`），可與拉皮脫鉤另議。
+
+- [x] ~~**UI 拉皮票 01：球員名冊改版＋設計地基**（`.scratch/ui-reskin-v2/issues/01-roster-with-design-foundation.md`）~~（2026-08-13 完成，見已完成區；切片整合分支 `feat/ui-reskin-v2`）——`/players` 六階動態分區的雜誌風純字排名冊＋全站設計地基；含事後 review 修掉的頁尾 `mt-16` 失效、archived 降對比空轉、失效的排序下拉三項。
 
 - [x] ~~**`team-names-zh`（1 票，`.scratch/team-names-zh/issues/`）**~~（2026-08-07 完成，見已完成區）——大聯盟 30 支手寫中文名、小聯盟由母隊推導。
 
@@ -388,6 +470,11 @@
 
 ## ❓ 待決問題（原自舊 Spec 01；2026-07-23 spec 重建後盤點）
 
+- [ ] **（2026-08-13 UI 拉皮浮現）分享卡的球隊 logo 要不要跟站內隊徽一樣推母隊？** `lib/seo/open-graph.ts:41` 的 `teamLogoUrl(teamId)` 用的是**球隊自己的 id**（`https://midfield.mlbstatic.com/v1/team/{id}/spots/96`），小聯盟球員的 OG 圖因此是小聯盟隊的 spot 圖；而票 02 定的**站內隊徽規則是「小聯盟一律顯示母隊」**（`lib/services/team-logo.ts`）。兩者不一致。
+  - **不是 bug**：midfield 端點涵蓋小聯盟 team id，不會破圖；且 OG 走外連、不吃我們的授權清單。
+  - 要決定的是**語意**：分享卡要呈現「他實際效力的那支小聯盟隊」還是「所屬母球團」。前者資訊更精確，後者與站內一致、辨識度也高（多數讀者認得母隊隊徽）。
+  - 改動很小（`playerShareMetadata` 改吃已解析的 id），但會影響既有分享連結的預覽圖。
+
 - [x] ~~進階數據要顯示到多細~~ → 已定：打/投各 7 項、只落不可推導欄（spec-01 C.7）
 - [x] ~~時區怎麼統一~~ → 已定：存 UTC＋顯示 Asia/Taipei＋`game_date_us` 錨定比賽日（spec-01 C.5、spec-02 §6）
 - [x] ~~白名單維護方式~~ → 已定：seed 腳本、不做後台（spec-01 A.1）
@@ -411,9 +498,25 @@
 - [ ] 視需要把 `lib/services` 抽成獨立後端服務
 - [ ] ISR 升級為 ETL 完成後 on-demand revalidate（spec-02 §8 v2；需 ETL 呼叫 revalidate endpoint）
 - [ ] Open Graph 動態合成圖（spec-02 §8 v2；v1 用球隊 logo／站台預設圖）
+- [ ] **加一道 lint／format 關卡**（2026-08-13 UI 拉皮浮現）。實測：`package.json` **沒有 `lint` script**、無 eslint／prettier／biome 設定檔，devDependencies 裡也沒有任何 lint 工具 ⇒ **純風格類問題目前沒有任何自動關卡**，只靠 `tsc --noEmit` 與 `next build` 順帶擋掉部分未使用 import。
+  - **這不是理論問題**：UI 拉皮前三張票由人工 review 抓到的缺陷裡，有一部分正是這類——重複定義已存在的型別、PascalCase 命名了回傳資料的函式、測試檔寫出完整 Tailwind class 字串（反而讓死掉的 utility 被編回 CSS）。這些都不會讓 typecheck 或測試變紅。
+  - 效益是**讓 review 專注在邏輯與正確性，而不是花在風格**。
+  - ⚠️ 導入時注意：這個 repo 的 import 帶 `.ts` 副檔名、用 Tailwind v4、TypeScript 7（tsgo），選 linter 與規則集時要確認相容；且**不要**讓它變成大規模格式化 commit 把 git blame 洗掉。
+
+- [ ] **`loadTeamMap()` 的請求級快取**（2026-08-13 UI 拉皮浮現）。`home.ts`／`player-recent.ts`／`player-upcoming.ts`／`player-detail.ts` 各自 `await loadTeamMap(db)`，每次都全表掃 `teams`（231 筆）。`React.cache()` 是正解，可讓同一個 request 內共用一次。
+  - **這是原本就有的行為，不是本次造成的**——票 02 曾用 module 層級的可變全域 `latestTeamMap` 當 logo 來源，那從來不是快取（而且藏著 bug，已於 2026-08-13 移除，見已完成區）。
+  - 231 筆的規模下不痛，故列未來 Phase 而非待決問題。真要動時**注意別再走回跨請求共用可變狀態**。
 
 ---
 
 ## 🗂️ 雜項 / 待整理
+
+- [ ] **球員頁季內走勢圖的兩個判斷待議**（2026-08-13 票 06 review 浮現；`components/player-detail/season-trend.tsx`、`lib/services/player-trend.ts`）。**第 1 點已於 2026-08-13 解決，第 2 點仍待議**：
+  1. ~~**線色是拿「第一場的累積值」跟最新值比**（`trendTone` 用 `points[0]` vs `points.at(-1)`）。但第一個累積點只根據一場（約 4 個 AB／少數出局數），數值極端——**某人首戰 4 打數無安打，之後整季的顏色幾乎注定是綠的**。顏色的資訊量比看起來低。若要更穩，可改跟某個基準比（前 N 場平均、球季中位數，或直接不上色只留單色）。~~ → **已解決**（2026-08-13，見 ✅ 已完成「票 01／06 事後修正」）。**採「直接不上色只留單色」**：實際畫面證實了這個疑慮——鄭宗哲首戰累積值偏高，3A `.246` 與大聯盟 `.256` **兩張圖整季都是紅的**，一個大聯盟打 .256 的球員全紅會被誤讀。線色統一為 `--accent`，`trendTone` 與 `Sparkline` 的 `higherIsBetter` prop 一併移除；「AVG 越高越好、ERA 越低越好」改由走勢卡下方的文字小字承擔（用語沿用名詞頁尺標的「數字越高／越低越好」），資訊沒有消失、只是換成不會誤導的載體。
+  2. **`getPlayerTrend` 的 `season` 預設取 `new Date().getUTCFullYear()`**，把「本季」綁在牆上時鐘而不是資料。跨年後 ETL 尚未灌新球季時，**走勢圖會整區消失，但下方的球季數據仍顯示上一季**——兩處對「本季」的定義不同源。`season` 參數可注入，要修時從呼叫端傳入資料上的最新球季即可。
+
+- [ ] **名詞頁級距尺標的兩個外觀待議**（2026-08-13 票 05 review 浮現；`components/glossary/bands-table.tsx`）。兩者都不是錯誤，是設計取捨，batu 已知情、暫時維持現狀：
+  1. **三階 tone 套在多段級距上，中間會整片同色。** 目前照設計稿用 `{low: bg-muted, mid: bg-accent/40, high: bg-accent}`，tone 由位置＋方向推導（最差端 low、最好端 high、中間全部 mid）。以 `k-pct` 的五段為例，`普通`／`偏高`／`易被三振` 在色帶上看不出差別，資訊只剩「頭、尾、中間一片」三層。**可考慮改單調漸層**（如 `accent/20 → /40 → /60 → /80 → accent`）——設計稿自己的 `DemoScaleBar` 就有兩段同為 `high`，代表 tone 本來就不是「一段一階」，改漸層並不違背設計語彙，資料視覺化上也更好讀。
+  2. **`bg-muted`（L≈0.94）在名詞頁背景（L≈0.98）上對比很低**，最差那段看起來像沒畫完。**脈絡不同所致**：設計稿的尺標在 modal 的 `bg-card`（純白）上，我們是直接放在頁面底上。補一圈 `border border-border` 即可界定。
 
 - [x] `plan/baseball-tracker-plan-rust.md` / `.html` 已被 Node.js 方案取代 → 已封存至 `archive/plan/`（2026-07-23）

@@ -3,7 +3,10 @@ import { teams } from "../db/schema/index.ts";
 import { levelLabel, type TeamLevel } from "./player-status.ts";
 
 /** A team as shown next to a game line: zh name (falling back to en) + abbrev. */
-export type TeamRef = { abbrev: string | null; name: string };
+export type TeamRef = {
+  abbrev: string | null;
+  name: string;
+};
 export type TeamMap = Map<number, TeamRef>;
 
 /** What deciding a team's Chinese display name needs (spec-01 C.2). */
@@ -55,7 +58,7 @@ export async function loadTeamMap(db = defaultDb): Promise<TeamMap> {
   // The parent org is in this same scan, so resolve it in memory rather than
   // paying for a self-join or a second query.
   const zhById = new Map(rows.map((r) => [r.id, r.nameZh]));
-  return new Map(
+  const map = new Map(
     rows.map((r) => [
       r.id,
       {
@@ -69,6 +72,7 @@ export async function loadTeamMap(db = defaultDb): Promise<TeamMap> {
       },
     ]),
   );
+  return map;
 }
 
 /** Resolve an opponent stored directly on a player's game line. */

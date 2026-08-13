@@ -10,6 +10,7 @@ import {
 } from "../db/schema/index.ts";
 import { playerLifecycle, teamLevel } from "../db/schema/enums.ts";
 import { buildStatusSentence, levelLabel } from "./player-status.ts";
+import { LICENSED_TEAM_LOGO_IDS, teamLogoSrc } from "./team-logo.ts";
 import { teamDisplayName } from "./team-map.ts";
 
 /**
@@ -29,6 +30,11 @@ export const PlayerSummarySchema = z.object({
       abbrev: z.string().nullable(),
       level: z.enum(teamLevel.enumValues),
       levelLabel: z.string(),
+      /**
+       * server 端就解析好的 logo 路徑（小聯盟已推到母隊），沒有素材時為 null。
+       * 名冊頁是 client component，不能自己去查——見 `team-logo.ts` 的說明。
+       */
+      logoSrc: z.string().nullable(),
     })
     .nullable(),
   /** 歸屬 × 健康 組成的一句（spec-01 B.2）；無投影時為「狀態同步中」。 */
@@ -44,9 +50,13 @@ export type PlayerSummary = z.infer<typeof PlayerSummarySchema>;
  *
  * 以 LEFT JOIN 帶入目前狀態、所屬球隊、近況——這三者由 ETL 產生，現階段多半為空，
  * 缺列時不炸：`statusSentence` fallback「狀態同步中」、`team`／`recentForm` 為 null。
- * `db` 可注入（測試以 seed 好的 DB fixture 驗證）。
+ * `db` 可注入（測試以 seed 好的 DB fixture 驗證）；`availableLogoIds` 同理，
+ * 讓 logo 解析在授權素材到位前就測得到。
  */
-export async function getPlayerSummaries(db = defaultDb): Promise<PlayerSummary[]> {
+export async function getPlayerSummaries(
+  db = defaultDb,
+  availableLogoIds: ReadonlySet<number> = LICENSED_TEAM_LOGO_IDS,
+): Promise<PlayerSummary[]> {
   // 小聯盟球隊的顯示名要用母隊中文名推導（spec-01 C.2），故自我 join 一次。
   const parentTeams = alias(teams, "parent_teams");
   const rows = await db
@@ -66,6 +76,8 @@ export async function getPlayerSummaries(db = defaultDb): Promise<PlayerSummary[
       teamAbbrev: teams.abbrev,
       teamLevel: teams.level,
       parentNameZh: parentTeams.nameZh,
+      // 同一個 self-join 順手多帶母隊 id，logo 才推得到母隊（小聯盟隊沒有自己的）。
+      parentTeamId: parentTeams.mlbTeamId,
       recentForm: playerRecentForm.sentenceZh,
     })
     .from(players)
@@ -103,6 +115,14 @@ export async function getPlayerSummaries(db = defaultDb): Promise<PlayerSummary[
               abbrev: row.teamAbbrev,
               level: row.teamLevel,
               levelLabel: levelLabel(row.teamLevel) ?? "",
+              logoSrc: teamLogoSrc(
+                {
+                  id: row.teamId,
+                  level: row.teamLevel,
+                  parentTeamId: row.parentTeamId,
+                },
+                availableLogoIds,
+              ),
             }
           : null,
       statusSentence: buildStatusSentence({

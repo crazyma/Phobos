@@ -4,7 +4,7 @@
 
 **Blocked by:** 01（字體／語意色／外框／共用樣板）。
 
-**Status:** ready-for-agent
+**Status:** done
 
 決策依據：`docs/plan/ui-reskin-2026-08-12.md` §2.4、§3、§5.3。
 
@@ -76,20 +76,32 @@
 
 ## Checklist
 
-- [ ] 索引頁可搜尋（名稱／縮寫／說明），搜尋＋卡片牆為 client component，server page 傳 frontmatter，**`force-static` 保持**
-- [ ] 分類分區沿用 `GLOSSARY_CATEGORIES`，`standard` 自補圖示與字樣，**分類本身未改**
-- [ ] **卡片是 `<Link>`，不是 `<button>`**
-- [ ] 搜尋無結果走 `EmptyState`；「測試畫面」浮動按鈕未被搬入
-- [ ] `baseball-icons.tsx` 已移植
-- [ ] 名詞頁改五段骨架，`formula` 層保留
-- [ ] 級距改堆疊尺標，**tone 方向吃 `higher_is_better` / `higher_is_better_pitcher`**
-- [ ] 開放區間畫法有明確決定並記在 Comments
-- [ ] `GlossaryExamples`／`RosterExamples` 保留，缺資料時整塊隱藏的行為不變
-- [ ] `components/glossary/glossary.test.tsx`、`app/glossary/index.test.tsx` 更新並綠
-- [ ] **`app/seo.test.ts` 綠**、`pnpm build` 綠，且 sitemap 仍含 24 條名詞 URL
-- [ ] `pnpm typecheck` 綠
+- [x] 索引頁可搜尋（名稱／縮寫／說明），搜尋＋卡片牆為 client component，server page 傳 frontmatter，**`force-static` 保持**
+- [x] 分類分區沿用 `GLOSSARY_CATEGORIES`，`standard` 自補圖示與字樣，**分類本身未改**
+- [x] **卡片是 `<Link>`，不是 `<button>`**
+- [x] 搜尋無結果走 `EmptyState`；「測試畫面」浮動按鈕未被搬入
+- [x] `baseball-icons.tsx` 已移植
+- [x] 名詞頁改五段骨架，`formula` 層保留
+- [x] 級距改堆疊尺標，**tone 方向吃 `higher_is_better` / `higher_is_better_pitcher`**
+- [x] 開放區間畫法有明確決定並記在 Comments
+- [x] `GlossaryExamples`／`RosterExamples` 保留，缺資料時整塊隱藏的行為不變
+- [x] `components/glossary/glossary.test.tsx`、`app/glossary/index.test.tsx` 更新並綠
+- [x] **`app/seo.test.ts` 綠**，且 sitemap 仍含 24 條名詞 URL
+- [x] `pnpm typecheck` 綠
+- [x] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）
 
 ## Comments
 
 - **modal 版（intercepting routes `app/@modal/(.)glossary/[slug]`）是後續 polish，不在本票**。開那張票前需要一次 spike：驗證 intercepting route 配 `await import(...content/glossary/${slug}.mdx)` 的動態 MDX 匯入在 Next 16 的行為（plan §5.3）。
 - 本票**不新增、不修改任何 MDX 內容**——24 則名詞的文字屬 spec-04 範圍。
+- 尺標兩端的開放區間：第一段取下一段的寬度，最後一段取前一段的寬度；只有一段時給等寬 100%。接縫仍用既有 `bandRange()` 顯示 `≤`／`>`，不捏造無界數值。
+- `higher_is_better_pitcher` 只在投手視角覆蓋預設方向；`k-pct`、`babip`、`bb-pct` 的雙視角因此會呈現相反的好壞色帶。
+- 索引搜尋只接收 server 傳入的 frontmatter，未 import `content.ts` 或 DB service；`force-static`、24 個獨立名詞 URL、metadata、sitemap 與 registry build-fail 護欄均保留。
+
+### 事後修正（code review）
+
+- **接縫數值的座標**：原本用 flex 排數值列，每個 `<span>` 寬度＝自己那段的寬度 ⇒ 標籤停在自己那段的**左緣**，但 `band.max` 是該段的**右緣**，整排數字左移一格。改採設計稿 `ScaleBar` 結構（標籤在上、細色帶、數值絕對定位在下）。設計稿用 `((b - min) / span) * 100` 算 `left%`，**我們兩端都是開放區間、沒有真正的 min/max**，所以改用**累積區段寬度**：第 i 個接縫的位置 = 前 i 段寬度總和 ÷ 總寬（沿用既有 `segmentWidths()`）。
+- **只畫內部接縫**：schema 保證「只有最後一段可以省略 `max`」，因此接縫取 `i < bands.length - 1` 的 `band.max`——尺標左右兩端是**合成**出來的寬度（見 `segmentWidths()`），標在 0% / 100% 會是捏造的界線。
+- **tone 推導規則**（`Band` 沒有 `tone` 欄位，設計的假資料才有）：以**位置＋方向**推導——**最差端 → `low`（`bg-muted`）、最好端 → `high`（`bg-accent`）、中間全部 → `mid`（`bg-accent/40`）**；哪一端是「最好」由 `higherIsBetter` 決定，投手視角吃 `higher_is_better_pitcher` 覆蓋；`bands.length === 1` 時不構成端點，給 `mid`。
+- **不用 `bg-up`／`bg-down`**：綠／紅在站上已是升降與勝敗的語彙（異動時間軸、首頁異動快訊、近期戰績），挪來表示級距好壞會混淆；設計原則亦明列「深藍為主、暖橘為輔」。
+- **幾何有測試護欄**：`scaleGeometry()`／`bandTones()` 抽成純函式，`glossary.test.tsx` 斷言「第 i 個接縫位置＝前 i 段寬度累積和」（用不等寬 bands，等寬會蓋掉差一格的錯誤）並從 render 出的 HTML 驗 `left:X%`。

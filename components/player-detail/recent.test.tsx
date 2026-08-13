@@ -28,10 +28,11 @@ const timeline: TimelineType = [
 describe("GameLog", () => {
   it("shows both batting and pitching tables for a two-way player", () => {
     const html = renderToStaticMarkup(<GameLog gameLog={gameLog} />);
-    expect(html).toContain("逐場成績");
+    expect(html).toContain("近期比賽紀錄");
     expect(html).toContain("打擊");
     expect(html).toContain("投球");
     expect(html).toContain("@ NYY"); // away game
+    expect(html).toContain("OPS");
   });
 
   it("shows an empty state when there are no games", () => {
@@ -49,6 +50,7 @@ describe("Timeline", () => {
     expect(html).toContain("2026-07-23");
     expect(html).toContain("下放小聯盟");
     expect(html).toContain("Optioned to Triple-A");
+    expect(html).toContain('text-down');
   });
 
   it("shows an empty state when there are no events", () => {

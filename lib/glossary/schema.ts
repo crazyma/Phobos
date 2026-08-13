@@ -176,3 +176,8 @@ export type GlossaryCategory = (typeof GLOSSARY_CATEGORIES)[number];
 /** Graded levels, in display/priority order (spec-04 §C/§E). */
 export const GRADED_LEVELS = ["mlb", "aaa", "aa"] as const;
 export type GradedLevel = (typeof GRADED_LEVELS)[number];
+
+/** Single source of truth for「這個 level 有沒有級距」；narrows to GradedLevel. */
+export function isGraded(level: string): level is GradedLevel {
+  return (GRADED_LEVELS as readonly string[]).includes(level);
+}

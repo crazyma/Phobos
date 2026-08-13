@@ -45,3 +45,10 @@ export {
   UpcomingSchema,
   type Upcoming,
 } from "./player-upcoming.ts";
+export {
+  getPlayerTrend,
+  PlayerTrendSchema,
+  MIN_TREND_BATTING_AB,
+  MIN_TREND_PITCHING_OUTS,
+  type PlayerTrend,
+} from "./player-trend.ts";

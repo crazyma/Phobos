@@ -4,7 +4,7 @@
 
 **Blocked by:** 02（同一頁，序列化避免編輯衝突）。**Blocks:** 06。
 
-**Status:** ready-for-agent
+**Status:** done
 
 決策依據：`docs/plan/ui-reskin-2026-08-12.md` §2.3、§3。
 
@@ -59,18 +59,29 @@
 
 ## Checklist
 
-- [ ] 本季數據每層級一張卡：重點四格 ＋ 卡頭（`LevelBadge`／場次／「目前所在」）
-- [ ] 四格 hint 走**現有** `lib/glossary/bands.ts` 的 band lookup，未新建第二份
-- [ ] 完整 20 欄表在 `<details>` 內：sticky 左欄、橫滑提示、合計列加粗；**欄位一欄不少**
-- [ ] per-team 分列與合計列既有邏輯未重寫
-- [ ] 進階數據改 `StatBlock`，**指標名仍連回 `/glossary/[slug]`**，缺值仍隱藏
-- [ ] 逐季歷史：同季分組留白＋虛線、同層級換隊併列雙隊名
-- [ ] 低階註記保留；archived 的 `heading` 機制不變
-- [ ] `components/player-detail/season-stats.test.tsx` 更新並綠
-- [ ] `pnpm build` 綠，且**實際驗證 `getRegistry()` 護欄仍會觸發**（暫時移走某則 metric 的 MDX 驗一次，驗完還原）
-- [ ] `pnpm typecheck` 綠
+- [x] 本季數據每層級一張卡：重點四格 ＋ 卡頭（`LevelBadge`／場次／「目前所在」）
+- [x] 四格 hint 走**現有** `lib/glossary/bands.ts` 的 band lookup，未新建第二份
+- [x] 完整 20 欄表在 `<details>` 內：sticky 左欄、橫滑提示、合計列加粗；**欄位一欄不少**
+- [x] per-team 分列與合計列既有邏輯未重寫
+- [x] 進階數據改 `StatBlock`，**指標名仍連回 `/glossary/[slug]`**，缺值仍隱藏
+- [x] 逐季歷史：同季分組留白＋虛線、同層級換隊併列雙隊名
+- [x] 低階註記保留；archived 的 `heading` 機制不變
+- [x] `components/player-detail/season-stats.test.tsx` 更新並綠
+- [x] `pnpm typecheck` 綠
+- [x] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）；並在 build 時**實際驗證 `getRegistry()` 護欄仍會觸發**（暫時移走某則 metric 的 MDX 驗一次，驗完還原）
 
 ## Comments
 
-- 四格挑選是**產品判斷**；實作時若覺得某項不合適可換，但要在 Comments 記下理由。
-- 「四格 ＋ 展開全表」是本票唯一有設計自由度的地方；其餘是把既有邏輯換皮，**不要順手改資料層**。
+- 四格採打者 `AVG / OPS / HR / RBI`、投手 `ERA / WHIP / SO / IP`。`AVG / OPS / ERA / WHIP` 的 hint 僅從既有 glossary bands 讀取；`HR / RBI / SO / IP` 沒有已編寫的 bands，因此刻意留白，不編造評價。低於 `AA` 的層級同樣不顯示未授權的級距。
+- 完整表保留原有 20 欄、per-team 分列、合計列與缺值規則；`<details>` 使用原生 HTML，維持 `season-stats.tsx` 為 server component。進階指標仍經 `metricSlug()` 連回名詞頁。
+- 驗收時暫時移走 `wrc-plus.mdx`，`pnpm build` 依預期因 `getRegistry()` 護欄失敗，隨後已還原檔案並重新通過正式 build。
+
+### Review 記錄（2026-08-13）— 兩項知情保留、不修
+
+以下兩點在 review 時提出，batu 判斷**維持現狀**，記在此避免日後被當成缺陷重新「修正」：
+
+1. **`battingFocus` / `pitchingFocus` 的命名**：這兩個函式回傳的是 `FocusStat[]`（資料），不是 JSX，卻曾以 PascalCase 命名而看起來像 component、並被直接呼叫而非以 JSX 使用。**已於後續修正改為小寫開頭**，此點僅供追溯。
+
+2. **`STANDARD_SLUG` 是第二處「指標名 → 名詞頁 slug」的知識**（另一處是 `lib/glossary/registry.ts` 的 metric registry）。**這是無可避免的**：standard 類名詞依 `lib/glossary/schema.ts` 的 superRefine **明文禁止帶 `metric_keys`**，因此 registry 天生涵蓋不到 AVG／OPS／ERA／WHIP 這四則，只能以 slug 直接 `loadFrontmatter()`。
+   - **不要為此把 standard 名詞塞進 metric registry**——那會違反 schema 的驗證規則，而該規則是刻意的（standard 在 v1 只做解釋、不參與球員頁的指標註冊與範例挑選）。
+   - 若日後這份對照長大到難以維護，正解是在 glossary 側提供一個「以 slug 取 bands」的公開 helper，而不是繞過 schema。

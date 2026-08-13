@@ -4,7 +4,7 @@
 
 **Blocked by:** 03（掛在數據區下方）。
 
-**Status:** ready-for-agent
+**Status:** done
 
 決策依據：`docs/plan/ui-reskin-2026-08-12.md` §5.5（決議 B，含打者指標修正）。
 
@@ -69,16 +69,19 @@ pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb
 
 ## Checklist
 
-- [ ] `player-trend.ts`：整季逐場、依層級分開累積、`db` 可注入
-- [ ] 投手 ERA、打者 **AVG**；**沒有近似 OBP／OPS**
-- [ ] 樣本門檻為具名常數，不足時整區隱藏
-- [ ] 走勢圖元件已移植，**圖上有指標名與最新值**
-- [ ] 標題是「本季累積…走勢」
-- [ ] 好壞方向：ERA 低為佳、AVG 高為佳，上色未共用同一條規則
-- [ ] 新增 `lib/services/player-trend.test.ts`：跨層級不混算、樣本不足回空、ERA/AVG 各一組已知輸入的期望值、**只有一場時不炸**
-- [ ] `pnpm test` 綠、`pnpm typecheck` 綠
+- [x] `player-trend.ts`：整季逐場、依層級分開累積、`db` 可注入
+- [x] 投手 ERA、打者 **AVG**；**沒有近似 OBP／OPS**
+- [x] 樣本門檻為具名常數，不足時整區隱藏
+- [x] 走勢圖元件已移植，**圖上有指標名與最新值**
+- [x] 標題是「本季累積…走勢」
+- [x] 好壞方向：ERA 低為佳、AVG 高為佳，上色未共用同一條規則
+- [x] 新增 `lib/services/player-trend.test.ts`：跨層級不混算、樣本不足回空、ERA/AVG 各一組已知輸入的期望值、**只有一場時不炸**
+- [x] `pnpm test` 綠、`pnpm typecheck` 綠
+- [x] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）
 
 ## Comments
 
 - ⚠️ `sparkline.tsx:20` 的 `const step = width / (data.length - 1)`：**`data.length === 1` 會得到 `Infinity`**。樣本門檻通常擋掉了，但仍要在元件或 service 明確處理。
 - 這是本次拉皮**唯一新增資料衍生邏輯**的一票，因此測試要求高於其他票。
+- 門檻採建議值並具名化：打者至少 20 AB、投手至少 30 outs（10 局）。前者避免極少打席的 AVG 被單場扭曲，後者避免短局數的 ERA 呈現為走勢；實測費爾柴德 MLB 的 19 AB 因此正確隱藏。
+- SVG 的單點保護：`points.length === 1` 時 `step = 0`，不會做 `width / 0` 或產生 `Infinity`；合格的一場 20 AB fixture 已由測試覆蓋。

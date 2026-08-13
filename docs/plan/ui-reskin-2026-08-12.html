@@ -156,8 +156,8 @@
 
   <header class="page-head">
     <h1>UI 拉皮研究 — 以 Phobos-UI 雜誌風設計改寫前端（2026-08-12）</h1>
-    <p>研究外部設計專案 <code>Phobos-UI</code>（v0 產出、雜誌跨頁風格，自帶設計指南頁）能否用來改寫本站前端。結論：<strong>技術棧同源、可直接搬</strong>，但設計覆蓋的資訊深度只有現行的一部分，數處版面需要自行補齊。<br>§5 待決項已於 2026-08-12 <strong>全數拍板</strong>——<strong>§5.1 人物圖像</strong>（不放，改純字排＋隊徽）、<strong>§5.2 深色模式</strong>（不做）、<strong>§5.3 名詞頁</strong>（先 A 全頁、B 留 polish）、<strong>§5.4 媒體集錦</strong>（先用 mock）、<strong>§5.5 sparkline</strong>（B，季內累積走勢；打者改 AVG，見該節修正）。<br><strong>已開 7 票：<code>.scratch/ui-reskin-v2/issues/01</code>–<code>07</code></strong>（2026-08-12 以 <code>/to-tickets</code> 開出），frontier 為 01（球員名冊改版，含設計地基）。<br>⚠️ 更早的 8 票在 <code>.scratch/ui-reskin/issues/</code>，<strong>已作廢</strong>——見該目錄的 <code>SUPERSEDED.md</code>。決策內容一致，差別在切分方式與發布流程。</p>
-    <div class="badges"><span class="badge"><strong>類型</strong> 研究/選型</span><span class="badge"><strong>輸入</strong> Phobos-UI repo（v0 設計專案）</span><span class="badge"><strong>對象</strong> spec-02 既有五頁</span><span class="badge"><strong>狀態</strong> 五題全決、已開 7 票（v2）</span></div>
+    <p>研究外部設計專案 <code>Phobos-UI</code>（v0 產出、雜誌跨頁風格，自帶設計指南頁）能否用來改寫本站前端。結論：<strong>技術棧同源、可直接搬</strong>，但設計覆蓋的資訊深度只有現行的一部分，數處版面需要自行補齊。<br>§5 待決項已於 2026-08-12 <strong>全數拍板</strong>——<strong>§5.1 人物圖像</strong>（不放，改純字排＋隊徽）、<strong>§5.2 深色模式</strong>（不做）、<strong>§5.3 名詞頁</strong>（先 A 全頁、B 留 polish）、<strong>§5.4 媒體集錦</strong>（先用 mock）、<strong>§5.5 sparkline</strong>（B，季內累積走勢；打者改 AVG，見該節修正）。<br><strong>已開 7 票：<code>.scratch/ui-reskin-v2/issues/01</code>–<code>07</code></strong>（2026-08-12 以 <code>/to-tickets</code> 開出）。<strong>票 07 隊徽已於 2026-08-13 併入票 02 ⇒ 實際為 6 票</strong>；<strong>票 01 已完成</strong>（2026-08-13，見 DEVLOG）。目前 frontier 為 02／04／05 三票，可並行。<br>⚠️ 更早的 8 票在 <code>.scratch/ui-reskin/issues/</code>，<strong>已作廢</strong>——見該目錄的 <code>SUPERSEDED.md</code>。決策內容一致，差別在切分方式與發布流程。</p>
+    <div class="badges"><span class="badge"><strong>類型</strong> 研究/選型</span><span class="badge"><strong>輸入</strong> Phobos-UI repo（v0 設計專案）</span><span class="badge"><strong>對象</strong> spec-02 既有五頁</span><span class="badge"><strong>狀態</strong> 五題全決、6 票（v2）、票 01 已完成</span></div>
   </header>
 
   <section>
@@ -387,7 +387,7 @@
     <li><strong>不進 <code>lib/services/index.ts</code> 的公開 barrel</strong>——避免日後被誤當成一般 service 接走。</li>
     <li><strong>列為技術債並記在 DEVLOG</strong>，與「媒體資料源」一併結案；真實來源上線前，這一區不納入任何對帳或驗收數字。</li>
     </ol>
-    <blockquote><p>附帶：隊徽（<code>public/logos/</code> ＋ <code>teamLogo(teamId)</code> 走母隊推導）是 §5.1 帶出的<strong>新</strong>資料需求，時機未定、不阻斷主線。</p></blockquote>
+    <blockquote><p>附帶：隊徽（<code>public/logos/</code> ＋ <code>teamLogo(teamId)</code> 走母隊推導）是 §5.1 帶出的<strong>新</strong>資料需求。原為獨立的票 07、時機未定；<strong>2026-08-13 batu 決定併入票 02 一起做</strong>——隊徽同時出現在名冊卡與球員頁 hero，兩處都落在同一批檔案，拆開反而讓兩個 agent 前後相撞。</p></blockquote>
     <h3 id="sec-6-5">5.5 sparkline 走勢 —— <strong>已決議：B，季內累積走勢</strong>（2026-08-12，batu）</h3>
     <blockquote><p><strong>⚠️ 開票時的修正：打者畫 AVG，不是 OPS。</strong> 下表 B 欄原本寫「season-to-date OPS」，開票前查證後<strong>不成立</strong>——<code>game_batting_lines</code>（<code>lib/db/schema/games.ts:28-52</code>）<strong>沒有 <code>hbp</code>、沒有 <code>sf</code></strong>（欄位只有 <code>pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb</code>），因此 <code>OBP</code> 算不出來、<code>OPS</code> 也算不出來。<code>SLG</code> 與 <code>AVG</code> 可精算。</p><p><strong>決議：投手畫 season-to-date ERA（<code>er × 27 ÷ ipOuts</code>）、打者畫 season-to-date AVG（<code>h ÷ ab</code>）。</strong> 把 HBP/SF 當 0 近似 OBP 不做——會系統性低估，等於在圖上放沒有出處的數字，與拒絕「狀態分數」是同一條理由。日後要 OPS 得補 ETL 把 <code>hbp</code>／<code>sf</code> 寫進 <code>game_batting_lines</code>（schema＋ETL 變更），另案處理。</p><p>落地見 <code>.scratch/ui-reskin-v2/issues/06-season-trend-chart.md</code>。</p></blockquote>
     <p><strong>它是什麼</strong>：<code>components/sparkline.tsx</code>（57 行純 SVG，無座標軸、無刻度、線尾一點），用在球員頁「近期比賽紀錄」下方，每層級一張卡，標題「近七場狀態走勢」（<code>magazine-player-detail.tsx:298-321</code>）。</p>
