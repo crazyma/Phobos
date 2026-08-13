@@ -20,6 +20,12 @@
   - **實作過程發現的一個坑**：**測試檔裡寫出完整的 Tailwind class 字串（例如斷言某個 class 不存在）會被 Tailwind 掃成候選字，把那個已死的 utility 重新編回 CSS bundle**——斷言「它不存在」反而讓它存在。已改用不會構成合法候選的 regex 比對（如 `/opacity-\d/`、`/bg-muted(?![-\w])/`，後者順帶避開誤中 `bg-muted-foreground`），並在 `players-view.test.tsx` 與 `player-card.tsx` 原處留註解說明。
   - `pnpm typecheck` 綠、`pnpm test` 綠。
 
+- [x] **UI 拉皮票 02 完成——球員個人頁檔案與動態改為雜誌風**（票 `.scratch/ui-reskin-v2/issues/02-player-page-profile-and-moves.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - `/players/[id]` 非數據區更新為深藍 hero（姓氏浮水印、LevelBadge、四格資料、狀態引言、近況句）、StatList 近期比賽、媒體 mock carousel、動態時間軸、出賽預告與 archived 提示；本季／逐季／進階數據刻意保留給票 03。
+  - `teamLogo()` 落在既有 `lib/services/team-map.ts`，用已載入的 TeamMap 記憶體推導小聯盟母隊，無新增 DB 往返；hero／名冊卡均接上可選 slot。素材尚未授權提供，fallback 為 null 並省略元素。封存卡片 hover 改為灰色邊框仍保留互動回饋。
+  - 媒體資料放 `lib/services/media.mock.ts`（含 MOCK 警語、不進 barrel、不納入驗收數字）；異動色調與出賽 tag 均在呈現層實作，未改 schema 或既有商業邏輯。以 dev server＋Chrome 實際檢視桌機與 390px 手機球員頁。
+  - 相關測試與 typecheck 綠；完整 `pnpm test` 結果記於本次交付回報。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
@@ -339,6 +345,7 @@
 ## ▶️ 進行中 / 下一步
 
 - [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06 待辦。
+- [x] 票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。
   - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 **三票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
   - **票 07「球隊隊徽」已併入票 02（2026-08-13，batu）**，`07-team-logos.md` 標 `superseded-by-02`、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 `PlayerCard` 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。`teamLogo()` 走 `parentOrgTeamId` 推母隊、放進既有的 `lib/services/team-map.ts`（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 `lib/services/*` 的地方。
   - **票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）**：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 `MAGAZINE_CARD_HOVER`），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 `PlayerCard` 依自己的 `archived` prop 決定、**不從外面用 descendant selector 覆寫**。

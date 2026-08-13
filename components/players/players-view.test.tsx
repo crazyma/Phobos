@@ -47,7 +47,8 @@ describe("PlayersView (page smoke)", () => {
     expect(html).toContain("3A 一階之遙");
     expect(html).toContain("Triple-A");
     expect(html).toContain("1 位");
-    expect(html).toContain("SS ・ 響尾蛇（Reno Aces）");
+    expect(html).toContain("SS");
+    expect(html).toContain("響尾蛇（Reno Aces）");
     expect(html).not.toContain("3A・響尾蛇（Reno Aces）"); // 隊名不重複印層級
     expect(html).toContain("連三場猛打賞");
     // null recentForm → placeholder

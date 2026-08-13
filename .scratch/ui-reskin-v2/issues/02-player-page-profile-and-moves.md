@@ -8,7 +8,7 @@
 > 1. **票 07「球隊隊徽」整張併入本票**——隊徽同時出現在名冊卡與球員頁 hero，兩處都在 `PlayerCard`／hero，一起做最省。票 07 已標記為併入、不再單獨執行。詳見下方「隊徽」一節。
 > 2. **封存卡片不要有橘色 hover 邊框**——見下方「封存卡片的 hover」一節。
 
-**Status:** ready-for-agent
+**Status:** done
 
 決策依據：`docs/plan/ui-reskin-2026-08-12.md` §2.3、§3、§5.1、§5.4。
 
@@ -115,23 +115,26 @@ plan §5.4 已決議先用 mock。移植 `Phobos-UI/components/magazine/media-ca
 
 ## Checklist
 
-- [ ] Hero：姓氏浮水印、`LevelBadge`、四格基本資料、狀態句引言化、近況句
-- [ ] **隊徽**：30 支在 `public/logos/`、`teamLogo(teamId)` 在 `lib/services/team-map.ts` 走 `parentOrgTeamId` 推導且**未增加 DB 往返**、hero 與名冊卡兩處版位都接上
-- [ ] 隊徽 fallback 回 null、呼叫端省略元素，**不出現破圖**；素材未到位時版面仍成立
-- [ ] `lib/services/team-map.test.ts` 補測：MLB 直取、小聯盟推母隊、母隊解不出時回 null
-- [ ] **封存卡片 hover 不出現橘色**，但仍有可點擊回饋；現役卡片行為不變；未用 descendant selector 從外覆寫
-- [ ] 近期比賽改 `StatList`，二刀流兩份都出，`shortDate()`／`vs()` 沿用
-- [ ] 媒體集錦可捲動；`media.mock.ts` 含 `MOCK` 命名與檔頭警語，**不進 barrel**
-- [ ] 時間軸改動態列，升降吃 `--up`／`--down`，英文 description 維持原樣
-- [ ] 「異動類型 → 色調」對照在呈現層，未動 service／schema
-- [ ] 出賽預告自製、三 tag 配色如上、既有邏輯未重寫
-- [ ] `upcoming.tsx:68` 的 `dark:` 已清
-- [ ] archived 提示條換樣式，隱藏規則不變
-- [ ] `player-hero.test.tsx`、`recent.test.tsx`、`upcoming.test.tsx` 更新並綠
-- [ ] `pnpm typecheck` 綠
+- [x] Hero：姓氏浮水印、`LevelBadge`、四格基本資料、狀態句引言化、近況句
+- [ ] 30 支 MLB 隊徽素材放入 `public/logos/`（素材來源／授權尚待 batu 提供；fallback 路徑已完成）
+- [x] **隊徽**：`teamLogo(teamId)` 在 `lib/services/team-map.ts` 走 `parentOrgTeamId` 推導且**未增加 DB 往返**、hero 與名冊卡兩處版位都接上（素材待授權後放入 `public/logos/`）
+- [x] 隊徽 fallback 回 null、呼叫端省略元素，**不出現破圖**；素材未到位時版面仍成立
+- [x] `lib/services/team-map.test.ts` 補測：MLB 直取、小聯盟推母隊、母隊解不出時回 null
+- [x] **封存卡片 hover 不出現橘色**，但仍有可點擊回饋；現役卡片行為不變；未用 descendant selector 從外覆寫
+- [x] 近期比賽改 `StatList`，二刀流兩份都出，`shortDate()`／`vs()` 沿用
+- [x] 媒體集錦可捲動；`media.mock.ts` 含 `MOCK` 命名與檔頭警語，**不進 barrel**
+- [x] 時間軸改動態列，升降吃 `--up`／`--down`，英文 description 維持原樣
+- [x] 「異動類型 → 色調」對照在呈現層，未動 service／schema
+- [x] 出賽預告自製、三 tag 配色如上、既有邏輯未重寫
+- [x] `upcoming.tsx:68` 的 `dark:` 已清
+- [x] archived 提示條換樣式，隱藏規則不變
+- [x] `player-hero.test.tsx`、`recent.test.tsx`、`upcoming.test.tsx` 更新並綠
+- [x] `pnpm typecheck` 綠
 
 ## Comments
 
 - 本票對 `lib/services/*` **只有一個准許的例外**：隊徽的 `teamLogo()` 放進既有的 `team-map.ts`（見「隊徽」一節）。其餘一律不動。媒體 mock 是唯一新增資料檔且刻意隔離。
 - 容器由票 01 統一成 `max-w-6xl px-6`（個人頁原為 `max-w-3xl`）——**注意行長**：純文字段落建議自行收在 `max-w-prose`，別讓近況句拉滿 6xl。
 - 完成後本頁會是「新檔案區＋舊數據表」的混搭，**這是預期的**，由 03 收斂。
+
+- 2026-08-13：隊徽素材尚未由 batu 提供／確認授權，故未新增 `public/logos/` 圖檔；helper 與兩個版位已完成，預設 allowlist 為空、fallback 省略元素，待素材到位後只需填入 allowlist 與檔案。

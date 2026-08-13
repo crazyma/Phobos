@@ -7,6 +7,12 @@ const TAG_LABELS: Record<NonNullable<Upcoming>["tag"], string> = {
   il: "傷兵中",
 };
 
+const TAG_CLASS: Record<NonNullable<Upcoming>["tag"], string> = {
+  probable_starter: "border-accent bg-accent text-accent-foreground",
+  possible: "border-accent bg-transparent text-accent",
+  il: "border-down bg-down text-primary-foreground",
+};
+
 function opponentName(o: { abbrev: string | null; name: string } | null): string {
   return o ? (o.abbrev ?? o.name) : DASH;
 }
@@ -19,8 +25,9 @@ function opponentName(o: { abbrev: string | null; name: string } | null): string
 export function Upcoming({ upcoming }: { upcoming: Upcoming }) {
   if (!upcoming) {
     return (
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">出賽預告</h2>
+      <section className="mt-16">
+        <p className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-accent">UP NEXT</p>
+        <h2 className="font-serif text-3xl font-black tracking-tight">出賽預告</h2>
         <p className="mt-2 text-sm text-muted-foreground">目前無所屬球隊。</p>
       </section>
     );
@@ -29,13 +36,16 @@ export function Upcoming({ upcoming }: { upcoming: Upcoming }) {
   const { tag, nextGame, recentResults } = upcoming;
 
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-semibold">出賽預告 · 下一系列賽</h2>
+    <section className="mt-16">
+      <div className="mb-6">
+        <p className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-accent">UP NEXT</p>
+        <h2 className="font-serif text-3xl font-black tracking-tight">出賽預告</h2>
+      </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <span className="rounded bg-muted px-2 py-0.5 text-sm">{TAG_LABELS[tag]}</span>
+      <div className="flex flex-wrap items-center gap-3 border-t-2 border-foreground pt-5">
+        <span className={`rounded-full border px-3 py-1.5 font-mono text-xs font-bold ${TAG_CLASS[tag]}`}>{TAG_LABELS[tag]}</span>
         {nextGame && (
-          <span className="text-sm text-muted-foreground">
+          <span className="font-serif text-xl font-black text-foreground">
             {nextGame.isHome === false ? "客場 @ " : "主場 vs "}
             {opponentName(nextGame.opponent)}
             {nextGame.gamesInSeries && nextGame.seriesGameNumber
@@ -46,7 +56,7 @@ export function Upcoming({ upcoming }: { upcoming: Upcoming }) {
       </div>
 
       {nextGame && (
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-3 font-mono text-xs text-muted-foreground">
           {formatDateTimeTaipei(nextGame.startTimeUtc)}（台灣時間）
           {nextGame.venueName ? `・${nextGame.venueName}` : ""}
         </p>
@@ -57,18 +67,14 @@ export function Upcoming({ upcoming }: { upcoming: Upcoming }) {
 
       {recentResults.length > 0 && (
         <div className="mt-4">
-          <p className="mb-1 text-sm font-medium text-muted-foreground">近期戰績</p>
-          <ul className="space-y-1 text-sm tabular-nums">
+          <p className="mb-3 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">近期戰績</p>
+          <ul className="space-y-2 text-sm tabular-nums">
             {recentResults.map((g) => (
               <li key={g.gamePk} className="flex items-center gap-2">
                 <span className="w-14 text-muted-foreground">{g.gameDate.slice(5)}</span>
                 <span
                   className={
-                    g.win === true
-                      ? "font-medium text-emerald-600 dark:text-emerald-400"
-                      : g.win === false
-                        ? "text-muted-foreground"
-                        : ""
+                    g.win === true ? "font-medium text-up" : g.win === false ? "text-down" : "text-muted-foreground"
                   }
                 >
                   {g.win === true ? "勝" : g.win === false ? "敗" : "—"}

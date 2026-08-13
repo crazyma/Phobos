@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { PlayerSummary } from "@/lib/services";
-import { MAGAZINE_CARD_HOVER } from "@/components/magazine/card-styles";
+import {
+  MAGAZINE_ARCHIVED_CARD_HOVER,
+  MAGAZINE_CARD_HOVER,
+} from "@/components/magazine/card-styles";
+import { teamLogo } from "@/lib/services/team-map";
 
 /**
  * One roster entry: 中英名 + 守位、目前隊伍/層級徽章、狀態一句、近況一句話.
@@ -30,11 +34,13 @@ export function PlayerCard({
   /** 封存卡片整張去彩度：橘色重點換成與次要文字同色的灰。 */
   const rule = archived ? "bg-muted-foreground" : "bg-accent";
   const quoteRule = archived ? "border-muted-foreground" : "border-accent";
+  const hover = archived ? MAGAZINE_ARCHIVED_CARD_HOVER : MAGAZINE_CARD_HOVER;
+  const logo = teamLogo(player.team?.id);
 
   return (
     <Link
       href={`/players/${player.playerId}`}
-      className={`group relative block overflow-hidden rounded-sm border border-border ${surface} p-5 text-card-foreground ${MAGAZINE_CARD_HOVER}`}
+      className={`group relative block overflow-hidden rounded-sm border border-border ${surface} p-5 text-card-foreground ${hover}`}
     >
       <span className="pointer-events-none absolute right-3 top-1 font-serif text-4xl font-black leading-none text-foreground/[0.06]">
         {String(index + 1).padStart(2, "0")}
@@ -45,8 +51,12 @@ export function PlayerCard({
         <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
           {player.nameEn}
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {[player.primaryPosition, player.team?.name].filter(Boolean).join(" ・ ") || "隊伍同步中"}
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          {player.primaryPosition && <span>{player.primaryPosition}</span>}
+          {player.primaryPosition && player.team?.name && <span aria-hidden="true">・</span>}
+          {player.team?.name && <span>{player.team.name}</span>}
+          {!player.primaryPosition && !player.team?.name && "隊伍同步中"}
+          {logo && <img src={logo} alt="" className="size-5 object-contain" />}
         </p>
       </div>
       <p className={`mt-4 border-l-4 ${quoteRule} pl-3 font-serif text-sm font-bold text-foreground`}>

@@ -7,6 +7,8 @@ import { GameLog } from "@/components/player-detail/game-log";
 import { Timeline } from "@/components/player-detail/timeline";
 import { Upcoming } from "@/components/player-detail/upcoming";
 import { playerShareMetadata } from "@/lib/seo/open-graph";
+import { MediaCarousel } from "@/components/player-detail/media-carousel";
+import { PLAYER_MEDIA_MOCK } from "@/lib/services/media.mock";
 
 // ISR: data refreshes twice a day (spec-03); a 30-min revalidate suffices
 // (spec-02 §2.3). On-demand revalidation on ETL completion is a v2 open item.
@@ -52,13 +54,15 @@ export default async function PlayerPage({
   const isArchived = player.lifecycle === "archived";
 
   return (
-    <article className="mx-auto max-w-3xl px-4 py-8">
+    <article className="mx-auto min-w-0 max-w-6xl overflow-x-hidden px-6 py-10 pb-16">
       <PlayerHero player={player} />
 
       {isArchived && (
-        <p className="mt-6 rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
-          已離開美職體系。以下僅保留生涯總成績。
-        </p>
+        <div className="mt-8 border border-dashed border-border bg-muted p-5">
+          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-muted-foreground">ARCHIVED PROFILE</p>
+          <p className="mt-2 font-serif text-lg font-black">已離開美職體系</p>
+          <p className="mt-1 text-sm text-muted-foreground">以下僅保留生涯總成績。</p>
+        </div>
       )}
 
       <SeasonStats
@@ -70,6 +74,7 @@ export default async function PlayerPage({
       {!isArchived && (
         <>
           <GameLog gameLog={player.gameLog} />
+          <MediaCarousel items={PLAYER_MEDIA_MOCK[player.playerId] ?? []} />
           <Timeline timeline={player.timeline} />
           <Upcoming upcoming={player.upcoming} />
         </>

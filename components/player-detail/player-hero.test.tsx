@@ -29,7 +29,10 @@ describe("PlayerHero", () => {
     expect(html).toContain("SS");
     expect(html).toContain("左打・右投"); // bats/throws label
     expect(html).toContain("2001-07-26");
-    expect(html).toContain("大聯盟・波士頓紅襪"); // team badge
+    expect(html).toContain("所屬球隊");
+    expect(html).toContain("波士頓紅襪");
+    expect(html).toContain("返回球員名冊");
+    expect(html).toContain("球員檔案");
     expect(html).toContain("連續 5 場有安打"); // recent form
   });
 
