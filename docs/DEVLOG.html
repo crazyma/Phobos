@@ -216,6 +216,14 @@
     </ul></li>
     </ul>
     <ul class="todo">
+    <li class="done"><strong>UI 拉皮票 05 完成——名詞索引搜尋與獨立名詞頁改版</strong>（票 <code>.scratch/ui-reskin-v2/issues/05-glossary.md</code>，切片整合分支 <code>feat/ui-reskin-v2</code>）。
+    <ul>
+    <li><code>/glossary</code> 維持 <code>force-static</code>，server 傳 frontmatter 給 client 搜尋／卡片牆；分類沿用既有 registry，卡片是真 <code>&lt;Link&gt;</code>，standard 類另配圖示與標題，無結果使用 <code>EmptyState</code>。</li>
+    <li><code>/glossary/[slug]</code> 保留 24 個 SSG URL、metadata、sitemap 與 <code>getRegistry()</code> build-fail 護欄，套用導讀／級距／定義算法／延伸參考／範例球員五段骨架；<code>BandsTable</code> 改為每層級一條垂直尺標並依兩種 higher-is-better 欄位著色。</li>
+    <li><code>baseball-icons.tsx</code> 自設計 repo 移植；未修改任何 MDX 或 <code>lib/services/*</code>。<code>pnpm test</code>、<code>pnpm typecheck</code>、<code>pnpm build</code> 與 SEO 測試綠，實際檢視 <code>/glossary</code> 搜尋結果／空結果及 <code>k-pct</code> 雙視角尺標。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class="done"><strong>票 04 事後修正——<code>EVENT_TONE</code> 搬家弄丟窮盡型別保護、空狀態吃掉二刀流的投球那份</strong>（同分支 <code>feat/ui-reskin-v2</code>；code review 抓到）。
     <ol>
     <li><strong><code>EVENT_TONE</code> 從窮盡 <code>Record</code> 退化成 <code>Record&lt;string, …&gt;</code>。</strong> 搬到 <code>components/magazine/event-tone.ts</code> 共用時，key 的型別由 transaction type union 放寬成 <code>string</code>，並補了 <code>?? &quot;neutral&quot;</code> fallback ⇒ <strong>新增 <code>transaction_type</code> enum 值卻沒替它分類時不再有任何提醒，會靜默變成中性色</strong>。這個 repo 六週內就新增了四個 enum 值（<code>declare_fa</code>／<code>assign</code>／<code>waiver_claim</code>／<code>activate</code>），每次都需要人為決定它是升是降。已改回 <code>Record&lt;TransactionType, Tone&gt;</code>（<code>TransactionType</code> 取自 <code>Timeline[number][&quot;type&quot;]</code>，<strong><code>import type</code> 取得、編譯後完全抹除</strong>——票 02 的教訓：<code>components/</code> 下用值 import 碰到 <code>lib/services</code> 會把 <code>pg</code> 拉進瀏覽器 bundle 而讓 <code>next build</code> 死掉），窮盡後 <code>?? &quot;neutral&quot;</code> 不可達已一併移除。<strong>反向驗證</strong>：刪掉 <code>waiver_claim</code> 後 <code>pnpm typecheck</code> 如預期報 <code>TS2741: Property &#x27;waiver_claim&#x27; is missing …</code>，補回後回綠。</li>
@@ -659,10 +667,11 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
-    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（原 7 票 → </strong>6 票<strong>，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，五個待決項已於 2026-08-12 全數拍板；票 01／02／03／04 已完成，票 05／06 待辦。</li>
+    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（原 7 票 → </strong>6 票<strong>，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，五個待決項已於 2026-08-12 全數拍板；票 01／02／03／04／05 已完成，票 06 待辦。</li>
     <li class="done">票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。</li>
     <li class="done">票 03：球員個人頁數據區（四格重點、可展開完整表、進階數據樣式）——已完成，詳見 2026-08-13 已完成區。</li>
-    <li class="done">票 04：首頁改版——已完成，詳見 2026-08-13 已完成區。
+    <li class="done">票 04：首頁改版——已完成，詳見 2026-08-13 已完成區。</li>
+    <li class="done">票 05：名詞索引與名詞頁——已完成，詳見 2026-08-13 已完成區。
     <ul>
     <li><strong>相依順序</strong>：<strong>01 球員名冊改版（含設計地基）★</strong>（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 <strong>三票可並行</strong> → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。</li>
     <li><strong>票 07「球隊隊徽」已併入票 02（2026-08-13，batu）</strong>，<code>07-team-logos.md</code> 標 <code>superseded-by-02</code>、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 <code>PlayerCard</code> 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 <code>parentOrgTeamId</code> 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 <code>lib/services/*</code> 的地方。<strong>落點於 2026-08-13 事後修正</strong>：不放在會 import DB client 的 <code>team-map.ts</code>（那會讓 client bundle 拉進 <code>pg</code>），改為純模組 <code>lib/services/team-logo.ts</code> ＋ server 端解析成 <code>team.logoSrc</code>。</li>

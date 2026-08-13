@@ -43,6 +43,11 @@
   - `EVENT_TONE` 提到 `components/magazine/` 由首頁與球員時間軸共用；即將出賽沿用票 02 的三種 tag 語意與 IL 隱藏對手／時間規則；休賽季保留回顧與名詞推薦空狀態。
   - `home-page.tsx` 維持 server component，未改 `lib/services/*`；以 dev server 檢視首頁 active state，空狀態則以既有 fixture 測試完整 render。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠。
 
+- [x] **UI 拉皮票 05 完成——名詞索引搜尋與獨立名詞頁改版**（票 `.scratch/ui-reskin-v2/issues/05-glossary.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - `/glossary` 維持 `force-static`，server 傳 frontmatter 給 client 搜尋／卡片牆；分類沿用既有 registry，卡片是真 `<Link>`，standard 類另配圖示與標題，無結果使用 `EmptyState`。
+  - `/glossary/[slug]` 保留 24 個 SSG URL、metadata、sitemap 與 `getRegistry()` build-fail 護欄，套用導讀／級距／定義算法／延伸參考／範例球員五段骨架；`BandsTable` 改為每層級一條垂直尺標並依兩種 higher-is-better 欄位著色。
+  - `baseball-icons.tsx` 自設計 repo 移植；未修改任何 MDX 或 `lib/services/*`。`pnpm test`、`pnpm typecheck`、`pnpm build` 與 SEO 測試綠，實際檢視 `/glossary` 搜尋結果／空結果及 `k-pct` 雙視角尺標。
+
 - [x] **票 04 事後修正——`EVENT_TONE` 搬家弄丟窮盡型別保護、空狀態吃掉二刀流的投球那份**（同分支 `feat/ui-reskin-v2`；code review 抓到）。
   1. **`EVENT_TONE` 從窮盡 `Record` 退化成 `Record<string, …>`。** 搬到 `components/magazine/event-tone.ts` 共用時，key 的型別由 transaction type union 放寬成 `string`，並補了 `?? "neutral"` fallback ⇒ **新增 `transaction_type` enum 值卻沒替它分類時不再有任何提醒，會靜默變成中性色**。這個 repo 六週內就新增了四個 enum 值（`declare_fa`／`assign`／`waiver_claim`／`activate`），每次都需要人為決定它是升是降。已改回 `Record<TransactionType, Tone>`（`TransactionType` 取自 `Timeline[number]["type"]`，**`import type` 取得、編譯後完全抹除**——票 02 的教訓：`components/` 下用值 import 碰到 `lib/services` 會把 `pg` 拉進瀏覽器 bundle 而讓 `next build` 死掉），窮盡後 `?? "neutral"` 不可達已一併移除。**反向驗證**：刪掉 `waiver_claim` 後 `pnpm typecheck` 如預期報 `TS2741: Property 'waiver_claim' is missing …`，補回後回綠。
   2. **空狀態的回顧卡用單一三元運算子，二刀流球員會少一半數據。** `EmptyFallback` 寫成 `card.batting ? … : card.pitching ? … : "—"`，但 `lib/services/home.ts:222-223` 的 `battingLine`／`pitchingLine` 是**各自算的**、schema 兩欄各自 nullable ⇒ 兩者皆非 null 的二刀流球員**只會出打擊那份**。改回打擊／投球各自判斷、都有就都顯示，兩者皆無才留 `—` 佔位；維持新版面的 mono 小字語彙（單行時輸出與修正前逐字元相同，只是多一層 `<div>` 容器）。
@@ -368,10 +373,11 @@
 
 ## ▶️ 進行中 / 下一步
 
-- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01／02／03／04 已完成，票 05／06 待辦。
+- [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01／02／03／04／05 已完成，票 06 待辦。
 - [x] 票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。
 - [x] 票 03：球員個人頁數據區（四格重點、可展開完整表、進階數據樣式）——已完成，詳見 2026-08-13 已完成區。
 - [x] 票 04：首頁改版——已完成，詳見 2026-08-13 已完成區。
+- [x] 票 05：名詞索引與名詞頁——已完成，詳見 2026-08-13 已完成區。
   - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 **三票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
   - **票 07「球隊隊徽」已併入票 02（2026-08-13，batu）**，`07-team-logos.md` 標 `superseded-by-02`、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 `PlayerCard` 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 `parentOrgTeamId` 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 `lib/services/*` 的地方。**落點於 2026-08-13 事後修正**：不放在會 import DB client 的 `team-map.ts`（那會讓 client bundle 拉進 `pg`），改為純模組 `lib/services/team-logo.ts` ＋ server 端解析成 `team.logoSrc`。
   - **票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）**：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 `MAGAZINE_CARD_HOVER`），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 `PlayerCard` 依自己的 `archived` prop 決定、**不從外面用 descendant selector 覆寫**。

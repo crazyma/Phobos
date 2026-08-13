@@ -55,11 +55,12 @@ export default async function GlossaryTermPage({
   const rosterPicks = term.category === "roster" ? await getRosterExamples(term) : [];
 
   return (
-    <article className="mx-auto max-w-3xl px-4 py-8">
+    <article className="mx-auto max-w-4xl px-5 py-10 md:px-8 md:py-16">
       <header>
-        <h1 className="text-2xl font-bold">
+        <p className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-accent">BASEBALL GLOSSARY</p>
+        <h1 className="font-serif text-5xl font-black tracking-tight">
           {term.name_zh}
-          <span className="ml-2 text-lg font-normal text-muted-foreground">{term.name_en}</span>
+          <span className="ml-3 font-mono text-base font-normal uppercase tracking-widest text-accent">{term.name_en}</span>
         </h1>
         <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {term.applies_to.map((p) => (
@@ -71,17 +72,18 @@ export default async function GlossaryTermPage({
       </header>
 
       {/* Layer 1 — 判讀（白話 + 分布 + 級距表） */}
-      <section className="mt-6">
+      <section className="mt-10">
+        <h2 className="mb-4 border-b-2 border-foreground pb-3 font-mono text-xs font-bold uppercase tracking-[0.2em]">導讀</h2>
         <div className="space-y-3 text-[15px] leading-relaxed text-foreground/90 [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-sm [&_blockquote]:text-muted-foreground [&_strong]:font-semibold">
           <Body />
         </div>
-        {term.bands && <BandsTable bands={term.bands} />}
+        {term.bands && <><h2 className="mt-12 border-b-2 border-foreground pb-3 font-mono text-xs font-bold uppercase tracking-[0.2em]">數據高低比較</h2><BandsTable bands={term.bands} higherIsBetter={term.higher_is_better} higherIsBetterPitcher={term.higher_is_better_pitcher} /></>}
       </section>
 
       {/* Layer 2 — 定義算法（小字） */}
       {term.formula && (
-        <section className="mt-8 text-sm text-muted-foreground">
-          <h2 className="font-semibold text-foreground">定義</h2>
+        <section className="mt-12 border-t border-border pt-6 text-sm text-muted-foreground">
+          <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-foreground">定義算法</h2>
           <p className="mt-1">
             {term.name_zh}（{term.name_en}）
           </p>
@@ -90,8 +92,8 @@ export default async function GlossaryTermPage({
       )}
 
       {/* Layer 3 — 延伸 */}
-      <section className="mt-8 text-sm">
-        <h2 className="font-semibold">延伸閱讀</h2>
+      <section className="mt-12 border-t border-border pt-6 text-sm">
+        <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em]">延伸參考</h2>
         <ul className="mt-2 space-y-1">
           {term.sources.map((s) => (
             <li key={s.url}>
