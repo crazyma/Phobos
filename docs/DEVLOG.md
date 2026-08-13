@@ -496,4 +496,8 @@
 
 ## 🗂️ 雜項 / 待整理
 
+- [ ] **名詞頁級距尺標的兩個外觀待議**（2026-08-13 票 05 review 浮現；`components/glossary/bands-table.tsx`）。兩者都不是錯誤，是設計取捨，batu 已知情、暫時維持現狀：
+  1. **三階 tone 套在多段級距上，中間會整片同色。** 目前照設計稿用 `{low: bg-muted, mid: bg-accent/40, high: bg-accent}`，tone 由位置＋方向推導（最差端 low、最好端 high、中間全部 mid）。以 `k-pct` 的五段為例，`普通`／`偏高`／`易被三振` 在色帶上看不出差別，資訊只剩「頭、尾、中間一片」三層。**可考慮改單調漸層**（如 `accent/20 → /40 → /60 → /80 → accent`）——設計稿自己的 `DemoScaleBar` 就有兩段同為 `high`，代表 tone 本來就不是「一段一階」，改漸層並不違背設計語彙，資料視覺化上也更好讀。
+  2. **`bg-muted`（L≈0.94）在名詞頁背景（L≈0.98）上對比很低**，最差那段看起來像沒畫完。**脈絡不同所致**：設計稿的尺標在 modal 的 `bg-card`（純白）上，我們是直接放在頁面底上。補一圈 `border border-border` 即可界定。
+
 - [x] `plan/baseball-tracker-plan-rust.md` / `.html` 已被 Node.js 方案取代 → 已封存至 `archive/plan/`（2026-07-23）
