@@ -15,6 +15,9 @@ import {
   type Perspective,
 } from "@/lib/glossary/metrics";
 import { metricSlug } from "@/lib/glossary/registry";
+import { bandLabel } from "@/lib/glossary/bands";
+import { loadFrontmatter } from "@/lib/glossary/content";
+import { LevelBadge } from "@/components/magazine/level-badge";
 
 type BattingLine = Season["batting"][number]["rows"][number];
 type PitchingLine = Season["pitching"][number]["rows"][number];
@@ -72,6 +75,49 @@ function teamCell(line: { team: { name: string; abbrev: string | null } | null }
   return line.team.abbrev ?? line.team.name;
 }
 
+type FocusStat = { label: string; value: string; hint?: string };
+
+const STANDARD_SLUG: Record<string, string> = {
+  AVG: "avg",
+  OPS: "ops",
+  ERA: "era",
+  WHIP: "whip",
+};
+
+type GradedLevel = "mlb" | "aaa" | "aa";
+
+/** Read an authored glossary band; ungraded levels and prose-only terms stay blank. */
+function authoredBand(
+  slug: string,
+  perspective: Perspective,
+  level: string,
+  value: number | null,
+): string | undefined {
+  if (value === null || !(level in { mlb: true, aaa: true, aa: true })) return undefined;
+  const graded = level as GradedLevel;
+  const bands = loadFrontmatter(slug)?.bands?.[perspective]?.[graded];
+  return bands ? bandLabel(bands, value) : undefined;
+}
+
+function standardHint(label: string, perspective: Perspective, level: string, value: number | null) {
+  const slug = STANDARD_SLUG[label];
+  return slug ? authoredBand(slug, perspective, level, value) : undefined;
+}
+
+function FocusBlock({ stat }: { stat: FocusStat }) {
+  return (
+    <div className="border-l-2 border-accent pl-4">
+      <p className="font-mono text-sm font-bold uppercase tracking-widest text-muted-foreground">
+        {stat.label}
+      </p>
+      <p className="mt-1 font-mono text-4xl font-black leading-none text-foreground">
+        {stat.value}
+      </p>
+      {stat.hint && <p className="mt-2 text-[11px] leading-tight text-muted-foreground">{stat.hint}</p>}
+    </div>
+  );
+}
+
 function StatTable<T extends { team: { name: string; abbrev: string | null } | null }>({
   cols,
   rows,
@@ -83,12 +129,12 @@ function StatTable<T extends { team: { name: string; abbrev: string | null } | n
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-max border-collapse text-right text-xs tabular-nums">
+      <table className="w-full min-w-[52rem] border-collapse text-right text-xs tabular-nums">
         <thead>
-          <tr className="border-b border-border text-muted-foreground">
-            <th className="px-2 py-1 text-left font-medium">隊伍</th>
+          <tr className="border-y-2 border-foreground text-muted-foreground">
+            <th className="sticky left-0 z-10 bg-background px-2 py-3 text-left font-mono text-[10px] font-bold uppercase tracking-widest">隊伍</th>
             {cols.map((c) => (
-              <th key={c.label} className="px-2 py-1 font-medium">
+              <th key={c.label} className="px-2 py-3 font-mono text-[10px] font-bold uppercase tracking-widest">
                 {c.label}
               </th>
             ))}
@@ -96,20 +142,20 @@ function StatTable<T extends { team: { name: string; abbrev: string | null } | n
         </thead>
         <tbody>
           {rows.map((line, i) => (
-            <tr key={i} className="border-b border-border/50">
-              <td className="px-2 py-1 text-left">{teamCell(line)}</td>
+            <tr key={i} className="border-t border-border">
+              <td className="sticky left-0 z-10 bg-background px-2 py-3 text-left font-serif font-black">{teamCell(line)}</td>
               {cols.map((c) => (
-                <td key={c.label} className="px-2 py-1">
+                <td key={c.label} className="px-2 py-3 font-mono">
                   {c.get(line)}
                 </td>
               ))}
             </tr>
           ))}
           {total && (
-            <tr className="border-b border-border font-medium">
-              <td className="px-2 py-1 text-left">合計</td>
+            <tr className="border-y-2 border-foreground font-medium">
+              <td className="sticky left-0 z-10 bg-background px-2 py-3 text-left font-serif font-black">合計</td>
               {cols.map((c) => (
-                <td key={c.label} className="px-2 py-1">
+                <td key={c.label} className="px-2 py-3 font-mono">
                   {c.get(total)}
                 </td>
               ))}
@@ -119,6 +165,52 @@ function StatTable<T extends { team: { name: string; abbrev: string | null } | n
       </table>
     </div>
   );
+}
+
+function FullTable({
+  label,
+  cols,
+  rows,
+  total,
+}: {
+  label: string;
+  cols: Col<BattingLine>[] | Col<PitchingLine>[];
+  rows: BattingLine[] | PitchingLine[];
+  total: BattingLine | PitchingLine | null;
+}) {
+  return (
+    <details className="mt-6 border-t border-border pt-3">
+      <summary className="cursor-pointer list-none font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground [&::-webkit-details-marker]:hidden">
+        展開完整數據表 · {label}
+      </summary>
+      <p className="mt-3 font-mono text-[11px] text-muted-foreground lg:hidden">← 左右滑動查看更多欄位 →</p>
+      <div className="mt-3">
+        <StatTable
+          cols={cols as Col<BattingLine>[]}
+          rows={rows as BattingLine[]}
+          total={total as BattingLine | null}
+        />
+      </div>
+    </details>
+  );
+}
+
+function BattingFocus({ line, level }: { line: BattingLine; level: string }): FocusStat[] {
+  return [
+    { label: "AVG", value: formatRate3(line.avg), hint: standardHint("AVG", "batter", level, line.avg) },
+    { label: "OPS", value: formatRate3(line.ops), hint: standardHint("OPS", "batter", level, line.ops) },
+    { label: "HR", value: String(line.hr) },
+    { label: "RBI", value: String(line.rbi) },
+  ];
+}
+
+function PitchingFocus({ line, level }: { line: PitchingLine; level: string }): FocusStat[] {
+  return [
+    { label: "ERA", value: formatEra(line.era), hint: standardHint("ERA", "pitcher", level, line.era) },
+    { label: "WHIP", value: formatEra(line.whip), hint: standardHint("WHIP", "pitcher", level, line.whip) },
+    { label: "SO", value: String(line.so) },
+    { label: "IP", value: formatInningsPitched(line.ipOuts) },
+  ];
 }
 
 /**
@@ -132,9 +224,11 @@ function StatTable<T extends { team: { name: string; abbrev: string | null } | n
 function AdvancedStats({
   perspective,
   line,
+  level,
 }: {
   perspective: Perspective;
   line: Record<string, unknown>;
+  level: string;
 }) {
   const items = ADVANCED_BY_PERSPECTIVE[perspective]
     .map((key) => ({ key, value: metricValue(line, key) }))
@@ -142,21 +236,25 @@ function AdvancedStats({
   if (items.length === 0) return null;
 
   return (
-    <details className="mt-1.5 text-xs">
-      <summary className="cursor-pointer text-muted-foreground select-none">進階數據</summary>
-      <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+    <details className="mt-6 border-t border-border pt-3">
+      <summary className="cursor-pointer list-none font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground [&::-webkit-details-marker]:hidden">進階數據</summary>
+      <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {items.map(({ key, value }) => (
-          <li key={key}>
+          <div key={key} className="border-l-2 border-accent pl-4">
             <Link
               href={`/glossary/${metricSlug(key)}`}
-              className="text-muted-foreground underline hover:text-foreground"
+              className="font-mono text-sm font-bold uppercase tracking-widest text-muted-foreground underline hover:text-foreground"
             >
               {METRIC_LABELS[key]}
             </Link>{" "}
-            <span className="font-medium tabular-nums">{formatMetric(key, value)}</span>
-          </li>
+            <p className="mt-1 font-mono text-3xl font-black tabular-nums">{formatMetric(key, value)}</p>
+            {(() => {
+              const hint = authoredBand(metricSlug(key), perspective, level, value);
+              return hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null;
+            })()}
+          </div>
         ))}
-      </ul>
+      </div>
     </details>
   );
 }
@@ -170,53 +268,89 @@ function AdvancedStats({
 export function SeasonStats({
   seasons,
   heading = "球季數據",
+  currentTeamId = null,
 }: {
   seasons: Season[];
   heading?: string;
+  currentTeamId?: number | null;
 }) {
   if (seasons.length === 0) {
     return (
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">{heading}</h2>
+      <section className="mt-16">
+        <p className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-accent">SEASON STATS</p>
+        <h2 className="font-serif text-3xl font-black tracking-tight">{heading}</h2>
         <p className="mt-2 text-sm text-muted-foreground">尚無球季數據。</p>
       </section>
     );
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-semibold">{heading}</h2>
-      <div className="mt-4 space-y-8">
+    <section className="mt-16">
+      <div className="mb-8">
+        <p className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-accent">SEASON STATS</p>
+        <h2 className="font-serif text-3xl font-black tracking-tight">{heading}</h2>
+      </div>
+      <div className="space-y-12">
         {seasons.map((season) => (
           <div key={season.season}>
-            <h3 className="text-base font-semibold">{season.season}</h3>
-            <div className="mt-2 space-y-5">
+            <h3 className="border-b-2 border-foreground pb-3 font-serif text-2xl font-black">{season.season}</h3>
+            <div className="mt-6 space-y-10">
               {season.batting.map((group) => (
                 <div key={`bat-${group.level}`}>
-                  <p className="mb-1 text-sm font-medium text-muted-foreground">
-                    {group.levelLabel}・打擊
-                  </p>
-                  <StatTable cols={BATTING_COLS} rows={group.rows} total={group.total} />
+                  {(() => {
+                    const line = group.total ?? group.rows[0];
+                    if (!line) return null;
+                    const current = currentTeamId !== null && group.rows.some((r) => r.team?.id === currentTeamId);
+                    return (
+                      <>
+                        <div className="mb-5 flex flex-wrap items-center gap-3">
+                          <LevelBadge level={group.level} />
+                          <span className="font-serif text-xl font-black">打擊</span>
+                          <span className="font-mono text-xs text-muted-foreground">{line.g} 場</span>
+                          {current && <span className="ml-auto font-mono text-[10px] font-bold uppercase tracking-widest text-accent">目前所在</span>}
+                        </div>
+                        <div className="grid gap-5 rounded-xl border border-border bg-card p-5 sm:grid-cols-2 lg:grid-cols-4">
+                          {BattingFocus({ line, level: group.level }).map((stat) => <FocusBlock key={stat.label} stat={stat} />)}
+                        </div>
+                        <FullTable label={`${group.levelLabel}・打擊`} cols={BATTING_COLS} rows={group.rows} total={group.total} />
+                      </>
+                    );
+                  })()}
                   {group.isLowLevel && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-3 font-mono text-[11px] text-muted-foreground">
                       低階層級數據僅供參考。
                     </p>
                   )}
-                  <AdvancedStats perspective="batter" line={group.total ?? group.rows[0]} />
+                  <AdvancedStats perspective="batter" level={group.level} line={group.total ?? group.rows[0]} />
                 </div>
               ))}
               {season.pitching.map((group) => (
                 <div key={`pit-${group.level}`}>
-                  <p className="mb-1 text-sm font-medium text-muted-foreground">
-                    {group.levelLabel}・投球
-                  </p>
-                  <StatTable cols={PITCHING_COLS} rows={group.rows} total={group.total} />
+                  {(() => {
+                    const line = group.total ?? group.rows[0];
+                    if (!line) return null;
+                    const current = currentTeamId !== null && group.rows.some((r) => r.team?.id === currentTeamId);
+                    return (
+                      <>
+                        <div className="mb-5 flex flex-wrap items-center gap-3">
+                          <LevelBadge level={group.level} />
+                          <span className="font-serif text-xl font-black">投球</span>
+                          <span className="font-mono text-xs text-muted-foreground">{line.g} 場</span>
+                          {current && <span className="ml-auto font-mono text-[10px] font-bold uppercase tracking-widest text-accent">目前所在</span>}
+                        </div>
+                        <div className="grid gap-5 rounded-xl border border-border bg-card p-5 sm:grid-cols-2 lg:grid-cols-4">
+                          {PitchingFocus({ line, level: group.level }).map((stat) => <FocusBlock key={stat.label} stat={stat} />)}
+                        </div>
+                        <FullTable label={`${group.levelLabel}・投球`} cols={PITCHING_COLS} rows={group.rows} total={group.total} />
+                      </>
+                    );
+                  })()}
                   {group.isLowLevel && (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-3 font-mono text-[11px] text-muted-foreground">
                       低階層級數據僅供參考。
                     </p>
                   )}
-                  <AdvancedStats perspective="pitcher" line={group.total ?? group.rows[0]} />
+                  <AdvancedStats perspective="pitcher" level={group.level} line={group.total ?? group.rows[0]} />
                 </div>
               ))}
             </div>

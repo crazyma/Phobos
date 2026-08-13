@@ -41,7 +41,19 @@ const seasons: Season[] = [
 ];
 
 describe("SeasonStats advanced block (ticket 03)", () => {
-  const html = renderToStaticMarkup(<SeasonStats seasons={seasons} />);
+  const html = renderToStaticMarkup(<SeasonStats seasons={seasons} currentTeamId={1} />);
+
+  it("renders the magazine focus card and a native details table", () => {
+    expect(html).toContain("SEASON STATS");
+    expect(html).toContain("AVG");
+    expect(html).toContain("OPS");
+    expect(html).toContain("HR");
+    expect(html).toContain("RBI");
+    expect(html).toContain("目前所在");
+    expect(html).toContain("展開完整數據表");
+    expect(html).toContain("BABIP");
+    expect(html).toContain("左右滑動查看更多欄位");
+  });
 
   it("renders the advanced section with glossary links for the MLB row", () => {
     expect(html).toContain("進階數據");
@@ -57,5 +69,44 @@ describe("SeasonStats advanced block (ticket 03)", () => {
     expect(html.match(/\/glossary\/wrc-plus/g)).toHaveLength(1);
     // ISO is derived and present on both rows → its link appears twice.
     expect(html.match(/\/glossary\/iso/g)).toHaveLength(2);
+  });
+
+  it("uses authored bands only for metrics that have a glossary scale", () => {
+    expect(html).toContain("優秀");
+    // HR/RBI are real counts but have no glossary bands, so no invented hint is rendered.
+    expect(html).not.toContain("HR優");
+    expect(html).not.toContain("RBI優");
+  });
+});
+
+describe("SeasonStats pitching focus", () => {
+  it("shows ERA/WHIP/SO/IP without inventing IP or SO band labels", () => {
+    const html = renderToStaticMarkup(
+      <SeasonStats
+        seasons={[{
+          season: 2026,
+          batting: [],
+          pitching: [{
+            level: "mlb",
+            levelLabel: "大聯盟",
+            isLowLevel: false,
+            rows: [{
+              team: { id: 9, name: "紅襪", abbrev: "BOS" },
+              g: 8, gs: 8, ipOuts: 144, bf: 200, h: 40, r: 18, er: 16, hr: 4,
+              bb: 12, so: 70, w: 4, l: 2, sv: 0, hld: 0,
+              era: 3, whip: 1.08, hr9: 0.75, k9: 13.1, bb9: 2.25,
+              kPct: 0.35, bbPct: 0.06, babip: 0.28,
+              fip: null, lobPct: null, war: null,
+            }],
+            total: null,
+          }],
+        }]}
+      />,
+    );
+    expect(html).toContain("ERA");
+    expect(html).toContain("WHIP");
+    expect(html).toContain("SO");
+    expect(html).toContain("IP");
+    expect(html).toContain("優秀");
   });
 });

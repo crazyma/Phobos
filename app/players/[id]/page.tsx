@@ -68,6 +68,7 @@ export default async function PlayerPage({
       <SeasonStats
         seasons={player.seasons}
         heading={isArchived ? "生涯總成績" : "球季數據"}
+        currentTeamId={player.team?.id ?? null}
       />
 
       {/* zones 3–5 hidden for archived players (spec-02 §2.3) */}

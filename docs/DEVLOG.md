@@ -33,6 +33,11 @@
   4. **測試改測實際會走的路。** 原本 `team-map.test.ts` 的三個 `teamLogo` 測試**每次都明確傳 `map` 進去**，而真實呼叫端是 `teamLogo(player.team?.id)`（不傳、走全域）——測試是綠的卻保護不到上線那條路。改為在 `players.test.ts` / `player-detail.test.ts` 以 DB fixture 從 service 輸出斷言：小聯盟解析到母隊、大聯盟直取自己的 id、母隊推不出時為 null（**不退回球隊自己的 id**）、素材未到位時為 null；`players.test.ts` 為此新增大聯盟球員與「無母隊的 3A 隊」兩組 fixture。元件端則在 `players-view.test.tsx` / `player-hero.test.tsx` 各補一則：`logoSrc` 為 null 時不出現 `<img>`、有值時畫出對應 `src`。
   - `pnpm build` 綠（修正前 `Module not found`，修正後 33 頁全數產出）、`pnpm typecheck` 綠、`pnpm test` **30 檔 / 160 測試**全綠（原 154，新增 9、移除 3 個走全域的舊 `teamLogo` 測試）；另起 dev server 實測 `/players`、`/players/[id]`、`/` 與 `/api/players` 皆 200，小聯盟球員的 `team.logoSrc` 如預期為 null（素材未到位）。
 
+- [x] **UI 拉皮票 03 完成——球員個人頁數據區改為重點四格＋可展開完整表**（票 `.scratch/ui-reskin-v2/issues/03-player-page-stats.md`，切片整合分支 `feat/ui-reskin-v2`）。
+  - 每個球季×層級保留原有分組、per-team 列與合計列，新增 `LevelBadge`、場次、目前所在標記，以及打者 `AVG / OPS / HR / RBI`、投手 `ERA / WHIP / SO / IP` 四格；級距 hint 僅讀既有 glossary bands，沒有出處的計數／`IP` 刻意留白。
+  - 完整打擊／投球 20 欄表收進原生 `<details>`，保留 `teamCell()`、缺值規則與 archived heading，加入 sticky 左欄、窄螢幕橫滑提示與合計列視覺層次；進階指標改 StatBlock 排版但維持 `metricSlug()` 名詞頁連結。
+  - `season-stats.tsx` 維持 server component，未改 `lib/services/*`；以 dev server＋Chrome 實際檢視桌機與 390px 手機球員頁。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠，並實測移走 `wrc-plus.mdx` 時 registry 護欄會讓 build 失敗後還原。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
@@ -353,6 +358,7 @@
 
 - [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06 待辦。
 - [x] 票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。
+- [x] 票 03：球員個人頁數據區（四格重點、可展開完整表、進階數據樣式）——已完成，詳見 2026-08-13 已完成區。
   - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 **三票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
   - **票 07「球隊隊徽」已併入票 02（2026-08-13，batu）**，`07-team-logos.md` 標 `superseded-by-02`、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 `PlayerCard` 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 `parentOrgTeamId` 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 `lib/services/*` 的地方。**落點於 2026-08-13 事後修正**：不放在會 import DB client 的 `team-map.ts`（那會讓 client bundle 拉進 `pg`），改為純模組 `lib/services/team-logo.ts` ＋ server 端解析成 `team.logoSrc`。
   - **票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）**：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 `MAGAZINE_CARD_HOVER`），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 `PlayerCard` 依自己的 `archived` prop 決定、**不從外面用 descendant selector 覆寫**。
