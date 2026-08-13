@@ -43,6 +43,13 @@
   - `EVENT_TONE` 提到 `components/magazine/` 由首頁與球員時間軸共用；即將出賽沿用票 02 的三種 tag 語意與 IL 隱藏對手／時間規則；休賽季保留回顧與名詞推薦空狀態。
   - `home-page.tsx` 維持 server component，未改 `lib/services/*`；以 dev server 檢視首頁 active state，空狀態則以既有 fixture 測試完整 render。`pnpm test`、`pnpm typecheck`、`pnpm build` 綠。
 
+- [x] **票 04 事後修正——`EVENT_TONE` 搬家弄丟窮盡型別保護、空狀態吃掉二刀流的投球那份**（同分支 `feat/ui-reskin-v2`；code review 抓到）。
+  1. **`EVENT_TONE` 從窮盡 `Record` 退化成 `Record<string, …>`。** 搬到 `components/magazine/event-tone.ts` 共用時，key 的型別由 transaction type union 放寬成 `string`，並補了 `?? "neutral"` fallback ⇒ **新增 `transaction_type` enum 值卻沒替它分類時不再有任何提醒，會靜默變成中性色**。這個 repo 六週內就新增了四個 enum 值（`declare_fa`／`assign`／`waiver_claim`／`activate`），每次都需要人為決定它是升是降。已改回 `Record<TransactionType, Tone>`（`TransactionType` 取自 `Timeline[number]["type"]`，**`import type` 取得、編譯後完全抹除**——票 02 的教訓：`components/` 下用值 import 碰到 `lib/services` 會把 `pg` 拉進瀏覽器 bundle 而讓 `next build` 死掉），窮盡後 `?? "neutral"` 不可達已一併移除。**反向驗證**：刪掉 `waiver_claim` 後 `pnpm typecheck` 如預期報 `TS2741: Property 'waiver_claim' is missing …`，補回後回綠。
+  2. **空狀態的回顧卡用單一三元運算子，二刀流球員會少一半數據。** `EmptyFallback` 寫成 `card.batting ? … : card.pitching ? … : "—"`，但 `lib/services/home.ts:222-223` 的 `battingLine`／`pitchingLine` 是**各自算的**、schema 兩欄各自 nullable ⇒ 兩者皆非 null 的二刀流球員**只會出打擊那份**。改回打擊／投球各自判斷、都有就都顯示，兩者皆無才留 `—` 佔位；維持新版面的 mono 小字語彙（單行時輸出與修正前逐字元相同，只是多一層 `<div>` 容器）。
+  3. **補測試（163 → 168）**：`home-page.test.tsx` 新增「二刀流兩份都出現」（本次的護欄，實測還原成三元寫法會失敗）、「兩份皆無留佔位」、「今日焦點有賽事才出現」、「賽果 → 本季回顧 → 全空佔位三層 fallback」、「異動三種語氣色彩互不相同」。最後一則刻意**不寫出 Tailwind class 字串**（票 01 的坑：測試檔會被 Tailwind 掃成候選字），改為比對三個連結的 class 互不相同，順帶取代原本脆弱的 `toContain("text-up")`。
+  4. **排版**：`home-page.tsx` 上一輪幾乎整檔寫成單行（`EmptyFallback` 一行超過 1400 字元），此 repo 沒有 formatter 關卡（已記在「未來 Phase」），已排回與其他元件一致的多行 JSX。**純排版、零渲染差異**——以「新舊版本同時渲染同一組 fixture 逐字元比對」驗證：active／全空兩組 HTML **byte-identical**，唯一差異就是上述二刀流那格。
+  - `pnpm typecheck` 綠、`pnpm test` **30 檔 / 168 測試**全綠、`pnpm build` 綠（33 頁）；dev server 首頁 200，四區與今日焦點如常。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：

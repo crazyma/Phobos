@@ -215,6 +215,16 @@
     <li><code>home-page.tsx</code> 維持 server component，未改 <code>lib/services/*</code>；以 dev server 檢視首頁 active state，空狀態則以既有 fixture 測試完整 render。<code>pnpm test</code>、<code>pnpm typecheck</code>、<code>pnpm build</code> 綠。</li>
     </ul></li>
     </ul>
+    <ul class="todo">
+    <li class="done"><strong>票 04 事後修正——<code>EVENT_TONE</code> 搬家弄丟窮盡型別保護、空狀態吃掉二刀流的投球那份</strong>（同分支 <code>feat/ui-reskin-v2</code>；code review 抓到）。
+    <ol>
+    <li><strong><code>EVENT_TONE</code> 從窮盡 <code>Record</code> 退化成 <code>Record&lt;string, …&gt;</code>。</strong> 搬到 <code>components/magazine/event-tone.ts</code> 共用時，key 的型別由 transaction type union 放寬成 <code>string</code>，並補了 <code>?? &quot;neutral&quot;</code> fallback ⇒ <strong>新增 <code>transaction_type</code> enum 值卻沒替它分類時不再有任何提醒，會靜默變成中性色</strong>。這個 repo 六週內就新增了四個 enum 值（<code>declare_fa</code>／<code>assign</code>／<code>waiver_claim</code>／<code>activate</code>），每次都需要人為決定它是升是降。已改回 <code>Record&lt;TransactionType, Tone&gt;</code>（<code>TransactionType</code> 取自 <code>Timeline[number][&quot;type&quot;]</code>，<strong><code>import type</code> 取得、編譯後完全抹除</strong>——票 02 的教訓：<code>components/</code> 下用值 import 碰到 <code>lib/services</code> 會把 <code>pg</code> 拉進瀏覽器 bundle 而讓 <code>next build</code> 死掉），窮盡後 <code>?? &quot;neutral&quot;</code> 不可達已一併移除。<strong>反向驗證</strong>：刪掉 <code>waiver_claim</code> 後 <code>pnpm typecheck</code> 如預期報 <code>TS2741: Property &#x27;waiver_claim&#x27; is missing …</code>，補回後回綠。</li>
+    <li><strong>空狀態的回顧卡用單一三元運算子，二刀流球員會少一半數據。</strong> <code>EmptyFallback</code> 寫成 <code>card.batting ? … : card.pitching ? … : &quot;—&quot;</code>，但 <code>lib/services/home.ts:222-223</code> 的 <code>battingLine</code>／<code>pitchingLine</code> 是<strong>各自算的</strong>、schema 兩欄各自 nullable ⇒ 兩者皆非 null 的二刀流球員<strong>只會出打擊那份</strong>。改回打擊／投球各自判斷、都有就都顯示，兩者皆無才留 <code>—</code> 佔位；維持新版面的 mono 小字語彙（單行時輸出與修正前逐字元相同，只是多一層 <code>&lt;div&gt;</code> 容器）。</li>
+    <li><strong>補測試（163 → 168）</strong>：<code>home-page.test.tsx</code> 新增「二刀流兩份都出現」（本次的護欄，實測還原成三元寫法會失敗）、「兩份皆無留佔位」、「今日焦點有賽事才出現」、「賽果 → 本季回顧 → 全空佔位三層 fallback」、「異動三種語氣色彩互不相同」。最後一則刻意<strong>不寫出 Tailwind class 字串</strong>（票 01 的坑：測試檔會被 Tailwind 掃成候選字），改為比對三個連結的 class 互不相同，順帶取代原本脆弱的 <code>toContain(&quot;text-up&quot;)</code>。</li>
+    <li><strong>排版</strong>：<code>home-page.tsx</code> 上一輪幾乎整檔寫成單行（<code>EmptyFallback</code> 一行超過 1400 字元），此 repo 沒有 formatter 關卡（已記在「未來 Phase」），已排回與其他元件一致的多行 JSX。<strong>純排版、零渲染差異</strong>——以「新舊版本同時渲染同一組 fixture 逐字元比對」驗證：active／全空兩組 HTML <strong>byte-identical</strong>，唯一差異就是上述二刀流那格。</li>
+    <li><code>pnpm typecheck</code> 綠、<code>pnpm test</code> <strong>30 檔 / 168 測試</strong>全綠、<code>pnpm build</code> 綠（33 頁）；dev server 首頁 200，四區與今日焦點如常。</li>
+    </ol></li>
+    </ul>
     <h3 id="sec-1-2">2026-08-10</h3>
     <ul class="todo">
     <li class="done"><strong><code>il-health-projection/01</code> 完成——傷兵狀態有可靠出口</strong>（票 <code>.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md</code>）。修正兩個獨立來源的長期錯誤：
