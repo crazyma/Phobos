@@ -759,6 +759,14 @@
     <li class="">視需要把 <code>lib/services</code> 抽成獨立後端服務</li>
     <li class="">ISR 升級為 ETL 完成後 on-demand revalidate（spec-02 §8 v2；需 ETL 呼叫 revalidate endpoint）</li>
     <li class="">Open Graph 動態合成圖（spec-02 §8 v2；v1 用球隊 logo／站台預設圖）</li>
+    <li class=""><strong>加一道 lint／format 關卡</strong>（2026-08-13 UI 拉皮浮現）。實測：<code>package.json</code> <strong>沒有 <code>lint</code> script</strong>、無 eslint／prettier／biome 設定檔，devDependencies 裡也沒有任何 lint 工具 ⇒ <strong>純風格類問題目前沒有任何自動關卡</strong>，只靠 <code>tsc --noEmit</code> 與 <code>next build</code> 順帶擋掉部分未使用 import。
+    <ul>
+    <li><strong>這不是理論問題</strong>：UI 拉皮前三張票由人工 review 抓到的缺陷裡，有一部分正是這類——重複定義已存在的型別、PascalCase 命名了回傳資料的函式、測試檔寫出完整 Tailwind class 字串（反而讓死掉的 utility 被編回 CSS）。這些都不會讓 typecheck 或測試變紅。</li>
+    <li>效益是<strong>讓 review 專注在邏輯與正確性，而不是花在風格</strong>。</li>
+    <li>⚠️ 導入時注意：這個 repo 的 import 帶 <code>.ts</code> 副檔名、用 Tailwind v4、TypeScript 7（tsgo），選 linter 與規則集時要確認相容；且<strong>不要</strong>讓它變成大規模格式化 commit 把 git blame 洗掉。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
     <li class=""><strong><code>loadTeamMap()</code> 的請求級快取</strong>（2026-08-13 UI 拉皮浮現）。<code>home.ts</code>／<code>player-recent.ts</code>／<code>player-upcoming.ts</code>／<code>player-detail.ts</code> 各自 <code>await loadTeamMap(db)</code>，每次都全表掃 <code>teams</code>（231 筆）。<code>React.cache()</code> 是正解，可讓同一個 request 內共用一次。
     <ul>
     <li><strong>這是原本就有的行為，不是本次造成的</strong>——票 02 曾用 module 層級的可變全域 <code>latestTeamMap</code> 當 logo 來源，那從來不是快取（而且藏著 bug，已於 2026-08-13 移除，見已完成區）。</li>

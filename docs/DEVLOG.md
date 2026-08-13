@@ -455,6 +455,11 @@
 - [ ] 視需要把 `lib/services` 抽成獨立後端服務
 - [ ] ISR 升級為 ETL 完成後 on-demand revalidate（spec-02 §8 v2；需 ETL 呼叫 revalidate endpoint）
 - [ ] Open Graph 動態合成圖（spec-02 §8 v2；v1 用球隊 logo／站台預設圖）
+- [ ] **加一道 lint／format 關卡**（2026-08-13 UI 拉皮浮現）。實測：`package.json` **沒有 `lint` script**、無 eslint／prettier／biome 設定檔，devDependencies 裡也沒有任何 lint 工具 ⇒ **純風格類問題目前沒有任何自動關卡**，只靠 `tsc --noEmit` 與 `next build` 順帶擋掉部分未使用 import。
+  - **這不是理論問題**：UI 拉皮前三張票由人工 review 抓到的缺陷裡，有一部分正是這類——重複定義已存在的型別、PascalCase 命名了回傳資料的函式、測試檔寫出完整 Tailwind class 字串（反而讓死掉的 utility 被編回 CSS）。這些都不會讓 typecheck 或測試變紅。
+  - 效益是**讓 review 專注在邏輯與正確性，而不是花在風格**。
+  - ⚠️ 導入時注意：這個 repo 的 import 帶 `.ts` 副檔名、用 Tailwind v4、TypeScript 7（tsgo），選 linter 與規則集時要確認相容；且**不要**讓它變成大規模格式化 commit 把 git blame 洗掉。
+
 - [ ] **`loadTeamMap()` 的請求級快取**（2026-08-13 UI 拉皮浮現）。`home.ts`／`player-recent.ts`／`player-upcoming.ts`／`player-detail.ts` 各自 `await loadTeamMap(db)`，每次都全表掃 `teams`（231 筆）。`React.cache()` 是正解，可讓同一個 request 內共用一次。
   - **這是原本就有的行為，不是本次造成的**——票 02 曾用 module 層級的可變全域 `latestTeamMap` 當 logo 來源，那從來不是快取（而且藏著 bug，已於 2026-08-13 移除，見已完成區）。
   - 231 筆的規模下不痛，故列未來 Phase 而非待決問題。真要動時**注意別再走回跨請求共用可變狀態**。
