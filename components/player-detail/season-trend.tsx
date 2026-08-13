@@ -63,20 +63,24 @@ function Sparkline({ points, higherIsBetter }: { points: Point[]; higherIsBetter
 function TrendCard({
   series,
   title,
+  metric,
   higherIsBetter,
   decimalPlaces,
 }: {
   series: PlayerTrend["batting"][number];
   title: string;
+  /** 指標縮寫（AVG／ERA），放上排小標；`title` 是下方 h3 的完整敘述。 */
+  metric: string;
   higherIsBetter: boolean;
   decimalPlaces: number;
 }) {
   return (
     <article className="rounded-xl border border-border bg-card p-5">
+      {/* 上排是層級＋指標縮寫；完整標題只出現在下方的 h3，不要兩處重複。 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <LevelBadge level={series.level} />
         <p className="font-mono text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-          {title}
+          {metric}
         </p>
       </div>
       <div className="mt-5 flex items-end justify-between gap-4">
@@ -106,6 +110,7 @@ export function SeasonTrend({ trend }: { trend: PlayerTrend }) {
             key={`bat-${series.level}`}
             series={series}
             title="本季累積打擊率走勢"
+            metric="AVG"
             higherIsBetter
             decimalPlaces={3}
           />
@@ -115,6 +120,7 @@ export function SeasonTrend({ trend }: { trend: PlayerTrend }) {
             key={`pit-${series.level}`}
             series={series}
             title="本季累積自責分率走勢"
+            metric="ERA"
             higherIsBetter={false}
             decimalPlaces={2}
           />

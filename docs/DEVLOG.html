@@ -826,6 +826,13 @@
   <section>
     <h2 id="sec-5">🗂️ 雜項 / 待整理</h2>
     <ul class="todo">
+    <li class=""><strong>球員頁季內走勢圖的兩個判斷待議</strong>（2026-08-13 票 06 review 浮現；<code>components/player-detail/season-trend.tsx</code>、<code>lib/services/player-trend.ts</code>）。兩者都不是錯誤，batu 已知情、暫時維持現狀：
+    <ol>
+    <li><strong>線色是拿「第一場的累積值」跟最新值比</strong>（<code>trendTone</code> 用 <code>points[0]</code> vs <code>points.at(-1)</code>）。但第一個累積點只根據一場（約 4 個 AB／少數出局數），數值極端——<strong>某人首戰 4 打數無安打，之後整季的顏色幾乎注定是綠的</strong>。顏色的資訊量比看起來低。若要更穩，可改跟某個基準比（前 N 場平均、球季中位數，或直接不上色只留單色）。</li>
+    <li><strong><code>getPlayerTrend</code> 的 <code>season</code> 預設取 <code>new Date().getUTCFullYear()</code></strong>，把「本季」綁在牆上時鐘而不是資料。跨年後 ETL 尚未灌新球季時，<strong>走勢圖會整區消失，但下方的球季數據仍顯示上一季</strong>——兩處對「本季」的定義不同源。<code>season</code> 參數可注入，要修時從呼叫端傳入資料上的最新球季即可。</li>
+    </ol></li>
+    </ul>
+    <ul class="todo">
     <li class=""><strong>名詞頁級距尺標的兩個外觀待議</strong>（2026-08-13 票 05 review 浮現；<code>components/glossary/bands-table.tsx</code>）。兩者都不是錯誤，是設計取捨，batu 已知情、暫時維持現狀：
     <ol>
     <li><strong>三階 tone 套在多段級距上，中間會整片同色。</strong> 目前照設計稿用 <code>{low: bg-muted, mid: bg-accent/40, high: bg-accent}</code>，tone 由位置＋方向推導（最差端 low、最好端 high、中間全部 mid）。以 <code>k-pct</code> 的五段為例，<code>普通</code>／<code>偏高</code>／<code>易被三振</code> 在色帶上看不出差別，資訊只剩「頭、尾、中間一片」三層。<strong>可考慮改單調漸層</strong>（如 <code>accent/20 → /40 → /60 → /80 → accent</code>）——設計稿自己的 <code>DemoScaleBar</code> 就有兩段同為 <code>high</code>，代表 tone 本來就不是「一段一階」，改漸層並不違背設計語彙，資料視覺化上也更好讀。</li>
