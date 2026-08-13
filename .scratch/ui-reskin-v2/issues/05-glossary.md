@@ -94,9 +94,14 @@
 
 - **modal 版（intercepting routes `app/@modal/(.)glossary/[slug]`）是後續 polish，不在本票**。開那張票前需要一次 spike：驗證 intercepting route 配 `await import(...content/glossary/${slug}.mdx)` 的動態 MDX 匯入在 Next 16 的行為（plan §5.3）。
 - 本票**不新增、不修改任何 MDX 內容**——24 則名詞的文字屬 spec-04 範圍。
-
-## Comments
-
 - 尺標兩端的開放區間：第一段取下一段的寬度，最後一段取前一段的寬度；只有一段時給等寬 100%。接縫仍用既有 `bandRange()` 顯示 `≤`／`>`，不捏造無界數值。
 - `higher_is_better_pitcher` 只在投手視角覆蓋預設方向；`k-pct`、`babip`、`bb-pct` 的雙視角因此會呈現相反的好壞色帶。
 - 索引搜尋只接收 server 傳入的 frontmatter，未 import `content.ts` 或 DB service；`force-static`、24 個獨立名詞 URL、metadata、sitemap 與 registry build-fail 護欄均保留。
+
+### 事後修正（code review）
+
+- **接縫數值的座標**：原本用 flex 排數值列，每個 `<span>` 寬度＝自己那段的寬度 ⇒ 標籤停在自己那段的**左緣**，但 `band.max` 是該段的**右緣**，整排數字左移一格。改採設計稿 `ScaleBar` 結構（標籤在上、細色帶、數值絕對定位在下）。設計稿用 `((b - min) / span) * 100` 算 `left%`，**我們兩端都是開放區間、沒有真正的 min/max**，所以改用**累積區段寬度**：第 i 個接縫的位置 = 前 i 段寬度總和 ÷ 總寬（沿用既有 `segmentWidths()`）。
+- **只畫內部接縫**：schema 保證「只有最後一段可以省略 `max`」，因此接縫取 `i < bands.length - 1` 的 `band.max`——尺標左右兩端是**合成**出來的寬度（見 `segmentWidths()`），標在 0% / 100% 會是捏造的界線。
+- **tone 推導規則**（`Band` 沒有 `tone` 欄位，設計的假資料才有）：以**位置＋方向**推導——**最差端 → `low`（`bg-muted`）、最好端 → `high`（`bg-accent`）、中間全部 → `mid`（`bg-accent/40`）**；哪一端是「最好」由 `higherIsBetter` 決定，投手視角吃 `higher_is_better_pitcher` 覆蓋；`bands.length === 1` 時不構成端點，給 `mid`。
+- **不用 `bg-up`／`bg-down`**：綠／紅在站上已是升降與勝敗的語彙（異動時間軸、首頁異動快訊、近期戰績），挪來表示級距好壞會混淆；設計原則亦明列「深藍為主、暖橘為輔」。
+- **幾何有測試護欄**：`scaleGeometry()`／`bandTones()` 抽成純函式，`glossary.test.tsx` 斷言「第 i 個接縫位置＝前 i 段寬度累積和」（用不等寬 bands，等寬會蓋掉差一格的錯誤）並從 render 出的 HTML 驗 `left:X%`。

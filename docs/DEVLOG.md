@@ -55,6 +55,15 @@
   4. **排版**：`home-page.tsx` 上一輪幾乎整檔寫成單行（`EmptyFallback` 一行超過 1400 字元），此 repo 沒有 formatter 關卡（已記在「未來 Phase」），已排回與其他元件一致的多行 JSX。**純排版、零渲染差異**——以「新舊版本同時渲染同一組 fixture 逐字元比對」驗證：active／全空兩組 HTML **byte-identical**，唯一差異就是上述二刀流那格。
   - `pnpm typecheck` 綠、`pnpm test` **30 檔 / 168 測試**全綠、`pnpm build` 綠（33 頁）；dev server 首頁 200，四區與今日焦點如常。
 
+- [x] **票 05 事後修正——級距尺標的數值整排左移一格（讀起來會是錯的），配色改回設計稿的暖橘漸層**（同分支 `feat/ui-reskin-v2`；code review 抓到）。
+  1. **接縫數值全部落在它所標界線的左邊一整格（資料視覺化的座標錯誤）。** `band.max` 是該段的**右緣**，但數值列用 flex 排、每個 `<span>` 寬度等於自己那段的寬度 ⇒ 標籤永遠停在自己那段的**左緣**；`border-l` 還在錯的位置畫了刻度線強化誤讀。從建置產物量到的實際幾何：`k-pct` 五段各 20%，`0.15` 畫在 x=0%、`0.2` 在 20%、`0.25` 在 40%、`0.3` 在 60%——**每個數字都比它真正的界線早一格**。改採設計稿 `ScaleBar` 的結構：區間標籤在色帶**上方**、色帶收成 `h-3 rounded-full`、接縫數值改**絕對定位**（`-translate-x-1/2` + `left: X%`）。⚠️ 設計稿的 `left%` 是用 `((b - min) / span) * 100` 從數值算的，**我們兩端都是開放區間、沒有真正的 min/max**，所以接縫位置改用**累積區段寬度**（第 i 個接縫 = 前 i 段寬度總和 ÷ 總寬），沿用既有的 `segmentWidths()`。修正後量到 `k-pct` 的接縫為 **20% / 40% / 60% / 80%**，與色帶交界完全重合；`wrc-plus`（中間那段較寬）為 **19.0476 / 38.0952 / 61.9048 / 80.9524%**，同樣等於累積寬度。
+  2. **色帶配色從綠／紅改回設計稿的暖橘漸層。** 原本 `bg-up`／`bg-down`／`bg-muted`（只有頭尾上色、中間全灰）；綠／紅在站上已經是**升降與勝敗**的語彙（異動時間軸、首頁異動快訊、近期戰績），挪來表示級距好壞會混淆，設計原則也明列「深藍為主、暖橘為輔」。改用設計稿的 `{low: bg-muted, mid: bg-accent/40, high: bg-accent}`。⚠️ **我們的 `Band` 沒有 `tone` 欄位**（設計的假資料才有），所以由**位置＋方向**推導：**最差端 → `low`、最好端 → `high`、中間全部 → `mid`；哪端是最好取決於 `higherIsBetter`（投手視角吃 `higher_is_better_pitcher` 覆蓋）；只有一段時不構成端點，給 `mid`。** 建置產物實測 `k-pct`：打者側 `accent → muted`（低 K% 好）、投手側 `muted → accent`（高 K% 好），方向確實相反。
+  3. **補測試把幾何釘住（座標錯誤 typecheck 與 build 都抓不到）。** 把幾何抽成純函式 `scaleGeometry()`／`bandTones()` 並加三則測試：① 用**刻意不等寬**的 bands（等寬會蓋掉差一格的錯誤）斷言每個接縫的位置等於**它左邊所有區段寬度的累積和**；② 從實際 render 的 HTML 抓出所有 `left:X%`，確認是絕對定位而非 flex 欄；③ `k-pct` 的五段對齊 20% 網格。tone 測試也由原本比對 `bg-up`／`bg-down` 改為斷言 `bandTones()` 的 ramp 與「不得出現 up/down 色盤」。
+  4. **兩個分類共用同一個圖示。** `CATEGORY_ICONS` 把 `shared_adv` 與 `standard` 都指向 `DiamondIcon`（兩區標題長得一樣），且 `GloveIcon` 有 import 沒使用。`shared_adv` 改用 lucide `Trophy`（設計稿的「綜合評估數據」就是它），`standard` 留 `DiamondIcon`，五類已各有辨識度（建置產物驗過五個 `<svg>` 互不相同）；未使用的 import 清掉。`GloveIcon` 的**定義**保留在圖示集裡（設計稿的「防守數據」我們還沒有這個分類）。`satisfies` 的型別由 `typeof BatIcon` 放寬成 `ComponentType<SVGProps<SVGSVGElement>>`——lucide 的 forwardRef 元件回傳 `ReactNode`，套原本的型別會 `TS2322`。
+  5. **排版**：`glossary-index-client.tsx`（單行超過 1500 字元）、`bands-table.tsx`、`baseball-icons.tsx` 三檔排回多行 JSX，密度對齊 `players-view.tsx`／`season-stats.tsx`。**票 04 才剛因為同樣的事被退回一次**——此 repo 沒有 formatter 關卡（已記在「未來 Phase」）。色帶以外**零渲染差異**。
+  - 另修票檔 `.scratch/ui-reskin-v2/issues/05-glossary.md` 有兩個 `## Comments` 標題，已合併成一個、內容全留。
+  - `pnpm typecheck` 綠、`pnpm test` **30 檔 / 174 測試**全綠（原 170，新增 4）、`pnpm build` 綠（33 頁）、`app/seo.test.ts` 綠且 sitemap 仍含 **24** 條名詞 URL；幾何與配色皆從 `.next/server/app/glossary/*.html` 量實際輸出驗證，不只目視。
+
 ### 2026-08-10
 
 - [x] **`il-health-projection/01` 完成——傷兵狀態有可靠出口**（票 `.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md`）。修正兩個獨立來源的長期錯誤：
