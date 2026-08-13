@@ -18,6 +18,7 @@ import {
   TimelineSchema,
 } from "./player-recent.ts";
 import { getPlayerUpcoming, UpcomingSchema } from "./player-upcoming.ts";
+import { LICENSED_TEAM_LOGO_IDS, teamLogoSrc } from "./team-logo.ts";
 import { loadTeamMap, teamDisplayName } from "./team-map.ts";
 
 /** Current team block, shared with the roster summary shape. */
@@ -28,6 +29,8 @@ const TeamSchema = z
     abbrev: z.string().nullable(),
     level: z.enum(teamLevel.enumValues),
     levelLabel: z.string(),
+    /** server 端解析好的 logo 路徑（小聯盟已推到母隊）；素材未到位時 null。 */
+    logoSrc: z.string().nullable(),
   })
   .nullable();
 
@@ -68,11 +71,12 @@ export type PlayerDetail = z.infer<typeof PlayerDetailSchema>;
  * One player's detail, or null when the id isn't in the whitelist (→ 404).
  * LEFT JOINs the projected status / team / recent form (any may be absent
  * before the ETL fills them, and the page still renders). `db` is injectable
- * for tests.
+ * for tests, and so is `availableLogoIds`（讓 logo 解析在素材到位前就測得到）。
  */
 export async function getPlayerDetail(
   id: number,
   db = defaultDb,
+  availableLogoIds: ReadonlySet<number> = LICENSED_TEAM_LOGO_IDS,
 ): Promise<PlayerDetail | null> {
   // 小聯盟顯示名要用母隊中文名推導（spec-01 C.2）。
   const parentTeams = alias(teams, "parent_teams");
@@ -96,6 +100,8 @@ export async function getPlayerDetail(
       teamAbbrev: teams.abbrev,
       teamLevel: teams.level,
       parentNameZh: parentTeams.nameZh,
+      // 同一個 self-join 順手多帶母隊 id，供 logo 解析（小聯盟推母隊）。
+      parentTeamId: parentTeams.mlbTeamId,
       recentForm: playerRecentForm.sentenceZh,
     })
     .from(players)
@@ -149,6 +155,14 @@ export async function getPlayerDetail(
             abbrev: row.teamAbbrev,
             level: row.teamLevel,
             levelLabel: levelLabel(row.teamLevel) ?? "",
+            logoSrc: teamLogoSrc(
+              {
+                id: row.teamId,
+                level: row.teamLevel,
+                parentTeamId: row.parentTeamId,
+              },
+              availableLogoIds,
+            ),
           }
         : null,
     statusSentence: buildStatusSentence({

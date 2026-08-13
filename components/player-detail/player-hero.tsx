@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { PlayerDetail } from "@/lib/services";
 import { batsThrowsLabel } from "@/lib/services/player-status";
-import { teamLogo } from "@/lib/services/team-map";
 import { LevelBadge } from "@/components/magazine/level-badge";
 
 /** Birthdate "YYYY-MM-DD" → "YYYY-MM-DD（xx 歲）", or the date alone if unparseable. */
@@ -29,7 +28,8 @@ export function PlayerHero({ player }: { player: PlayerDetail }) {
   const hand = batsThrowsLabel(player.bats, player.throws);
   const born = birthLabel(player.birthdate);
 
-  const logo = teamLogo(player.team?.id);
+  // 與名冊卡片同一條路：logo 由 `getPlayerDetail` 在 server 端解析好才傳進來。
+  const logo = player.team?.logoSrc ?? null;
   const facts = [
     { label: "守備位置", value: player.primaryPosition ?? "—" },
     { label: "所屬球隊", value: player.team?.name ?? "—" },

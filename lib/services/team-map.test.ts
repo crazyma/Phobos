@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { teamDisplayName, teamLogo, type TeamMap } from "./team-map.ts";
+import { teamDisplayName } from "./team-map.ts";
 
 /**
  * 球隊顯示名（spec-01 C.2）：大聯盟 30 支人工中文名，小聯盟不逐支翻譯，
@@ -67,28 +67,5 @@ describe("teamDisplayName", () => {
     expect(teamDisplayName({ ...parts, level: "aa" })).toBe("老虎 2A（X Club）");
     expect(teamDisplayName({ ...parts, level: "a_plus" })).toBe("老虎 高階1A（X Club）");
     expect(teamDisplayName({ ...parts, level: "rookie" })).toBe("老虎 新人聯盟（X Club）");
-  });
-});
-
-describe("teamLogo", () => {
-  const map: TeamMap = new Map([
-    [10, { abbrev: "BOS", name: "紅襪", parentTeamId: 10 }],
-    [110, { abbrev: "WOR", name: "紅襪（Worcester Red Sox）", parentTeamId: 10 }],
-    [999, { abbrev: "UNK", name: "未知隊", parentTeamId: 404 }],
-  ]);
-
-  it("MLB 直取 logo id，素材未到位時回 null", () => {
-    expect(teamLogo(10, map)).toBeNull();
-    expect(teamLogo(10, map, new Set([10]))).toBe("/logos/10.svg");
-    expect(teamLogo(null, map)).toBeNull();
-  });
-
-  it("小聯盟走母隊 id，且不增加 DB 往返", () => {
-    expect(teamLogo(110, map, new Set([10]))).toBe("/logos/10.svg");
-  });
-
-  it("母隊解不出或素材不存在時回 null", () => {
-    expect(teamLogo(999, map, new Set([999]))).toBeNull();
-    expect(teamLogo(404, map, new Set([10]))).toBeNull();
   });
 });

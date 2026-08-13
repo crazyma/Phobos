@@ -72,6 +72,7 @@
 - [ ] `TestingEntry` 沒有被搬進來
 - [ ] `components/home/home-page.test.tsx` 更新並綠
 - [ ] `pnpm typecheck` 綠
+- [ ] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）
 
 ## Comments
 

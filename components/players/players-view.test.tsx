@@ -10,7 +10,15 @@ const tracked: PlayerSummary[] = [
     nameZh: "鄭宗哲",
     primaryPosition: "SS",
     lifecycle: "tracked",
-    team: { id: 10, name: "響尾蛇（Reno Aces）", abbrev: "RNO", level: "aaa", levelLabel: "3A" },
+    team: {
+      id: 10,
+      name: "響尾蛇（Reno Aces）",
+      abbrev: "RNO",
+      level: "aaa",
+      levelLabel: "3A",
+      // logo 由 server 端解析好才傳進來；素材未到位時就是 null。
+      logoSrc: null,
+    },
     statusSentence: "3A",
     recentForm: "連三場猛打賞",
   },
@@ -60,6 +68,19 @@ describe("PlayersView (page smoke)", () => {
     expect(html).not.toContain("<select");
   });
 
+  it("只畫 server 端解析好的 logo，null 時不留破圖", () => {
+    // 卡片自己不解析 logo——它從 "use client" 的本檔可達，去 import 解析器就會把
+    // lib/db/client.ts → pg 拉進瀏覽器 bundle（next build 直接失敗）。
+    const noLogo = renderToStaticMarkup(<PlayersView tracked={tracked} archived={[]} />);
+    expect(noLogo).not.toContain("<img");
+
+    const withLogo: PlayerSummary[] = [
+      { ...tracked[0], team: { ...tracked[0].team!, logoSrc: "/logos/109.svg" } },
+    ];
+    const html = renderToStaticMarkup(<PlayersView tracked={withLogo} archived={[]} />);
+    expect(html).toContain('src="/logos/109.svg"');
+  });
+
   it("keeps name ordering even though the sort control is gone", () => {
     // DB 回傳順序刻意反過來；輸出仍應是 zh-Hant 姓名序。
     const sameLevel: PlayerSummary[] = [
@@ -90,6 +111,7 @@ describe("PlayersView (page smoke)", () => {
         abbrev: level.toUpperCase(),
         level,
         levelLabel: level,
+        logoSrc: null,
       },
     }));
 

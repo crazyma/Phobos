@@ -94,6 +94,8 @@ describe("getPlayerDetail", () => {
       abbrev: "RNO",
       level: "aaa",
       levelLabel: "3A",
+      // 授權素材還沒放進 public/logos，所以正式路徑一律 null（見下面的 describe）。
+      logoSrc: null,
     });
     expect(player!.statusSentence).toBe("3A");
     expect(player!.recentForm).toBe("連續 5 場有安打");
@@ -112,6 +114,27 @@ describe("getPlayerDetail", () => {
     // archived players surface「已離開美職」, not the empty-state「狀態同步中」
     expect(player!.statusSentence).toBe("已離開美職");
     expect(player!.recentForm).toBeNull();
+  });
+});
+
+/**
+ * 個人頁的 hero 只吃 `team.logoSrc`，所以這裡從 `getPlayerDetail()` 的輸出斷言
+ * ——與名冊頁同一條路（`players.test.ts` 有對應的一組）。
+ */
+describe("getPlayerDetail：team.logoSrc", () => {
+  it("小聯盟球員解析到母隊的 logo", async () => {
+    const player = await getPlayerDetail(ROSTERED_ID, db, new Set([PARENT_TEAM_ID]));
+    expect(player!.team?.logoSrc).toBe(`/logos/${PARENT_TEAM_ID}.svg`);
+  });
+
+  it("小聯盟隊自己的 id 不當 logo id 用", async () => {
+    const player = await getPlayerDetail(ROSTERED_ID, db, new Set([AAA_TEAM_ID]));
+    expect(player!.team?.logoSrc).toBeNull();
+  });
+
+  it("素材未到位時為 null（目前正式行為）", async () => {
+    const player = await getPlayerDetail(ROSTERED_ID);
+    expect(player!.team?.logoSrc).toBeNull();
   });
 });
 

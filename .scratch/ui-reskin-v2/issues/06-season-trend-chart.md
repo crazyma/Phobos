@@ -77,6 +77,7 @@ pa, ab, h, doubles, triples, hr, rbi, r, bb, so, sb
 - [ ] 好壞方向：ERA 低為佳、AVG 高為佳，上色未共用同一條規則
 - [ ] 新增 `lib/services/player-trend.test.ts`：跨層級不混算、樣本不足回空、ERA/AVG 各一組已知輸入的期望值、**只有一場時不炸**
 - [ ] `pnpm test` 綠、`pnpm typecheck` 綠
+- [ ] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）
 
 ## Comments
 

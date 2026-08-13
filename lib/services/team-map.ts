@@ -6,11 +6,8 @@ import { levelLabel, type TeamLevel } from "./player-status.ts";
 export type TeamRef = {
   abbrev: string | null;
   name: string;
-  /** MLB team id used to resolve the logo (minor-league rows point to parent). */
-  parentTeamId?: number | null;
 };
 export type TeamMap = Map<number, TeamRef>;
-let latestTeamMap: TeamMap | undefined;
 
 /** What deciding a team's Chinese display name needs (spec-01 C.2). */
 export type TeamNameParts = {
@@ -72,32 +69,11 @@ export async function loadTeamMap(db = defaultDb): Promise<TeamMap> {
           level: r.level,
           parentNameZh: r.parentId === null ? null : (zhById.get(r.parentId) ?? null),
         }),
-        parentTeamId: r.level === "mlb" ? r.id : r.parentId,
       },
     ]),
   );
-  latestTeamMap = map;
   return map;
 }
-
-/**
- * Resolve the static logo path for a team. Minor-league teams inherit their
- * parent MLB id from the already-loaded TeamMap, so this helper never queries
- * the database. Until the licensed files land in public/logos, the allowlist
- * is empty and callers receive null (which deliberately renders no broken img).
- */
-export function teamLogo(
-  teamId: number | null | undefined,
-  teamMap?: TeamMap,
-  availableLogoIds: ReadonlySet<number> = LICENSED_TEAM_LOGO_IDS,
-): string | null {
-  if (teamId === null || teamId === undefined) return null;
-  const rootId = (teamMap ?? latestTeamMap)?.get(teamId)?.parentTeamId ?? teamId;
-  return availableLogoIds.has(rootId) ? `/logos/${rootId}.svg` : null;
-}
-
-/** Populated when batu supplies the licensed MLB logo files. */
-export const LICENSED_TEAM_LOGO_IDS: ReadonlySet<number> = new Set();
 
 /** Resolve an opponent stored directly on a player's game line. */
 export function opponentOf(

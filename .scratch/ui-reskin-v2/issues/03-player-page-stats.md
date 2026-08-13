@@ -67,8 +67,8 @@
 - [ ] 逐季歷史：同季分組留白＋虛線、同層級換隊併列雙隊名
 - [ ] 低階註記保留；archived 的 `heading` 機制不變
 - [ ] `components/player-detail/season-stats.test.tsx` 更新並綠
-- [ ] `pnpm build` 綠，且**實際驗證 `getRegistry()` 護欄仍會觸發**（暫時移走某則 metric 的 MDX 驗一次，驗完還原）
 - [ ] `pnpm typecheck` 綠
+- [ ] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）；並在 build 時**實際驗證 `getRegistry()` 護欄仍會觸發**（暫時移走某則 metric 的 MDX 驗一次，驗完還原）
 
 ## Comments
 

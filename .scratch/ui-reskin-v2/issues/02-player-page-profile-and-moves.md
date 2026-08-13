@@ -117,9 +117,9 @@ plan §5.4 已決議先用 mock。移植 `Phobos-UI/components/magazine/media-ca
 
 - [x] Hero：姓氏浮水印、`LevelBadge`、四格基本資料、狀態句引言化、近況句
 - [ ] 30 支 MLB 隊徽素材放入 `public/logos/`（素材來源／授權尚待 batu 提供；fallback 路徑已完成）
-- [x] **隊徽**：`teamLogo(teamId)` 在 `lib/services/team-map.ts` 走 `parentOrgTeamId` 推導且**未增加 DB 往返**、hero 與名冊卡兩處版位都接上（素材待授權後放入 `public/logos/`）
+- [x] **隊徽**：解析在 server 端（`getPlayerSummaries` / `getPlayerDetail` 用既有的母隊 self-join 推 `parentOrgTeamId`，**未增加 DB 往返**），規則放在純模組 `lib/services/team-logo.ts`；hero 與名冊卡兩處都只吃算好的 `team.logoSrc`（素材待授權後放入 `public/logos/`）
 - [x] 隊徽 fallback 回 null、呼叫端省略元素，**不出現破圖**；素材未到位時版面仍成立
-- [x] `lib/services/team-map.test.ts` 補測：MLB 直取、小聯盟推母隊、母隊解不出時回 null
+- [x] `players.test.ts` / `player-detail.test.ts` 以 DB fixture 補測**實際走的那條路**：MLB 直取、小聯盟推母隊、母隊解不出回 null、素材未到位回 null
 - [x] **封存卡片 hover 不出現橘色**，但仍有可點擊回饋；現役卡片行為不變；未用 descendant selector 從外覆寫
 - [x] 近期比賽改 `StatList`，二刀流兩份都出，`shortDate()`／`vs()` 沿用
 - [x] 媒體集錦可捲動；`media.mock.ts` 含 `MOCK` 命名與檔頭警語，**不進 barrel**
@@ -130,11 +130,15 @@ plan §5.4 已決議先用 mock。移植 `Phobos-UI/components/magazine/media-ca
 - [x] archived 提示條換樣式，隱藏規則不變
 - [x] `player-hero.test.tsx`、`recent.test.tsx`、`upcoming.test.tsx` 更新並綠
 - [x] `pnpm typecheck` 綠
+- [x] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會
 
 ## Comments
 
-- 本票對 `lib/services/*` **只有一個准許的例外**：隊徽的 `teamLogo()` 放進既有的 `team-map.ts`（見「隊徽」一節）。其餘一律不動。媒體 mock 是唯一新增資料檔且刻意隔離。
+- 本票對 `lib/services/*` **只有一個准許的例外**：隊徽的解析規則（純模組 `team-logo.ts`，外加 `players.ts`／`player-detail.ts` 各多帶一個母隊 id 欄位；見「隊徽」一節）。其餘一律不動。媒體 mock 是唯一新增資料檔且刻意隔離。
 - 容器由票 01 統一成 `max-w-6xl px-6`（個人頁原為 `max-w-3xl`）——**注意行長**：純文字段落建議自行收在 `max-w-prose`，別讓近況句拉滿 6xl。
 - 完成後本頁會是「新檔案區＋舊數據表」的混搭，**這是預期的**，由 03 收斂。
 
 - 2026-08-13：隊徽素材尚未由 batu 提供／確認授權，故未新增 `public/logos/` 圖檔；helper 與兩個版位已完成，預設 allowlist 為空、fallback 省略元素，待素材到位後只需填入 allowlist 與檔案。
+
+- 2026-08-13（教訓，來自本票造成的 build blocker）：**`"use client"` 元件可達的模組，一律不可 import 到 `lib/db/client.ts`。** 隊徽原本讓 `PlayerCard` 自己呼叫 `teamLogo()`，而那個 helper 住在會 import DB client 的 `team-map.ts`；`PlayerCard` 由 `"use client"` 的 `players-view.tsx` 使用，於是整包 `pg` 被拉進瀏覽器 bundle，`next build` 直接死在 `Module not found: 'dns' / 'fs'`。**`pnpm typecheck` 與 `pnpm test` 兩者都抓不到這件事**（vitest 在 Node 下跑，import 得到 `pg`；tsc 只看型別）——`pnpm build` 是唯一的關卡，所以每張票的 checklist 都補上了它。修法是把解析搬回 server（`team.logoSrc`），規則本身放在零 DB import 的 `team-logo.ts`。
+- 2026-08-13：順手移除 `team-map.ts` 的 module 層級可變全域 `latestTeamMap`。除了跨請求共用可變狀態本身就脆，它還有實際的錯：名冊頁的 `getPlayerSummaries()` 從未呼叫 `loadTeamMap()`，那個全域在 `/players` 渲染時可能是空的 → `rootId` 退回球員自己的 `teamId` → **小聯盟球員永遠推不到母隊隊徽，大聯盟卻剛好會對**，而且相依於哪個頁面先被請求。allowlist 為空時看不出來，素材一放進去就會炸。

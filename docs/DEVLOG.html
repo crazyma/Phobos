@@ -180,6 +180,25 @@
     <li><code>pnpm typecheck</code> 綠、<code>pnpm test</code> 綠。</li>
     </ul></li>
     </ul>
+    <ul class="todo">
+    <li class="done"><strong>UI 拉皮票 02 完成——球員個人頁檔案與動態改為雜誌風</strong>（票 <code>.scratch/ui-reskin-v2/issues/02-player-page-profile-and-moves.md</code>，切片整合分支 <code>feat/ui-reskin-v2</code>）。
+    <ul>
+    <li><code>/players/[id]</code> 非數據區更新為深藍 hero（姓氏浮水印、LevelBadge、四格資料、狀態引言、近況句）、StatList 近期比賽、媒體 mock carousel、動態時間軸、出賽預告與 archived 提示；本季／逐季／進階數據刻意保留給票 03。</li>
+    <li><code>teamLogo()</code> 落在既有 <code>lib/services/team-map.ts</code>，用已載入的 TeamMap 記憶體推導小聯盟母隊，無新增 DB 往返；hero／名冊卡均接上可選 slot。素材尚未授權提供，fallback 為 null 並省略元素。封存卡片 hover 改為灰色邊框仍保留互動回饋。<strong>（⚠️ 此段已被同日的事後修正取代——見下一則：那個放法會把 <code>pg</code> 拉進 client bundle 而讓 <code>pnpm build</code> 失敗，解析已改為 server 端的 <code>team.logoSrc</code>。）</strong></li>
+    <li>媒體資料放 <code>lib/services/media.mock.ts</code>（含 MOCK 警語、不進 barrel、不納入驗收數字）；異動色調與出賽 tag 均在呈現層實作，未改 schema 或既有商業邏輯。以 dev server＋Chrome 實際檢視桌機與 390px 手機球員頁。</li>
+    <li>相關測試與 typecheck 綠；完整 <code>pnpm test</code> 結果記於本次交付回報。</li>
+    </ul></li>
+    </ul>
+    <ul class="todo">
+    <li class="done"><strong>票 02 事後修正——<code>pnpm build</code> 被隊徽的 client/server 邊界打掛，順帶清掉一個會靜默答錯的可變全域</strong>（同分支 <code>feat/ui-reskin-v2</code>；<code>docs/DEVLOG.html</code> 一併重建）。
+    <ol>
+    <li><strong><code>pnpm build</code> 完全失敗（blocker）。</strong> 票 02 讓 <code>components/players/player-card.tsx</code> 去 import <code>teamLogo</code>，而它住在會 <code>import { db } from &quot;lib/db/client.ts&quot;</code> 的 <code>lib/services/team-map.ts</code>；<code>PlayerCard</code> 由 <code>&quot;use client&quot;</code> 的 <code>players-view.tsx</code> 使用，於是 <code>app/players/page.tsx → players-view → player-card → team-map → db/client → pg</code> 整條被拉進瀏覽器 bundle，<code>next build</code> 死在 <code>Module not found: &#x27;dns&#x27; / &#x27;fs&#x27; / &#x27;util/types&#x27;</code>。<strong><code>pnpm typecheck</code> 與 <code>pnpm test</code> 都是綠的</strong>——tsc 只看型別，vitest 在 Node 下跑、<code>pg</code> import 得到，<strong>只有 <code>next build</code> 會驗 RSC 的 client/server 邊界</strong>。已在票 02–06 的 checklist 全部補上「<code>pnpm build</code> 綠」，教訓記在票 02 的 Comments。</li>
+    <li><strong>修法：logo 解析回到 server，元件只收算好的值。</strong> <code>PlayerSummary.team</code> / <code>PlayerDetail.team</code> 兩個 Zod schema 各加一個 <code>logoSrc: string | null</code>，由 <code>getPlayerSummaries()</code> / <code>getPlayerDetail()</code> 在既有的母隊 self-join 上<strong>多取一個母隊 id</strong>後解析（<strong>未新增查詢</strong>）；規則本身搬到新的純模組 <code>lib/services/team-logo.ts</code>（<strong>只有 type-only import，零 DB 依賴</strong>）。<code>PlayerCard</code> 與 <code>PlayerHero</code> 兩處都改吃 <code>player.team?.logoSrc</code>，不再有任何呈現層模組碰得到解析器。</li>
+    <li><strong>移除 <code>team-map.ts</code> 的 module 層級可變全域 <code>latestTeamMap</code>。</strong> 它不只是「跨請求共用可變狀態」的體質問題，而是<strong>已經答錯</strong>：名冊頁的資料來源 <code>getPlayerSummaries()</code> 從來沒呼叫過 <code>loadTeamMap()</code>，<code>/players</code> 渲染時那個全域可能是空的 → <code>rootId</code> 退回球員自己的 <code>teamId</code> → <strong>小聯盟球員永遠推不到母隊隊徽、大聯盟球員剛好會對</strong>，而且相依於哪個頁面先被請求。授權清單目前為空所以還看不出來，<strong>素材一放進去就會爆</strong>。連帶把只服務於它的 <code>TeamRef.parentTeamId</code> 也拿掉。</li>
+    <li><strong>測試改測實際會走的路。</strong> 原本 <code>team-map.test.ts</code> 的三個 <code>teamLogo</code> 測試<strong>每次都明確傳 <code>map</code> 進去</strong>，而真實呼叫端是 <code>teamLogo(player.team?.id)</code>（不傳、走全域）——測試是綠的卻保護不到上線那條路。改為在 <code>players.test.ts</code> / <code>player-detail.test.ts</code> 以 DB fixture 從 service 輸出斷言：小聯盟解析到母隊、大聯盟直取自己的 id、母隊推不出時為 null（<strong>不退回球隊自己的 id</strong>）、素材未到位時為 null；<code>players.test.ts</code> 為此新增大聯盟球員與「無母隊的 3A 隊」兩組 fixture。元件端則在 <code>players-view.test.tsx</code> / <code>player-hero.test.tsx</code> 各補一則：<code>logoSrc</code> 為 null 時不出現 <code>&lt;img&gt;</code>、有值時畫出對應 <code>src</code>。</li>
+    <li><code>pnpm build</code> 綠（修正前 <code>Module not found</code>，修正後 33 頁全數產出）、<code>pnpm typecheck</code> 綠、<code>pnpm test</code> <strong>30 檔 / 160 測試</strong>全綠（原 154，新增 9、移除 3 個走全域的舊 <code>teamLogo</code> 測試）；另起 dev server 實測 <code>/players</code>、<code>/players/[id]</code>、<code>/</code> 與 <code>/api/players</code> 皆 200，小聯盟球員的 <code>team.logoSrc</code> 如預期為 null（素材未到位）。</li>
+    </ol></li>
+    </ul>
     <h3 id="sec-1-2">2026-08-10</h3>
     <ul class="todo">
     <li class="done"><strong><code>il-health-projection/01</code> 完成——傷兵狀態有可靠出口</strong>（票 <code>.scratch/il-health-projection/issues/01-bare-activation-and-health-reset.md</code>）。修正兩個獨立來源的長期錯誤：
@@ -614,10 +633,11 @@
   <section>
     <h2 id="sec-2">▶️ 進行中 / 下一步</h2>
     <ul class="todo">
-    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（原 7 票 → </strong>6 票<strong>，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06 待辦。
+    <li class=""><strong>UI 拉皮：以 <code>Phobos-UI</code> 雜誌風設計改寫前端（原 7 票 → </strong>6 票<strong>，<code>.scratch/ui-reskin-v2/issues/</code>）</strong>——研究見 <code>plan/ui-reskin-2026-08-12.md</code>，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06 待辦。</li>
+    <li class="done">票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。
     <ul>
     <li><strong>相依順序</strong>：<strong>01 球員名冊改版（含設計地基）★</strong>（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 <strong>三票可並行</strong> → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。</li>
-    <li><strong>票 07「球隊隊徽」已併入票 02（2026-08-13，batu）</strong>，<code>07-team-logos.md</code> 標 <code>superseded-by-02</code>、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 <code>PlayerCard</code> 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。<code>teamLogo()</code> 走 <code>parentOrgTeamId</code> 推母隊、放進既有的 <code>lib/services/team-map.ts</code>（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 <code>lib/services/*</code> 的地方。</li>
+    <li><strong>票 07「球隊隊徽」已併入票 02（2026-08-13，batu）</strong>，<code>07-team-logos.md</code> 標 <code>superseded-by-02</code>、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 <code>PlayerCard</code> 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 <code>parentOrgTeamId</code> 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 <code>lib/services/*</code> 的地方。<strong>落點於 2026-08-13 事後修正</strong>：不放在會 import DB client 的 <code>team-map.ts</code>（那會讓 client bundle 拉進 <code>pg</code>），改為純模組 <code>lib/services/team-logo.ts</code> ＋ server 端解析成 <code>team.logoSrc</code>。</li>
     <li><strong>票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）</strong>：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 <code>MAGAZINE_CARD_HOVER</code>），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 <code>PlayerCard</code> 依自己的 <code>archived</code> prop 決定、<strong>不從外面用 descendant selector 覆寫</strong>。</li>
     <li><strong>分支策略（2026-08-13，batu 定）：整批 7 票做完才 merge 進 main，用 <code>feat/ui-reskin-v2</code> 當切片整合分支。</strong> 後續票<strong>從該分支開子分支、做完併回它</strong>，最後一次 <code>--no-ff</code> 進 main——<strong>不要以 main 為基底</strong>。理由：① 符合 repo 既有慣例，多票切片從來是一個分支扛完整批（<code>Merge spec-03 ETL pipeline</code> 7 票、<code>Merge feat/player-detail-page</code> 4 票、<code>Merge feat/glossary-and-advanced-metrics</code> 4 票），單票切片才單獨合；② 中間狀態是<strong>刻意</strong>的不一致（票 01 完成後其他頁面是「新報頭＋舊內文」，由 02／04／05 收斂），不該落在 main。
     <ul>

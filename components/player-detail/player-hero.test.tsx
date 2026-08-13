@@ -12,7 +12,15 @@ const base: PlayerDetail = {
   throws: "R",
   birthdate: "2001-07-26",
   lifecycle: "tracked",
-  team: { id: 10, name: "波士頓紅襪", abbrev: "BOS", level: "mlb", levelLabel: "大聯盟" },
+  team: {
+    id: 10,
+    name: "波士頓紅襪",
+    abbrev: "BOS",
+    level: "mlb",
+    levelLabel: "大聯盟",
+    // logo 由 server 端解析好才傳進來；素材未到位時就是 null。
+    logoSrc: null,
+  },
   statusSentence: "大聯盟",
   recentForm: "連續 5 場有安打",
   seasons: [],
@@ -41,6 +49,15 @@ describe("PlayerHero", () => {
       <PlayerHero player={{ ...base, recentForm: null }} />,
     );
     expect(html).toContain("近況同步中");
+  });
+
+  it("只畫 server 端解析好的 logo，null 時不留破圖", () => {
+    // hero 與名冊卡片吃同一個欄位（team.logoSrc），不各走各的。
+    expect(renderToStaticMarkup(<PlayerHero player={base} />)).not.toContain("<img");
+    const html = renderToStaticMarkup(
+      <PlayerHero player={{ ...base, team: { ...base.team!, logoSrc: "/logos/10.svg" } }} />,
+    );
+    expect(html).toContain('src="/logos/10.svg"');
   });
 
   it("omits the team badge and bio facts gracefully when absent", () => {

@@ -22,9 +22,16 @@
 
 - [x] **UI 拉皮票 02 完成——球員個人頁檔案與動態改為雜誌風**（票 `.scratch/ui-reskin-v2/issues/02-player-page-profile-and-moves.md`，切片整合分支 `feat/ui-reskin-v2`）。
   - `/players/[id]` 非數據區更新為深藍 hero（姓氏浮水印、LevelBadge、四格資料、狀態引言、近況句）、StatList 近期比賽、媒體 mock carousel、動態時間軸、出賽預告與 archived 提示；本季／逐季／進階數據刻意保留給票 03。
-  - `teamLogo()` 落在既有 `lib/services/team-map.ts`，用已載入的 TeamMap 記憶體推導小聯盟母隊，無新增 DB 往返；hero／名冊卡均接上可選 slot。素材尚未授權提供，fallback 為 null 並省略元素。封存卡片 hover 改為灰色邊框仍保留互動回饋。
+  - `teamLogo()` 落在既有 `lib/services/team-map.ts`，用已載入的 TeamMap 記憶體推導小聯盟母隊，無新增 DB 往返；hero／名冊卡均接上可選 slot。素材尚未授權提供，fallback 為 null 並省略元素。封存卡片 hover 改為灰色邊框仍保留互動回饋。**（⚠️ 此段已被同日的事後修正取代——見下一則：那個放法會把 `pg` 拉進 client bundle 而讓 `pnpm build` 失敗，解析已改為 server 端的 `team.logoSrc`。）**
   - 媒體資料放 `lib/services/media.mock.ts`（含 MOCK 警語、不進 barrel、不納入驗收數字）；異動色調與出賽 tag 均在呈現層實作，未改 schema 或既有商業邏輯。以 dev server＋Chrome 實際檢視桌機與 390px 手機球員頁。
   - 相關測試與 typecheck 綠；完整 `pnpm test` 結果記於本次交付回報。
+
+- [x] **票 02 事後修正——`pnpm build` 被隊徽的 client/server 邊界打掛，順帶清掉一個會靜默答錯的可變全域**（同分支 `feat/ui-reskin-v2`；`docs/DEVLOG.html` 一併重建）。
+  1. **`pnpm build` 完全失敗（blocker）。** 票 02 讓 `components/players/player-card.tsx` 去 import `teamLogo`，而它住在會 `import { db } from "lib/db/client.ts"` 的 `lib/services/team-map.ts`；`PlayerCard` 由 `"use client"` 的 `players-view.tsx` 使用，於是 `app/players/page.tsx → players-view → player-card → team-map → db/client → pg` 整條被拉進瀏覽器 bundle，`next build` 死在 `Module not found: 'dns' / 'fs' / 'util/types'`。**`pnpm typecheck` 與 `pnpm test` 都是綠的**——tsc 只看型別，vitest 在 Node 下跑、`pg` import 得到，**只有 `next build` 會驗 RSC 的 client/server 邊界**。已在票 02–06 的 checklist 全部補上「`pnpm build` 綠」，教訓記在票 02 的 Comments。
+  2. **修法：logo 解析回到 server，元件只收算好的值。** `PlayerSummary.team` / `PlayerDetail.team` 兩個 Zod schema 各加一個 `logoSrc: string | null`，由 `getPlayerSummaries()` / `getPlayerDetail()` 在既有的母隊 self-join 上**多取一個母隊 id**後解析（**未新增查詢**）；規則本身搬到新的純模組 `lib/services/team-logo.ts`（**只有 type-only import，零 DB 依賴**）。`PlayerCard` 與 `PlayerHero` 兩處都改吃 `player.team?.logoSrc`，不再有任何呈現層模組碰得到解析器。
+  3. **移除 `team-map.ts` 的 module 層級可變全域 `latestTeamMap`。** 它不只是「跨請求共用可變狀態」的體質問題，而是**已經答錯**：名冊頁的資料來源 `getPlayerSummaries()` 從來沒呼叫過 `loadTeamMap()`，`/players` 渲染時那個全域可能是空的 → `rootId` 退回球員自己的 `teamId` → **小聯盟球員永遠推不到母隊隊徽、大聯盟球員剛好會對**，而且相依於哪個頁面先被請求。授權清單目前為空所以還看不出來，**素材一放進去就會爆**。連帶把只服務於它的 `TeamRef.parentTeamId` 也拿掉。
+  4. **測試改測實際會走的路。** 原本 `team-map.test.ts` 的三個 `teamLogo` 測試**每次都明確傳 `map` 進去**，而真實呼叫端是 `teamLogo(player.team?.id)`（不傳、走全域）——測試是綠的卻保護不到上線那條路。改為在 `players.test.ts` / `player-detail.test.ts` 以 DB fixture 從 service 輸出斷言：小聯盟解析到母隊、大聯盟直取自己的 id、母隊推不出時為 null（**不退回球隊自己的 id**）、素材未到位時為 null；`players.test.ts` 為此新增大聯盟球員與「無母隊的 3A 隊」兩組 fixture。元件端則在 `players-view.test.tsx` / `player-hero.test.tsx` 各補一則：`logoSrc` 為 null 時不出現 `<img>`、有值時畫出對應 `src`。
+  - `pnpm build` 綠（修正前 `Module not found`，修正後 33 頁全數產出）、`pnpm typecheck` 綠、`pnpm test` **30 檔 / 160 測試**全綠（原 154，新增 9、移除 3 個走全域的舊 `teamLogo` 測試）；另起 dev server 實測 `/players`、`/players/[id]`、`/` 與 `/api/players` 皆 200，小聯盟球員的 `team.logoSrc` 如預期為 null（素材未到位）。
 
 ### 2026-08-10
 
@@ -347,7 +354,7 @@
 - [ ] **UI 拉皮：以 `Phobos-UI` 雜誌風設計改寫前端（原 7 票 → **6 票**，`.scratch/ui-reskin-v2/issues/`）**——研究見 `plan/ui-reskin-2026-08-12.md`，五個待決項已於 2026-08-12 全數拍板；票 01 已完成，票 02／03／04／05／06 待辦。
 - [x] 票 02：球員個人頁檔案與動態（含隊徽、媒體 mock、出賽預告樣式）——已完成，詳見 2026-08-13 已完成區。
   - **相依順序**：**01 球員名冊改版（含設計地基）★**（blocks 全部）→ 02 個人頁：檔案與動態（含媒體集錦＋隊徽）、04 首頁、05 名詞 **三票可並行** → 03 個人頁：數據區（blocked by 02，同頁序列化）→ 06 季內走勢圖（blocked by 03）。★＝frontier。
-  - **票 07「球隊隊徽」已併入票 02（2026-08-13，batu）**，`07-team-logos.md` 標 `superseded-by-02`、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 `PlayerCard` 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。`teamLogo()` 走 `parentOrgTeamId` 推母隊、放進既有的 `lib/services/team-map.ts`（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 `lib/services/*` 的地方。
+  - **票 07「球隊隊徽」已併入票 02（2026-08-13，batu）**，`07-team-logos.md` 標 `superseded-by-02`、保留供查閱。理由：隊徽同時出現在名冊卡與球員頁 hero，兩處都落在 `PlayerCard` 與 hero，拆成獨立一票等於讓兩個 agent 前後動同一批檔案。隊徽走 `parentOrgTeamId` 推母隊（與 2026-08-07 中文隊名決策同構），是票 02 唯一准許碰 `lib/services/*` 的地方。**落點於 2026-08-13 事後修正**：不放在會 import DB client 的 `team-map.ts`（那會讓 client bundle 拉進 `pg`），改為純模組 `lib/services/team-logo.ts` ＋ server 端解析成 `team.logoSrc`。
   - **票 01 遺留一項併入票 02 修掉（2026-08-13，batu 指定）**：封存卡片 hover 時仍會亮起橘色邊框（來自共用的 `MAGAZINE_CARD_HOVER`），與它已去彩度的靜態外觀矛盾。要保留可點擊回饋但不用暖橘，且比照票 01 的做法由 `PlayerCard` 依自己的 `archived` prop 決定、**不從外面用 descendant selector 覆寫**。
   - **分支策略（2026-08-13，batu 定）：整批 7 票做完才 merge 進 main，用 `feat/ui-reskin-v2` 當切片整合分支。** 後續票**從該分支開子分支、做完併回它**，最後一次 `--no-ff` 進 main——**不要以 main 為基底**。理由：① 符合 repo 既有慣例，多票切片從來是一個分支扛完整批（`Merge spec-03 ETL pipeline` 7 票、`Merge feat/player-detail-page` 4 票、`Merge feat/glossary-and-advanced-metrics` 4 票），單票切片才單獨合；② 中間狀態是**刻意**的不一致（票 01 完成後其他頁面是「新報頭＋舊內文」，由 02／04／05 收斂），不該落在 main。
     - **要接受的代價**：這 7 票的完成紀錄會積在分支上，**期間 main 的 DEVLOG 是落後的**，看真實進度要看分支。`spec-03` 那 7 票也是同樣情況，屬既有取捨。

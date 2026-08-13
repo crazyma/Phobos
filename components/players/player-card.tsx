@@ -4,7 +4,6 @@ import {
   MAGAZINE_ARCHIVED_CARD_HOVER,
   MAGAZINE_CARD_HOVER,
 } from "@/components/magazine/card-styles";
-import { teamLogo } from "@/lib/services/team-map";
 
 /**
  * One roster entry: 中英名 + 守位、目前隊伍/層級徽章、狀態一句、近況一句話.
@@ -35,7 +34,10 @@ export function PlayerCard({
   const rule = archived ? "bg-muted-foreground" : "bg-accent";
   const quoteRule = archived ? "border-muted-foreground" : "border-accent";
   const hover = archived ? MAGAZINE_ARCHIVED_CARD_HOVER : MAGAZINE_CARD_HOVER;
-  const logo = teamLogo(player.team?.id);
+  // logo 由 server 端（`getPlayerSummaries`）解析好才放進 PlayerSummary——本元件
+  // 從 `"use client"` 的 players-view 可達，一旦自己去 import 解析器就會把
+  // `lib/db/client.ts` → `pg` 拉進瀏覽器 bundle，`next build` 直接失敗。
+  const logo = player.team?.logoSrc ?? null;
 
   return (
     <Link

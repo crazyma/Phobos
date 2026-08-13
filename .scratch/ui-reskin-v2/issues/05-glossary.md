@@ -86,8 +86,9 @@
 - [ ] 開放區間畫法有明確決定並記在 Comments
 - [ ] `GlossaryExamples`／`RosterExamples` 保留，缺資料時整塊隱藏的行為不變
 - [ ] `components/glossary/glossary.test.tsx`、`app/glossary/index.test.tsx` 更新並綠
-- [ ] **`app/seo.test.ts` 綠**、`pnpm build` 綠，且 sitemap 仍含 24 條名詞 URL
+- [ ] **`app/seo.test.ts` 綠**，且 sitemap 仍含 24 條名詞 URL
 - [ ] `pnpm typecheck` 綠
+- [ ] **`pnpm build` 綠**——typecheck 與 vitest 都不驗 RSC 的 client/server 邊界，只有 `next build` 會（見票 02 Comments 的教訓）
 
 ## Comments
 
